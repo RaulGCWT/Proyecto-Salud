@@ -5,8 +5,11 @@ const respiratoryRate = ref(16)
 const hrv = ref(45)
 const isOccupied = ref(true)
 const alertHistory = ref([])
-// New: Array for ECharts data
+
+// Historiales para la gráfica
 const hrHistory = ref([])
+const hrvHistory = ref([])
+const respHistory = ref([])
 
 export const useHealth = () => {
   const isHRAlert = computed(() => heartRate.value > 100 || heartRate.value < 50)
@@ -18,10 +21,18 @@ export const useHealth = () => {
     respiratoryRate.value = Math.floor(Math.random() * (25 - 8 + 1)) + 8
     hrv.value = Math.floor(Math.random() * (80 - 15 + 1)) + 15
     
-    // Update history for the chart (keep last 20 records)
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    
+    // Actualizar los 3 historiales (mantener últimos 20)
     hrHistory.value.push({ time: now, value: heartRate.value })
-    if (hrHistory.value.length > 20) hrHistory.value.shift()
+    hrvHistory.value.push({ time: now, value: hrv.value })
+    respHistory.value.push({ time: now, value: respiratoryRate.value })
+    
+    if (hrHistory.value.length > 20) {
+      hrHistory.value.shift()
+      hrvHistory.value.shift()
+      respHistory.value.shift()
+    }
     
     checkAlerts()
   }
@@ -39,7 +50,8 @@ export const useHealth = () => {
   }
 
   return {
-    heartRate, respiratoryRate, hrv, isOccupied, alertHistory, hrHistory,
+    heartRate, respiratoryRate, hrv, isOccupied, alertHistory, 
+    hrHistory, hrvHistory, respHistory,
     isHRAlert, isRespAlert, isHRVAlert, updateSensors
   }
 }
