@@ -6,7 +6,7 @@ const hrv = ref(45)
 const isOccupied = ref(true)
 const alertHistory = ref([])
 
-// Historiales para la gráfica
+// Historiales extendidos para ver todo el recorrido
 const hrHistory = ref([])
 const hrvHistory = ref([])
 const respHistory = ref([])
@@ -23,12 +23,12 @@ export const useHealth = () => {
     
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     
-    // Actualizar los 3 historiales (mantener últimos 20)
     hrHistory.value.push({ time: now, value: heartRate.value })
     hrvHistory.value.push({ time: now, value: hrv.value })
     respHistory.value.push({ time: now, value: respiratoryRate.value })
     
-    if (hrHistory.value.length > 20) {
+    // Aumentamos a 500 puntos para ver mucho más tiempo en pantalla
+    if (hrHistory.value.length > 500) {
       hrHistory.value.shift()
       hrvHistory.value.shift()
       respHistory.value.shift()
