@@ -5,9 +5,11 @@
         <div class="logo-icon">⚡</div>
         <div class="logo-text">
           <h2>WELLTECH</h2>
+
           <span>IoT Health</span>
         </div>
       </div>
+      
 
       <nav class="sidebar-nav">
         <a href="#" class="nav-item active">📊 Dashboard</a>
@@ -39,15 +41,19 @@
           </div>
         </div>
         
-        <div class="card card-resp">
+        <!-- <div class="card card-resp">
           <span class="card-label">Resp. Rate</span>
           <div class="card-value resp-color">
             {{ respiratoryRate }} <small>RPM</small>
           </div>
           <div class="card-indicator status-ok">Normal</div>
-        </div>
-
-        <div class="card card-presence">
+        </div> -->
+        
+        <DashboardCard type="hr" title="Resp. Rate" :main-text="`${respiratoryRate} RPM`" description="Normal"/>
+        <DashboardCard title="Bed status" :main-text=" isOccupied ? 'In Use' : 'Empty' " :description="isOccupied ? 'User Detected' : 'No Presence'"/>
+        
+        <!-- <div class="card card-presence">
+        <!-- <div class="card card-presence">
           <span class="card-label">Bed Status</span>
           <div class="card-value presence-color">
             {{ isOccupied ? 'In Use' : 'Empty' }}
@@ -55,7 +61,7 @@
           <div class="card-indicator status-ok">
             {{ isOccupied ? 'User Detected' : 'No Presence' }}
           </div>
-        </div>
+        </div> -->
       </section>
 
       <section class="table-container">
