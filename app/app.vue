@@ -30,8 +30,8 @@
         <p>Real-time status of smart mattresses</p>
       </header>
 
-      <section class="sensor-grid">
-        <div class="card" :class="{ 'card-alert': isHeartRateHigh }">
+      
+        <!-- <div class="card" :class="{ 'card-alert': isHeartRateHigh }">
           <span class="card-label">Heart Rate</span>
           <div class="card-value heart-color">
             {{ heartRate }} <small>BPM</small>
@@ -39,7 +39,7 @@
           <div class="card-indicator" :class="isHeartRateHigh ? 'status-error' : 'status-ok'">
             {{ isHeartRateHigh ? 'Critical: High HR' : 'Normal' }}
           </div>
-        </div>
+        </div> -->
         
         <!-- <div class="card card-resp">
           <span class="card-label">Resp. Rate</span>
@@ -49,11 +49,11 @@
           <div class="card-indicator status-ok">Normal</div>
         </div> -->
         
-        <DashboardCard type="hr" title="Resp. Rate" :main-text="`${respiratoryRate} RPM`" description="Normal"/>
-        <DashboardCard title="Bed status" :main-text=" isOccupied ? 'In Use' : 'Empty' " :description="isOccupied ? 'User Detected' : 'No Presence'"/>
+        <!-- <DashboardCard type="rpm" title="Resp. Rate" :main-text="`${respiratoryRate} RPM`" description="Normal"/> -->
+        <!-- <DashboardCard type="sts" title="Bed status" :main-text=" isOccupied ? 'In Use' : 'Empty' " :description="isOccupied ? 'User Detected' : 'No Presence'"/> -->
         
-        <!-- <div class="card card-presence">
-        <!-- <div class="card card-presence">
+          <!-- <div class="card card-presence">
+         <div class="card card-presence">
           <span class="card-label">Bed Status</span>
           <div class="card-value presence-color">
             {{ isOccupied ? 'In Use' : 'Empty' }}
@@ -62,7 +62,44 @@
             {{ isOccupied ? 'User Detected' : 'No Presence' }}
           </div>
         </div> -->
+
+        <section class="sensor-grid">
+          <DashboardCard type="hr" 
+            title="Heart Rate" 
+            :main-text="`${heartRate} BPM`" 
+            :description="isHeartRateHigh ? 'Critical: High HR' : 'Normal'"
+            :is-alert="isHeartRateHigh" 
+          />
+
+          <DashboardCard 
+            type="hrv" 
+            title="HR Variability" 
+            :main-text="`${hrv} ms`" 
+            description="Good recovery"
+            :is-alert="false"
+          />
+          
+          <DashboardCard 
+            type="resp" 
+            title="Resp. Rate" 
+            :main-text="`${respiratoryRate} RPM`" 
+            description="Normal"
+            :is-alert="false"
+          />
+          
+          <DashboardCard 
+            type="presence" 
+            title="Bed Status" 
+            :main-text="isOccupied ? 'In Use' : 'Empty'" 
+            :description="isOccupied ? 'User Detected' : 'No Presence'"
+            :is-alert="false"
+          />
       </section>
+
+
+
+      
+      
 
       <section class="table-container">
         <h3>Recent Health Alerts (Last 24h)</h3>
@@ -99,6 +136,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 // --- REACTIVE STATE (English variables) ---
 const heartRate = ref(72);
 const respiratoryRate = ref(16);
+const hrv = ref(45); // CORRECCIÓN: Añadida variable HRV
 const isOccupied = ref(true);
 const alertHistory = ref([
   { time: '12:30:15', sensor: 'Heart Rate', message: 'Spike detected: 105 BPM', level: 'Critical' },
@@ -113,6 +151,8 @@ const updateSensors = () => {
   // Simulate random sensor fluctuation
   heartRate.value = Math.floor(Math.random() * (110 - 60 + 1)) + 60;
   respiratoryRate.value = Math.floor(Math.random() * (22 - 12 + 1)) + 12;
+  hrv.value = Math.floor(Math.random() * (100 - 20 + 1)) + 20;
+  
 
   // Add a new alert if heart rate is critical
   if (heartRate.value > 100) {
