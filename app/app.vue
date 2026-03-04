@@ -1,124 +1,179 @@
 <template>
-  <div class="flex h-screen bg-gray-50 font-sans text-gray-900">
-    
-    <aside class="w-72 bg-slate-900 text-slate-300 flex flex-col shadow-2xl">
-      <div class="p-6 border-b border-slate-800">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-emerald-900/20">
-            SR
-          </div>
-          <div>
-            <h1 class="text-white font-bold leading-none">SmartRest</h1>
-            <span class="text-[10px] text-slate-500 uppercase tracking-widest">IoT Health System</span>
-          </div>
+  <div class="dashboard-wrapper">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-icon">⚡</div>
+        <div class="logo-text">
+          <h2>WELLTECH</h2>
+          <span>IoT Health</span>
         </div>
       </div>
 
-      <nav class="flex-1 overflow-y-auto p-4 space-y-1">
-        <p class="px-4 py-2 text-[11px] font-bold text-slate-500 uppercase">Monitorización</p>
-        
-        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-800 text-white border border-slate-700">
-          <span>📊</span> <span class="text-sm font-medium">Dashboard General</span>
-        </a>
-
-        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 hover:text-white transition-all group">
-          <span class="opacity-70 group-hover:opacity-100">🛏️</span> 
-          <span class="text-sm font-medium">Gestión de Colchones</span>
-        </a>
-
-        <p class="px-4 py-2 mt-6 text-[11px] font-bold text-slate-500 uppercase">Reglas y Datos</p>
-
-        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 hover:text-white transition-all group">
-          <span class="opacity-70 group-hover:opacity-100">⚠️</span> 
-          <span class="text-sm font-medium">Alertas Activas</span>
-        </a>
-
-        <a href="#" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-slate-800 hover:text-white transition-all group">
-          <span class="opacity-70 group-hover:opacity-100">📈</span> 
-          <span class="text-sm font-medium">Historial de Salud</span>
-        </a>
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active">📊 Dashboard</a>
+        <a href="#" class="nav-item">🛏️ Colchones</a>
+        <a href="#" class="nav-item">⚠️ Alertas</a>
+        <a href="#" class="nav-item">🕒 Historial</a>
       </nav>
 
-      <div class="p-4 bg-slate-950 border-t border-slate-800">
-        <div class="flex items-center gap-3 p-2">
-          <div class="w-9 h-9 rounded-full bg-slate-700 border border-slate-600 flex items-center justify-center text-xs font-bold">JD</div>
-          <div class="flex-1">
-            <p class="text-xs font-bold text-white">Juan Doe</p>
-            <p class="text-[10px] text-slate-500 italic">Administrador</p>
-          </div>
-          <span class="text-xs text-emerald-500 text-[8px]">● Online</span>
-        </div>
+      <div class="sidebar-footer">
+        <p><strong>Admin_Health</strong></p>
+        <button class="btn-logout">Cerrar Sesión</button>
       </div>
     </aside>
 
-    <main class="flex-1 flex flex-col overflow-hidden">
-      
-      <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8">
-        <h2 class="text-lg font-semibold text-gray-700 italic">Vista en tiempo real: Colchón ID-752</h2>
-        <div class="flex gap-4">
-          <button class="bg-gray-100 hover:bg-gray-200 p-2 rounded-lg text-sm px-4 font-medium transition">Refrescar</button>
-          <button class="bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg text-sm px-4 font-medium shadow-md transition">Exportar Datos</button>
-        </div>
+    <main class="content-area">
+      <header class="main-header">
+        <h1>Monitorización de Sensores</h1>
+        <p>Estado actual de los colchones inteligentes</p>
       </header>
 
-      <section class="flex-1 overflow-y-auto p-8">
+      <section class="sensor-grid">
+        <div class="card card-heart">
+          <span class="card-label">Ritmo Cardíaco</span>
+          <div class="card-value">72 <small>BPM</small></div>
+          <div class="card-indicator status-ok">Normal</div>
+        </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          
-          <div class="bg-white border-l-4 border-red-500 p-6 rounded-xl shadow-sm hover:shadow-md transition">
-            <div class="flex justify-between items-start mb-4">
-              <span class="text-xs font-bold text-gray-400 uppercase">Ritmo Cardíaco</span>
-              <span class="bg-red-100 text-red-600 text-[10px] font-bold px-2 py-1 rounded">⚠️ ALTO</span>
-            </div>
-            <p class="text-3xl font-black text-gray-800 tracking-tight">112 <span class="text-sm font-normal text-gray-400">BPM</span></p>
-            <p class="text-xs text-red-500 mt-2 font-medium">Excede la media (+15%)</p>
-          </div>
-
-          <div class="bg-white border-l-4 border-emerald-500 p-6 rounded-xl shadow-sm hover:shadow-md transition">
-            <div class="flex justify-between items-start mb-4">
-              <span class="text-xs font-bold text-gray-400 uppercase">Temp. Colchón</span>
-              <span class="bg-emerald-100 text-emerald-600 text-[10px] font-bold px-2 py-1 rounded">✓ NORMAL</span>
-            </div>
-            <p class="text-3xl font-black text-gray-800 tracking-tight">36.4 <span class="text-sm font-normal text-gray-400">°C</span></p>
-            <p class="text-xs text-gray-400 mt-2">Dentro del rango óptimo</p>
-          </div>
-
-          <div class="bg-white border-l-4 border-blue-500 p-6 rounded-xl shadow-sm hover:shadow-md transition">
-            <div class="flex justify-between items-start mb-4">
-              <span class="text-xs font-bold text-gray-400 uppercase">Eficiencia Sueño</span>
-              <span class="text-blue-500 text-lg">🌙</span>
-            </div>
-            <p class="text-3xl font-black text-gray-800 tracking-tight">88 <span class="text-sm font-normal text-gray-400">%</span></p>
-            <p class="text-xs text-gray-400 mt-2">Fase de sueño profundo</p>
-          </div>
-
-          <div class="bg-white border-l-4 border-slate-800 p-6 rounded-xl shadow-sm hover:shadow-md transition">
-            <div class="flex justify-between items-start mb-4">
-              <span class="text-xs font-bold text-gray-400 uppercase">Sensores Online</span>
-              <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            </div>
-            <p class="text-3xl font-black text-gray-800 tracking-tight">12/12</p>
-            <p class="text-xs text-gray-400 mt-2">Sincronizado hace 2s</p>
-          </div>
-
+        <div class="card card-resp">
+          <span class="card-label">Resp. Rate</span>
+          <div class="card-value">16 <small>RPM</small></div>
+          <div class="card-indicator status-ok">Normal</div>
         </div>
 
-        <div class="mt-8 bg-white p-8 rounded-2xl shadow-sm border border-gray-100 min-h-[300px] flex flex-col items-center justify-center border-dashed text-gray-300">
-          <p class="text-5xl mb-4">📉</p>
-          <p class="font-medium text-gray-400 uppercase tracking-widest text-sm italic">Aquí irá el gráfico histórico de sensores</p>
+        <div class="card card-presence">
+          <span class="card-label">Estado</span>
+          <div class="card-value">En Uso</div>
+          <div class="card-indicator status-ok">Usuario en cama</div>
         </div>
+      </section>
 
+      <section class="table-container">
+        <h3>Registro de Alertas (Últimas 24h)</h3>
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Sensor</th>
+              <th>Mensaje</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>12:30:15</td>
+              <td>Frecuencia Cardíaca</td>
+              <td>Pico detectado: 105 BPM</td>
+              <td><span class="badge badge-error">Crítico</span></td>
+            </tr>
+            <tr>
+              <td>09:12:04</td>
+              <td>Movimiento</td>
+              <td>Ausencia prolongada (1h)</td>
+              <td><span class="badge badge-warn">Aviso</span></td>
+            </tr>
+          </tbody>
+        </table>
       </section>
     </main>
-
   </div>
 </template>
 
 <style>
-/* Solo estilos globales necesarios */
+/* 1. RESET Y BASE */
 body {
   margin: 0;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  padding: 0;
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background-color: #f8fafc;
+  color: #1e293b;
+}
+
+.dashboard-wrapper {
+  display: flex;
+}
+
+/* 2. SIDEBAR (FIJO) */
+.sidebar {
+  width: 260px;
+  background-color: #0f172a;
+  color: white;
+  height: 100vh;
+  position: fixed; /* Mantiene el menú siempre visible */
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+}
+
+.sidebar-header {
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: #020617;
+}
+
+.logo-icon {
+  background: #3b82f6;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+.logo-text h2 { margin: 0; font-size: 1.1rem; }
+.logo-text span { font-size: 0.7rem; color: #64748b; text-transform: uppercase; }
+
+.sidebar-nav {
+  flex: 1;
+  padding: 20px 0;
+}
+
+.nav-item {
+  display: block;
+  padding: 12px 24px;
+  color: #94a3b8;
+  text-decoration: none;
+  transition: 0.2s;
+}
+
+.nav-item:hover, .nav-item.active {
+  color: white;
+  background-color: #1e293b;
+}
+
+.nav-item.active {
+  border-left: 4px solid #3b82f6;
+  background-color: #1e293b;
+}
+
+.sidebar-footer {
+  padding: 20px;
+  border-top: 1px solid #1e293b;
+  font-size: 0.85rem;
+}
+
+.btn-logout {
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px;
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* 3. CONTENIDO PRINCIPAL (CON MARGEN) */
+.content-area {
+  flex: 1;
+  margin-left:
 }
 </style>
+
+
