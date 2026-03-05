@@ -11,7 +11,7 @@
           <tr><th>Time</th><th>Sensor</th><th>Message</th><th>Level</th></tr>
         </thead>
         <tbody>
-          <tr v-for="(alert, index) in alertHistory" :key="index">
+          <tr v-for="(alert, index) in health.alertHistory" :key="index">
             <td>{{ alert.time }}</td>
             <td>{{ alert.sensor }}</td>
             <td>{{ alert.message }}</td>
@@ -28,7 +28,8 @@
 </template>
 
 <script setup>
-const { alertHistory } = useHealth()
+import { useHealthStore } from '~/stores/health'
+const health = useHealthStore()
 </script>
 
 <style scoped>

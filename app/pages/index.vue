@@ -6,10 +6,10 @@
     </header>
 
     <section class="sensor-grid">
-      <DashboardCard type="hr" title="Heart Rate" :main-text="`${heartRate} BPM`" :is-alert="isHRAlert" :description="isHRAlert ? 'Abnormal HR' : 'Normal'" />
-      <DashboardCard type="hrv" title="HR Variability" :main-text="`${hrv} ms`" :is-alert="isHRVAlert" :description="isHRVAlert ? 'High Stress' : 'Normal'" />
-      <DashboardCard type="resp" title="Resp. Rate" :main-text="`${respiratoryRate} RPM`" :is-alert="isRespAlert" :description="isRespAlert ? 'Abnormal' : 'Normal'" />
-      <DashboardCard type="presence" title="Bed Status" :main-text="isOccupied ? 'In Use' : 'Empty'" :is-alert="false" description="Occupancy" />
+      <DashboardCard type="hr" title="Heart Rate" :main-text="`${health.heartRate} BPM`" :is-alert="isHRAlert" :description="isHRAlert ? 'Abnormal HR' : 'Normal'" />
+      <DashboardCard type="hrv" title="HR Variability" :main-text="`${health.hrv} ms`" :is-alert="isHRVAlert" :description="isHRVAlert ? 'High Stress' : 'Normal'" />
+      <DashboardCard type="resp" title="Resp. Rate" :main-text="`${health.respiratoryRate} RPM`" :is-alert="isRespAlert" :description="isRespAlert ? 'Abnormal' : 'Normal'" />
+      <DashboardCard type="presence" title="Bed Status" :main-text="health.isOccupied ? 'In Use' : 'Empty'" :is-alert="false" description="Occupancy" />
     </section>
 
     <section class="analytics-section">
@@ -20,7 +20,12 @@
 </template>
 
 <script setup>
-const { heartRate, respiratoryRate, hrv, isOccupied, isHRAlert, isRespAlert, isHRVAlert } = useHealth()
+import { useHealthStore } from '~/stores/health'
+const health = useHealthStore()
+
+const isHRAlert = computed(() => health.alertHistory.some(a => a.sensor.toLowerCase().includes('hr') || a.sensor.toLowerCase().includes('pulse')))
+const isHRVAlert = computed(() => health.alertHistory.some(a => a.sensor.toLowerCase().includes('hrv')))
+const isRespAlert = computed(() => health.alertHistory.some(a => a.sensor.toLowerCase().includes('resp')))
 </script>
 
 <style scoped>
