@@ -2,7 +2,7 @@
   <div class="rules-page">
     <header class="header">
       <h1>Monitoring Rules</h1>
-      <button @click="isModalOpen = true" class="btn-add">Add New Rule</button>
+      <button @click="openAddModal" class="btn-add">Add New Rule</button>
     </header>
 
     <div class="rules-list">
@@ -11,13 +11,16 @@
           <h3>{{ rule.name }}</h3>
           <p>{{ rule.variable.toUpperCase() }} {{ rule.operator }} {{ rule.value }}</p>
         </div>
-        <button @click="store.deleteRule(rule.id)" class="btn-delete">Delete</button>
+        <div style="display: flex; gap: 15px; align-items: center;">
+          <button @click="openEditModal(rule)" class="btn-edit">Edit</button>
+          <button @click="store.deleteRule(rule.id)" class="btn-delete">Delete</button>
+        </div>
       </div>
     </div>
 
     <div v-if="isModalOpen" class="modal-overlay" @click.self="isModalOpen = false">
       <div class="modal-content">
-        <h2>New Rule</h2>
+        <h2>{{ isEditing ? 'Edit Rule' : 'New Rule' }}</h2>
         <input v-model="newRule.name" placeholder="Rule Name" class="input" />
         <div class="row">
           <select v-model="newRule.variable">
@@ -31,9 +34,9 @@
           </select>
           <input v-model.number="newRule.value" type="number" class="input" />
         </div>
-        <div class="actions">
-          <button @click="isModalOpen = false" class="btn-cancel">Cancel</button>
-          <button @click="save" class="btn-add">Save</button>
+        <div class="actions" style="display: flex; gap: 10px; margin-top: 20px;">
+          <button @click="isModalOpen = false" style="background: #f1f5f9; border: none; padding: 10px; border-radius: 8px; cursor: pointer; flex: 1;">Cancel</button>
+          <button @click="save" class="btn-add" style="flex: 1;">{{ isEditing ? 'Update' : 'Save' }}</button>
         </div>
       </div>
     </div>
@@ -44,26 +47,49 @@
 import { useRulesStore } from '~/stores/rules'
 const store = useRulesStore()
 const isModalOpen = ref(false)
+const isEditing = ref(false)
+const editingId = ref(null)
+
 const newRule = ref({ name: '', variable: 'hr', operator: '>', value: 100 })
+
+const openAddModal = () => {
+  isEditing.value = false
+  newRule.value = { name: '', variable: 'hr', operator: '>', value: 100 }
+  isModalOpen.value = true
+}
+
+const openEditModal = (rule) => {
+  isEditing.value = true
+  editingId.value = rule.id
+  newRule.value = { ...rule } // Copia para no editar en tiempo real
+  isModalOpen.value = true
+}
 
 const save = () => {
   if (newRule.value.name) {
-    store.addRule(newRule.value)
+    if (isEditing.value) {
+      store.updateRule({ ...newRule.value, id: editingId.value })
+    } else {
+      store.addRule(newRule.value)
+    }
     isModalOpen.value = false
-    newRule.value = { name: '', variable: 'hr', operator: '>', value: 100 }
   }
 }
 </script>
 
 <style scoped>
+.rules-page { padding: 40px; }
 .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
-.btn-add { background: #0f172a; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; }
+.btn-add { background: #0f172a; color: white; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-family: 'Inter', sans-serif; font-weight: 600; }
 .rules-list { display: grid; gap: 15px; }
-.rule-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; justify-content: space-between; }
-.btn-delete { color: #ef4444; border: none; background: none; cursor: pointer; font-weight: bold; }
+.rule-card { 
+  background: white; padding: 20px; border-radius: 12px; 
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center;
+}
+.btn-edit { color: #3b82f6; border: none; background: none; cursor: pointer; font-weight: bold; font-family: 'Inter', sans-serif; }
+.btn-delete { color: #ef4444; border: none; background: none; cursor: pointer; font-weight: bold; font-family: 'Inter', sans-serif; }
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 200; }
 .modal-content { background: white; padding: 30px; border-radius: 16px; width: 400px; display: flex; flex-direction: column; gap: 15px; }
 .row { display: flex; gap: 10px; }
-.input, select { padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; width: 100%; }
-.btn-cancel { background: #f1f5f9; border: none; padding: 10px; border-radius: 8px; cursor: pointer; }
+.input, select { padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; width: 100%; font-family: 'Inter'; }
 </style>

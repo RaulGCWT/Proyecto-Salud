@@ -10,11 +10,12 @@ export const useHealthStore = defineStore('health', {
     alertHistory: [],
     hrHistory: [],
     hrvHistory: [],
-    respHistory: []
+    respHistory: [],
+    // Nuevo estado para el Toast
+    lastToast: null 
   }),
   actions: {
     updateSensors() {
-      // Tu lógica original de generación de datos
       this.heartRate = Math.floor(Math.random() * (115 - 45 + 1)) + 45
       this.respiratoryRate = Math.floor(Math.random() * (25 - 8 + 1)) + 8
       this.hrv = Math.floor(Math.random() * (80 - 15 + 1)) + 15
@@ -25,10 +26,8 @@ export const useHealthStore = defineStore('health', {
       this.hrvHistory.push({ time: now, value: this.hrv })
       this.respHistory.push({ time: now, value: this.respiratoryRate })
       
-      if (this.hrHistory.length > 500) {
-        this.hrHistory.shift()
-        this.hrvHistory.shift()
-        this.respHistory.shift()
+      if (this.hrHistory.length > 100) {
+        this.hrHistory.shift(); this.hrvHistory.shift(); this.respHistory.shift();
       }
       this.checkRules()
     },
@@ -36,22 +35,22 @@ export const useHealthStore = defineStore('health', {
       const rulesStore = useRulesStore()
       const now = new Date().toLocaleTimeString()
 
-      // Ejecuta las reglas configuradas en la página Rules
       rulesStore.rules.forEach(rule => {
-        let val = 0
-        if (rule.variable === 'hr') val = this.heartRate
-        if (rule.variable === 'hrv') val = this.hrv
-        if (rule.variable === 'resp') val = this.respiratoryRate
-
+        let val = rule.variable === 'hr' ? this.heartRate : rule.variable === 'hrv' ? this.hrv : this.respiratoryRate
         const isTriggered = rule.operator === '>' ? val > rule.value : val < rule.value
 
         if (isTriggered) {
-          this.alertHistory.unshift({
-            time: now,
-            sensor: rule.name,
-            message: `${val} recorded`,
-            level: 'Critical'
-          })
+          const newAlert = { 
+            id: Date.now(), 
+            time: now, 
+            sensor: rule.name, 
+            message: `Value ${val} violates rule ${rule.operator}${rule.value}`,
+            level: 'Critical' 
+          }
+          this.alertHistory.unshift(newAlert)
+          // Disparamos el Toast
+          this.lastToast = { ...newAlert } 
+          
           if (this.alertHistory.length > 50) this.alertHistory.pop()
         }
       })

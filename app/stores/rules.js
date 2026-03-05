@@ -13,6 +13,10 @@ export const useRulesStore = defineStore('rules', {
     },
     deleteRule(id) {
       this.rules = this.rules.filter(r => r.id !== id)
+    },
+    updateRule(updatedRule) {
+      const index = this.rules.findIndex(r => r.id === updatedRule.id)
+      if (index !== -1) this.rules[index] = updatedRule
     }
   },
   persist: true
