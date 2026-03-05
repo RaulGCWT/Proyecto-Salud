@@ -35,18 +35,7 @@ const metrics = [
   { id: 'resp', name: 'Resp. Rate', color: '#8b5cf6' }
 ]
 
-const getRuleForMetric = (metricId) => {
-  return rulesStore.rules.find(r => r.variable === metricId)
-}
-
-const getAlertStatus = (metricId) => {
-  const rule = getRuleForMetric(metricId)
-  if (!rule) return false
-  const val = metricId === 'hr' ? health.heartRate : 
-              metricId === 'hrv' ? health.hrv : health.respiratoryRate
-  return rule.operator === '>' ? val > rule.value : val < rule.value
-}
-
+const getAlertStatus = (id) => health.alertHistory.some(a => a.sensor.toLowerCase().includes(id))
 const isCurrentValueAlert = computed(() => getAlertStatus(activeMetric.value))
 
 const currentData = computed(() => {
@@ -57,28 +46,29 @@ const currentData = computed(() => {
 
 const chartOption = computed(() => {
   const metricConfig = metrics.find(m => m.id === activeMetric.value)
-  const rule = getRuleForMetric(activeMetric.value)
+  const rules = rulesStore.rules.filter(r => r.variable === activeMetric.value)
   
-  // Definición de colores finales
-  const COLOR_EXCESO = '#000000'   // Negro
-  const COLOR_DEFECTO = '#4b5563'  // Gris oscuro (Tailwind slate-600)
-  const COLOR_NORMAL = metricConfig.color
+  // Buscamos si hay regla de máximo (>) o mínimo (<)
+  const maxRule = rules.find(r => r.operator === '>')
+  const minRule = rules.find(r => r.operator === '<')
 
   const pieces = []
   
-  if (rule) {
-    if (rule.operator === '>') {
-      // Si la regla es de Máximo (ej. HR > 100)
-      pieces.push({ gt: -1, lte: rule.value, color: COLOR_NORMAL }) // Normal abajo
-      pieces.push({ gt: rule.value, color: COLOR_EXCESO })         // Negro arriba
-    } else {
-      // Si la regla es de Mínimo (ej. HRV < 20)
-      pieces.push({ gt: -1, lte: rule.value, color: COLOR_DEFECTO }) // Gris oscuro abajo
-      pieces.push({ gt: rule.value, color: COLOR_NORMAL })          // Normal arriba
-    }
-  } else {
-    pieces.push({ gt: -1, color: COLOR_NORMAL })
+  // 1. Si hay regla de MIN, lo que esté por debajo es GRIS OSCURO
+  if (minRule) {
+    pieces.push({ lte: minRule.value, color: '#4b5563' })
   }
+  
+  // 2. Si hay regla de MAX, lo que esté por encima es NEGRO
+  if (maxRule) {
+    pieces.push({ gt: maxRule.value, color: '#000000' })
+  }
+
+  // 3. El resto es el COLOR NORMAL de la métrica
+  // Si no hay reglas, pintamos todo normal
+  const normalMin = minRule ? minRule.value : -1
+  const normalMax = maxRule ? maxRule.value : 999
+  pieces.push({ gt: normalMin, lte: normalMax, color: metricConfig.color })
 
   return {
     tooltip: { trigger: 'axis' },
@@ -93,7 +83,7 @@ const chartOption = computed(() => {
     visualMap: {
       show: false,
       pieces: pieces,
-      outOfRange: { color: COLOR_NORMAL }
+      outOfRange: { color: metricConfig.color }
     },
     series: [{
       name: metricConfig.name,
@@ -118,6 +108,7 @@ const chartOption = computed(() => {
 </script>
 
 <style scoped>
+/* TUS ESTILOS ORIGINALES RECUPERADOS */
 .chart-container { 
   background: white; padding: 24px; border-radius: 16px; 
   box-shadow: 0 4px 6px rgba(0,0,0,0.05); height: 450px; 
@@ -125,15 +116,19 @@ const chartOption = computed(() => {
 }
 .border-alert { border-color: #ef4444; animation: blink-border 1.5s infinite; }
 @keyframes blink-border { 50% { border-color: transparent; } }
+
 .chart-controls { display: flex; gap: 12px; margin-bottom: 20px; }
+
+/* Botones con tu estilo de la captura */
 .control-btn { 
   padding: 8px 16px; border-radius: 8px; border: 1px solid #e2e8f0; 
   background: white; color: #64748b; font-weight: 600; cursor: pointer; 
   font-family: 'Inter', sans-serif; position: relative;
 }
 .control-btn.active { background: #0f172a; color: white; }
+
 .alert-dot {
-  position: absolute; top: -5px; right: -5px; width: 10px; height: 10px;
+  position: absolute; top: -4px; right: -4px; width: 10px; height: 10px;
   background: #ef4444; border-radius: 50%; border: 2px solid white;
 }
 .chart { height: 320px; width: 100%; }

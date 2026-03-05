@@ -3,7 +3,7 @@
     <div v-if="modelValue" class="toast-notification" @click="$emit('update:modelValue', null)">
       <div class="toast-icon">⚠️</div>
       <div class="toast-body">
-        <div class="toast-title">ALERTA CRÍTICA</div>
+        <div class="toast-title">CRITICAL ALERT</div>
         <div class="toast-desc">{{ modelValue.sensor }}: {{ modelValue.message }}</div>
       </div>
       <button class="toast-close">✕</button>
