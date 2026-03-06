@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  python-sensor:
+    build: .
+    container_name: sensor_api_welltech
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./script.py:/app/script.py  # Mapea tu archivo local al del contenedor
+    environment:
+      - PYTHONUNBUFFERED=1
+      - FLASK_ENV=development      # Ayuda a Flask a saber que está en desarrollo

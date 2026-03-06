@@ -11,9 +11,9 @@ def get_data():
         "heartRate": random.randint(45, 115),
         "respiratoryRate": random.randint(8, 25),
         "hrv": random.randint(15, 80),
-        "isOccupied": False
+        "isOccupied": True
     })
 
 if __name__ == '__main__':
     # host='0.0.0.0' es obligatorio en Docker
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
