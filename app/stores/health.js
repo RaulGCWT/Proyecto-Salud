@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { useRulesStore } from './rules'
+import { io } from "socket.io-client"
 
 export const useHealthStore = defineStore('health', {
   state: () => ({
@@ -11,35 +12,45 @@ export const useHealthStore = defineStore('health', {
     hrHistory: [],
     hrvHistory: [],
     respHistory: [],
-    lastToast: null 
+    lastToast: null,
+    socket: null 
   }),
   actions: {
-    async updateSensors() {
-      try {
-        // Llamamos al contenedor de Python (ajusta la IP si es necesario)
-        const response = await fetch('http://localhost:5000/sensor-data')
-        const data = await response.json()
+    connectWebSocket() {
+      if (this.socket) return; // Evitar reconexiones múltiples
 
-        // Actualizamos el estado con lo que viene de Python
-        this.heartRate = data.heartRate
-        this.respiratoryRate = data.respiratoryRate
-        this.hrv = data.hrv
-        this.isOccupied = data.isOccupied
+      // Conectar con el backend en el puerto 5000
+      this.socket = io('http://localhost:5000');
+
+      this.socket.on('connect', () => {
+        console.log("✅ Conectado al WebSocket del Sensor");
+      });
+
+      this.socket.on('sensor_update', (data) => {
+        console.log("📥 Datos WebSocket:", data);
         
-        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-        
-        this.hrHistory.push({ time: now, value: this.heartRate })
-        this.hrvHistory.push({ time: now, value: this.hrv })
-        this.respHistory.push({ time: now, value: this.respiratoryRate })
-        
-        if (this.hrHistory.length > 100) {
+        // Sincronizar estado
+        this.heartRate = data.heartRate;
+        this.respiratoryRate = data.respiratoryRate;
+        this.hrv = data.hrv;
+        this.isOccupied = data.isOccupied;
+
+        // Historial
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        this.hrHistory.push({ time: now, value: this.heartRate });
+        this.hrvHistory.push({ time: now, value: this.hrv });
+        this.respHistory.push({ time: now, value: this.respiratoryRate });
+
+        if (this.hrHistory.length > 50) {
           this.hrHistory.shift(); this.hrvHistory.shift(); this.respHistory.shift();
         }
-        this.checkRules()
-      } catch (error) {
-        console.error("Error conectando con el sensor Python:", error)
-      }
+
+        this.checkRules();
+      });
+
+      this.socket.on('disconnect', () => console.log("❌ Desconectado del WebSocket"));
     },
+    
     checkRules() {
       const rulesStore = useRulesStore()
       const now = new Date().toLocaleTimeString()
@@ -50,9 +61,7 @@ export const useHealthStore = defineStore('health', {
 
         if (isTriggered) {
           const newAlert = { 
-            id: Date.now(), 
-            time: now, 
-            sensor: rule.name, 
+            id: Date.now(), time: now, sensor: rule.name, 
             message: `Value ${val} violates rule ${rule.operator}${rule.value}`,
             level: 'Critical' 
           }

@@ -22,9 +22,14 @@
 <script setup>
 import { useHealthStore } from '~/stores/health'
 const health = useHealthStore()
-let timer
-onMounted(() => { timer = setInterval(() => { health.updateSensors() }, 3000) })
-onUnmounted(() => clearInterval(timer))
+
+onMounted(() => { 
+  health.connectWebSocket() 
+})
+
+onUnmounted(() => {
+  if (health.socket) health.socket.disconnect()
+})
 </script>
 
 <style>
