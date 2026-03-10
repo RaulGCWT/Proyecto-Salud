@@ -1,13 +1,25 @@
 version: '3.8'
 
 services:
+  # Servidor Python: API, WebSockets y Publicador MQTT
   python-sensor:
     build: .
     container_name: sensor_api_welltech
     ports:
       - "5000:5000"
     volumes:
-      - ./script.py:/app/script.py  # Mapea tu archivo local al del contenedor
+      - ./script.py:/app/script.py
     environment:
       - PYTHONUNBUFFERED=1
-      - FLASK_ENV=development      # Ayuda a Flask a saber que está en desarrollo
+    depends_on:
+      - mqtt-broker
+
+  # Broker MQTT (Mosquitto)
+  mqtt-broker:
+    image: eclipse-mosquitto:latest
+    container_name: mqtt_welltech
+    ports:
+      - "1883:1883"
+    volumes:
+      # Mapeo directo al archivo de configuración que tienes en la carpeta mosquitto
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
