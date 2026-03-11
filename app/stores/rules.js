@@ -2,22 +2,40 @@ import { defineStore } from 'pinia'
 
 export const useRulesStore = defineStore('rules', {
   state: () => ({
-    rules: [
-      { id: 1, name: 'High Pulse', variable: 'hr', operator: '>', value: 100 },
-      { id: 2, name: 'Low HRV', variable: 'hrv', operator: '<', value: 20 }
-    ]
+    rules: []
   }),
   actions: {
-    addRule(rule) {
-      this.rules.push({ ...rule, id: Date.now() })
+    async fetchRules() {
+      try {
+        const data = await $fetch('http://localhost:5000/rules')
+        this.rules = data || []
+      } catch (err) {
+        console.error("Error fetchRules:", err)
+      }
     },
-    deleteRule(id) {
-      this.rules = this.rules.filter(r => r.id !== id)
+    async addRule(rule) {
+      try {
+        await $fetch('http://localhost:5000/rules', {
+          method: 'POST',
+          body: {
+            name: rule.name,
+            variable: rule.variable,
+            operator: rule.operator,
+            value: Number(rule.value)
+          }
+        })
+        await this.fetchRules()
+      } catch (err) {
+        console.error("Error addRule:", err)
+      }
     },
-    updateRule(updatedRule) {
-      const index = this.rules.findIndex(r => r.id === updatedRule.id)
-      if (index !== -1) this.rules[index] = updatedRule
+    async deleteRule(id) {
+      try {
+        await $fetch(`http://localhost:5000/rules/${id}`, { method: 'DELETE' })
+        await this.fetchRules()
+      } catch (err) {
+        console.error("Error deleteRule:", err)
+      }
     }
-  },
-  persist: true
+  }
 })

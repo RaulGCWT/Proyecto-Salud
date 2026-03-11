@@ -46,15 +46,24 @@
 <script setup>
 import { useHealthStore } from '~/stores/health'
 import { useRulesStore } from '~/stores/rules'
+import { computed, onMounted } from 'vue'
 
 const health = useHealthStore()
 const rulesStore = useRulesStore()
 
+// Cargamos las reglas de la base de datos al montar el dashboard
+onMounted(async () => {
+  await rulesStore.fetchRules()
+})
+
 // Función auxiliar para comprobar si el valor actual rompe alguna regla
 const checkCurrentValue = (variable, currentVal) => {
+  if (!rulesStore.rules) return false
   return rulesStore.rules.some(rule => {
     if (rule.variable !== variable) return false
-    return rule.operator === '>' ? currentVal > rule.value : currentVal < rule.value
+    const val = Number(currentVal)
+    const threshold = Number(rule.value)
+    return rule.operator === '>' ? val > threshold : val < threshold
   })
 }
 
@@ -64,6 +73,9 @@ const isRespAlert = computed(() => checkCurrentValue('resp', health.respiratoryR
 </script>
 
 <style scoped>
+.main-header { margin-bottom: 32px; }
+.main-header h1 { font-size: 1.875rem; font-weight: 800; color: #0f172a; margin: 0; }
+.main-header p { color: #64748b; margin: 4px 0 0 0; }
 .sensor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
 .analytics-section { margin-top: 48px; }
 .section-title { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 16px; font-family: 'Inter', sans-serif; }
