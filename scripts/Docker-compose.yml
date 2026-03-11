@@ -1,25 +1,59 @@
 version: '3.8'
 
 services:
-  # Servidor Python: API, WebSockets y Publicador MQTT
-  python-sensor:
-    build: .
-    container_name: sensor_api_welltech
+  # 1. Base de Datos DynamoDB Local
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: dynamodb_welltech
     ports:
-      - "5000:5000"
-    volumes:
-      - ./script.py:/app/script.py
-    environment:
-      - PYTHONUNBUFFERED=1
-    depends_on:
-      - mqtt-broker
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb"
 
-  # Broker MQTT (Mosquitto)
+  # 2. Interfaz Gráfica para DynamoDB (Puerto 8001)
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin
+    container_name: dynamodb_admin_welltech
+    ports:
+      - "8001:8001"
+    environment:
+      - DYNAMO_ENDPOINT=http://dynamodb-local:8000
+    depends_on:
+      - dynamodb-local
+
+  # 3. Broker MQTT (Mosquitto)
   mqtt-broker:
     image: eclipse-mosquitto:latest
     container_name: mqtt_welltech
     ports:
       - "1883:1883"
     volumes:
-      # Mapeo directo al archivo de configuración que tienes en la carpeta mosquitto
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  # 4. Simulador de Cama (CORREGIDO)
+  cama-simulador:
+    build: .
+    container_name: cama_welltech
+    volumes:
+      - .:/app  # Monta la carpeta 'scripts' actual en la carpeta '/app' del contenedor
+    command: python /app/cama.py # Ejecuta el script desde la ruta interna
+    depends_on:
+      - mqtt-broker
+
+  # 5. Backend de Python
+  python-sensor:
+    build: .
+    container_name: sensor_api_welltech
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app # También montamos aquí la carpeta para que encuentre script.py
+    environment:
+      - PYTHONUNBUFFERED=1
+      - AWS_ACCESS_KEY_ID=local
+      - AWS_SECRET_ACCESS_KEY=local
+      - AWS_DEFAULT_REGION=us-east-1
+      - DYNAMODB_URL=http://dynamodb-local:8000
+    command: python /app/script.py
+    depends_on:
+      - mqtt-broker
+      - dynamodb-local
