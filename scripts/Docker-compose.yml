@@ -29,31 +29,30 @@ services:
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
 
-  # 4. Simulador de Cama (CORREGIDO)
-  cama-simulador:
+  # 4. Backend API (Flask + SocketIO)
+  backend:
     build: .
-    container_name: cama_welltech
-    volumes:
-      - .:/app  # Monta la carpeta 'scripts' actual en la carpeta '/app' del contenedor
-    command: python /app/cama.py # Ejecuta el script desde la ruta interna
-    depends_on:
-      - mqtt-broker
-
-  # 5. Backend de Python
-  python-sensor:
-    build: .
-    container_name: sensor_api_welltech
+    container_name: backend_welltech
     ports:
       - "5000:5000"
     volumes:
-      - .:/app # También montamos aquí la carpeta para que encuentre script.py
+      - .:/app
     environment:
-      - PYTHONUNBUFFERED=1
-      - AWS_ACCESS_KEY_ID=local
-      - AWS_SECRET_ACCESS_KEY=local
-      - AWS_DEFAULT_REGION=us-east-1
       - DYNAMODB_URL=http://dynamodb-local:8000
-    command: python /app/script.py
     depends_on:
       - mqtt-broker
       - dynamodb-local
+
+  # 5. Generador Dinámico de Camas (Simulador)
+  cama-simulador:
+    build: .
+    container_name: generador_camas_welltech
+    volumes:
+      - .:/app
+    # IMPORTANTE: Usamos -u para ver los prints y llamamos al orquestador
+    command: python -u generadorCamas.py
+    # Estas dos líneas son CRÍTICAS para que te deje escribir el número en la terminal
+    stdin_open: true
+    tty: true
+    depends_on:
+      - mqtt-broker

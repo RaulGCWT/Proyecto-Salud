@@ -2,7 +2,7 @@
   <div class="devices-page">
     <header class="main-header">
       <h1 class="page-title">Device Inventory</h1>
-      <p class="subtitle">Management and connection status of smart mattresses</p>
+      <h3 class="subtitle">Management and connection status of smart mattresses</h3>
     </header>
 
     <section class="summary-grid">
@@ -152,13 +152,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { io } from "socket.io-client";
 
-const beds = ref([
-  { mac: '88:13:BF:05:6B:06', name: 'Bed-Unit-01', type: 'Critical Care', isOnline: true, presence: 'Occupied', lastEventDate: '2026-03-05 14:42:16Z', eventCount: '15/15' },
-  { mac: 'E1:58:EF:36:30:1E', name: 'Bed-Unit-02', type: 'Standard', isOnline: false, presence: 'Empty', lastEventDate: '2026-03-05 12:10:05Z', eventCount: '9/9' },
-  { mac: 'A2:34:CC:12:90:BB', name: 'Bed-Unit-03', type: 'Standard', isOnline: true, presence: 'Empty', lastEventDate: '2026-03-05 15:00:00Z', eventCount: '21/21' }
-])
+// Mantenemos beds inicializado como array vacío para que se llene solo
+const beds = ref([])
 
 const filters = ref({ search: '', status: 'all', type: 'all', presence: 'all' })
 
@@ -166,6 +164,35 @@ const filters = ref({ search: '', status: 'all', type: 'all', presence: 'all' })
 const isEditing = ref(false)
 const editingBed = ref(null)
 const editForm = ref({ name: '', type: '' })
+
+// --- CONEXIÓN SOCKET.IO ---
+const socket = io("http://localhost:5000");
+
+socket.on("sensor_update", (data) => {
+  const existingBed = beds.value.find(b => b.mac === data.mac);
+
+  if (existingBed) {
+    // Actualizar datos en tiempo real
+    existingBed.isOnline = true;
+    existingBed.presence = data.isOccupied ? 'Occupied' : 'Empty';
+    existingBed.lastEventDate = new Date().toLocaleString();
+    
+    // Incrementar contador de eventos (extraemos el número antes del /)
+    let currentEvents = parseInt(existingBed.eventCount.split('/')[0]);
+    existingBed.eventCount = (currentEvents + 1) + "/" + (currentEvents + 1);
+  } else {
+    // Autodescubrimiento: Añadir nueva cama si la MAC no existe
+    beds.value.push({
+      mac: data.mac,
+      name: `Bed-${data.mac.slice(-5)}`, // Nombre temporal basado en MAC
+      type: 'Standard',
+      isOnline: true,
+      presence: data.isOccupied ? 'Occupied' : 'Empty',
+      lastEventDate: new Date().toLocaleString(),
+      eventCount: '1/1'
+    });
+  }
+});
 
 const editDevice = (bed) => {
   editingBed.value = bed
@@ -196,7 +223,7 @@ const resetFilters = () => { filters.value = { search: '', status: 'all', type: 
 </script>
 
 <style scoped>
-/* SE MANTIENEN TODOS TUS ESTILOS ORIGINALES */
+/* SE MANTIENEN TODOS TUS ESTILOS SIN CAMBIOS */
 .devices-page { padding: 20px; }
 .shadow-sm { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; }
 .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 35px; }
