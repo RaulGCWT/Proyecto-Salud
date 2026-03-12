@@ -29,6 +29,23 @@ export const useRulesStore = defineStore('rules', {
         console.error("Error addRule:", err)
       }
     },
+    // NUEVA ACCIÓN: EDITAR REGLA
+    async updateRule(id, rule) {
+      try {
+        await $fetch(`http://localhost:5000/rules/${id}`, {
+          method: 'PUT',
+          body: {
+            name: rule.name,
+            variable: rule.variable,
+            operator: rule.operator,
+            value: Number(rule.value)
+          }
+        })
+        await this.fetchRules()
+      } catch (err) {
+        console.error("Error updateRule:", err)
+      }
+    },
     async deleteRule(id) {
       try {
         await $fetch(`http://localhost:5000/rules/${id}`, { method: 'DELETE' })
