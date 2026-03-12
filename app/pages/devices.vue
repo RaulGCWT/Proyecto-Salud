@@ -29,9 +29,34 @@
       </div>
     </section>
 
+    <div class="filters-bar shadow-sm">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input v-model="filters.search" type="text" placeholder="Search by name or MAC..." />
+      </div>
+      <div class="select-group">
+        <select v-model="filters.status">
+          <option value="all">All Status</option>
+          <option value="online">Connected</option>
+          <option value="offline">Disconnected</option>
+        </select>
+        <select v-model="filters.type">
+          <option value="all">All Types</option>
+          <option value="Critical Care">Critical Care</option>
+          <option value="Standard">Standard</option>
+        </select>
+        <select v-model="filters.presence">
+          <option value="all">All Presence</option>
+          <option value="Occupied">Occupied</option>
+          <option value="Empty">Empty</option>
+        </select>
+        <button class="btn-reset" @click="resetFilters" title="Reset Filters">🔄</button>
+      </div>
+    </div>
+
     <div class="styled-container mb-5 shadow-sm">
       <div class="container-header">
-        <h3 class="container-title">Inventory List</h3>
+        <h3 class="container-title">Inventory List ({{ filteredBeds.length }})</h3>
       </div>
       <div class="table-wrapper">
         <table class="devices-table">
@@ -46,8 +71,8 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="bed in beds" :key="bed.mac">
-              <td class="mac-cell"><code>{{ bed.mac }}</code></td>
+            <tr v-for="bed in filteredBeds" :key="bed.mac">
+              <td class="mac-cell"><code class="mac-code-text">{{ bed.mac }}</code></td>
               <td class="device-name"><strong>{{ bed.name }}</strong></td>
               <td><span class="type-tag">{{ bed.type }}</span></td>
               <td>
@@ -60,9 +85,7 @@
                   {{ bed.presence }}
                 </span>
               </td>
-              <td>
-                <button class="btn-icon">⚙️</button>
-              </td>
+              <td><button class="btn-icon">⚙️</button></td>
             </tr>
           </tbody>
         </table>
@@ -78,25 +101,20 @@
             <span class="mac-title">{{ bed.mac }}</span>
           </div>
         </div>
-        
         <div class="card-body">
           <div class="data-row">
             <span class="label">Connection Status</span>
-            <span :class="['value-text', bed.isOnline ? 'text-success' : 'text-danger']">
+            <span :class="['value-text', bed.isOnline ? 'text-success' : 'text-danger', 'status-pill-card']">
               {{ bed.isOnline ? 'Connected' : 'Disconnected' }}
             </span>
           </div>
           <div class="data-row">
             <span class="label">Last connection event</span>
-            <span class="value-text muted">
-              {{ bed.isOnline ? 'connected' : 'disconnected' }} • {{ bed.lastEventDate }}
-            </span>
+            <span class="value-text muted">{{ bed.isOnline ? 'connected' : 'disconnected' }} • {{ bed.lastEventDate }}</span>
           </div>
           <div class="data-row">
             <span class="label">Last heartbeat received</span>
-            <span class="value-text muted">
-              {{ bed.isOnline ? 'online' : 'offline' }} • {{ bed.lastEventDate }}
-            </span>
+            <span class="value-text muted">{{ bed.isOnline ? 'online' : 'offline' }} • {{ bed.lastEventDate }}</span>
           </div>
           <div class="data-row">
             <span class="label">Total events (Session)</span>
@@ -109,147 +127,134 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
 const beds = ref([
-  {
-    mac: '88:13:BF:05:6B:06',
-    name: 'Bed-Unit-01',
-    type: 'Critical Care',
-    isOnline: true,
-    presence: 'Occupied',
-    lastEventDate: '2026-03-05 14:42:16Z',
-    eventCount: '15/15'
-  },
-  {
-    mac: 'E1:58:EF:36:30:1E',
-    name: 'Bed-Unit-02',
-    type: 'Standard',
-    isOnline: false,
-    presence: 'Empty',
-    lastEventDate: '2026-03-05 12:10:05Z',
-    eventCount: '9/9'
-  }
+  { mac: '88:13:BF:05:6B:06', name: 'Bed-Unit-01', type: 'Critical Care', isOnline: true, presence: 'Occupied', lastEventDate: '2026-03-05 14:42:16Z', eventCount: '15/15' },
+  { mac: 'E1:58:EF:36:30:1E', name: 'Bed-Unit-02', type: 'Standard', isOnline: false, presence: 'Empty', lastEventDate: '2026-03-05 12:10:05Z', eventCount: '9/9' },
+  { mac: 'A2:34:CC:12:90:BB', name: 'Bed-Unit-03', type: 'Standard', isOnline: true, presence: 'Empty', lastEventDate: '2026-03-05 15:00:00Z', eventCount: '21/21' }
 ])
+
+const filters = ref({ search: '', status: 'all', type: 'all', presence: 'all' })
+
+const filteredBeds = computed(() => {
+  return beds.value.filter(bed => {
+    const matchesSearch = bed.name.toLowerCase().includes(filters.value.search.toLowerCase()) || 
+                          bed.mac.toLowerCase().includes(filters.value.search.toLowerCase());
+    const matchesStatus = filters.value.status === 'all' || (filters.value.status === 'online' ? bed.isOnline : !bed.isOnline);
+    const matchesType = filters.value.type === 'all' || bed.type === filters.value.type;
+    const matchesPresence = filters.value.presence === 'all' || bed.presence === filters.value.presence;
+    return matchesSearch && matchesStatus && matchesType && matchesPresence;
+  });
+})
+
+const resetFilters = () => { filters.value = { search: '', status: 'all', type: 'all', presence: 'all' }; }
 </script>
 
 <style scoped>
-/* --- ESTILO DE SOMBRA SUAVE --- */
-.shadow-sm {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-}
-
-/* --- RESUMEN SUPERIOR --- */
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  margin-bottom: 35px;
-}
-
-.summary-card {
-  background: var(--bg-card);
-  padding: 22px;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  gap: 18px;
-}
-
-.summary-card .icon { font-size: 1.4rem; }
-.summary-card label { color: var(--text-muted); font-size: 0.85rem; }
+.devices-page { padding: 20px; }
+.shadow-sm { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; }
+.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 35px; }
+.summary-card { background: var(--bg-card); padding: 22px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 18px; }
 .summary-card .value { font-size: 1.6rem; font-weight: 700; }
-
-/* --- CONTENEDORES --- */
-.styled-container {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.container-header {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-color);
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.container-title {
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-/* --- TABLA --- */
+.styled-container { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+.container-header { padding: 16px 20px; border-bottom: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.02); }
 .devices-table { width: 100%; border-collapse: collapse; }
-.devices-table th {
-  padding: 14px 20px;
-  text-align: left;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  background: rgba(0, 0, 0, 0.1);
-}
+.devices-table th { padding: 14px 20px; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); background: rgba(0, 0, 0, 0.1); }
 .devices-table td { padding: 16px 20px; border-bottom: 1px solid var(--border-color); }
 
-.type-tag {
-  color: var(--text-muted);
-  font-size: 0.85rem;
-}
-
-/* --- CARDS TÉCNICAS --- */
 .device-status-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
   gap: 24px;
 }
 
-.card-status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.filters-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  background: var(--bg-card);
+  padding: 12px 20px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  margin-bottom: 25px;
+}
+.search-box { flex: 1; position: relative; }
+.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: 0.5; }
+.search-box input {
+  width: 100%;
+  padding: 8px 12px 8px 35px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: #000000;
+  outline: none;
+}
+.select-group { display: flex; gap: 8px; align-items: center; }
+.select-group select {
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: #000000;
+}
+.btn-reset { background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 6px; cursor: pointer; }
+
 .mac-title { font-weight: bold; font-family: monospace; color: #60a5fa; font-size: 1.1rem; }
+.data-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 18px; }
 
-.data-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 12px; }
-
-/* --- ESTADOS --- */
 .status-pill { padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
 .status-pill.connected { background: rgba(16, 185, 129, 0.15); color: #10b981; }
 .status-pill.disconnected { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-
 .presence-tag.occupied { color: #3b82f6; font-weight: 600; }
-.presence-tag.empty { color: var(--text-muted); }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
-.mac-cell code { color: #60a5fa; background: rgba(96, 165, 250, 0.1); padding: 4px 8px; border-radius: 4px; }
+.text-success { color: #10b981 !important; }
+.text-danger { color: #ef4444 !important; }
+.bg-success { background-color: #10b981; }
+.bg-danger { background-color: #ef4444; }
 
-/* --- UTILIDADES --- */
 .p-4 { padding: 1.5rem; }
 .mb-5 { margin-bottom: 3rem; }
 .mb-3 { margin-bottom: 1rem; }
-.bg-success { background-color: #10b981; }
-.bg-danger { background-color: #ef4444; }
-.text-success { color: #10b981 !important; }
-.text-danger { color: #ef4444 !important; }
-.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.dot-title { display: flex; align-items: center; gap: 12px; }
-.btn-icon { background: none; border: none; cursor: pointer; opacity: 0.6; font-size: 1.1rem; }
 
-/* --- AJUSTES TEXTO MODO OSCURO (Solución al Type) --- */
-.dark-mode .value,
-.dark-mode .device-name strong,
-.dark-mode .value-text,
-.dark-mode .container-title,
-.dark-mode .type-tag {
-  color: #ffffff !important;
+/* Dark mode fixes */
+.dark-mode .value, .dark-mode .device-name strong, .dark-mode .value-text, .dark-mode .container-title, .dark-mode .type-tag { color: #ffffff !important; }
+.dark-mode .label, .dark-mode .summary-card label, .dark-mode .value-text.muted { color: #94a3b8 !important; }
+.dark-mode .mac-code-text { color: #ffffff !important; }
+.dark-mode .presence-tag.empty { color: #ffffff !important; }
+
+.card-status-header { margin-bottom: 20px; }
+
+.status-pill-card {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: bold;
+  line-height: 1;
 }
 
-.dark-mode .label,
-.dark-mode .summary-card label,
-.dark-mode .value-text.muted,
-.dark-mode .presence-tag.empty {
-  color: #94a3b8 !important;
+/* FIX: Colores más intensos para el modo oscuro en los recuadros de estado */
+.card-body .text-success.status-pill-card {
+  background: rgba(16, 185, 129, 0.2); 
+  border: 1px solid rgba(16, 185, 129, 0.5);
 }
 
-.dark-mode .devices-table th {
-  color: #94a3b8 !important;
+.card-body .text-danger.status-pill-card {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+/* Refuerzo específico si el contenedor padre tiene la clase dark-mode */
+.dark-mode .card-body .text-success.status-pill-card {
+  background: rgba(16, 185, 129, 0.25) !important;
+  border-color: rgba(16, 185, 129, 0.6) !important;
+  color: #10b981 !important;
+}
+
+.dark-mode .card-body .text-danger.status-pill-card {
+  background: rgba(239, 68, 68, 0.25) !important;
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  color: #ef4444 !important;
 }
 </style>
