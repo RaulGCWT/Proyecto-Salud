@@ -1,0 +1,255 @@
+<template>
+  <div class="devices-page">
+    <header class="main-header">
+      <h1 class="page-title">Device Inventory</h1>
+      <p class="subtitle">Management and connection status of smart mattresses</p>
+    </header>
+
+    <section class="summary-grid">
+      <div class="summary-card shadow-sm">
+        <span class="icon">🛏️</span>
+        <div class="info">
+          <label>Total Devices</label>
+          <div class="value">{{ beds.length }}</div>
+        </div>
+      </div>
+      <div class="summary-card shadow-sm">
+        <span class="icon text-success">●</span>
+        <div class="info">
+          <label>Connected</label>
+          <div class="value">{{ beds.filter(b => b.isOnline).length }}</div>
+        </div>
+      </div>
+      <div class="summary-card shadow-sm">
+        <span class="icon text-danger">●</span>
+        <div class="info">
+          <label>Disconnected</label>
+          <div class="value">{{ beds.filter(b => !b.isOnline).length }}</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="styled-container mb-5 shadow-sm">
+      <div class="container-header">
+        <h3 class="container-title">Inventory List</h3>
+      </div>
+      <div class="table-wrapper">
+        <table class="devices-table">
+          <thead>
+            <tr>
+              <th>MAC / UUID</th>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Connection</th>
+              <th>Presence</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="bed in beds" :key="bed.mac">
+              <td class="mac-cell"><code>{{ bed.mac }}</code></td>
+              <td class="device-name"><strong>{{ bed.name }}</strong></td>
+              <td><span class="type-tag">{{ bed.type }}</span></td>
+              <td>
+                <span :class="['status-pill', bed.isOnline ? 'connected' : 'disconnected']">
+                  {{ bed.isOnline ? 'Connected' : 'Disconnected' }}
+                </span>
+              </td>
+              <td class="presence-cell">
+                <span :class="['presence-tag', bed.presence === 'Occupied' ? 'occupied' : 'empty']">
+                  {{ bed.presence }}
+                </span>
+              </td>
+              <td>
+                <button class="btn-icon">⚙️</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <h3 class="section-title mb-3">Connection status per device</h3>
+    <div class="device-status-grid">
+      <div v-for="bed in beds" :key="'card-' + bed.mac" class="styled-container p-4 shadow-sm">
+        <div class="card-status-header">
+          <div class="dot-title">
+            <span :class="['dot', bed.isOnline ? 'bg-success' : 'bg-danger']"></span>
+            <span class="mac-title">{{ bed.mac }}</span>
+          </div>
+        </div>
+        
+        <div class="card-body">
+          <div class="data-row">
+            <span class="label">Connection Status</span>
+            <span :class="['value-text', bed.isOnline ? 'text-success' : 'text-danger']">
+              {{ bed.isOnline ? 'Connected' : 'Disconnected' }}
+            </span>
+          </div>
+          <div class="data-row">
+            <span class="label">Last connection event</span>
+            <span class="value-text muted">
+              {{ bed.isOnline ? 'connected' : 'disconnected' }} • {{ bed.lastEventDate }}
+            </span>
+          </div>
+          <div class="data-row">
+            <span class="label">Last heartbeat received</span>
+            <span class="value-text muted">
+              {{ bed.isOnline ? 'online' : 'offline' }} • {{ bed.lastEventDate }}
+            </span>
+          </div>
+          <div class="data-row">
+            <span class="label">Total events (Session)</span>
+            <span class="value-text">{{ bed.eventCount }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+
+const beds = ref([
+  {
+    mac: '88:13:BF:05:6B:06',
+    name: 'Bed-Unit-01',
+    type: 'Critical Care',
+    isOnline: true,
+    presence: 'Occupied',
+    lastEventDate: '2026-03-05 14:42:16Z',
+    eventCount: '15/15'
+  },
+  {
+    mac: 'E1:58:EF:36:30:1E',
+    name: 'Bed-Unit-02',
+    type: 'Standard',
+    isOnline: false,
+    presence: 'Empty',
+    lastEventDate: '2026-03-05 12:10:05Z',
+    eventCount: '9/9'
+  }
+])
+</script>
+
+<style scoped>
+/* --- ESTILO DE SOMBRA SUAVE --- */
+.shadow-sm {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* --- RESUMEN SUPERIOR --- */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-bottom: 35px;
+}
+
+.summary-card {
+  background: var(--bg-card);
+  padding: 22px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.summary-card .icon { font-size: 1.4rem; }
+.summary-card label { color: var(--text-muted); font-size: 0.85rem; }
+.summary-card .value { font-size: 1.6rem; font-weight: 700; }
+
+/* --- CONTENEDORES --- */
+.styled-container {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.container-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.container-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* --- TABLA --- */
+.devices-table { width: 100%; border-collapse: collapse; }
+.devices-table th {
+  padding: 14px 20px;
+  text-align: left;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: rgba(0, 0, 0, 0.1);
+}
+.devices-table td { padding: 16px 20px; border-bottom: 1px solid var(--border-color); }
+
+.type-tag {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+/* --- CARDS TÉCNICAS --- */
+.device-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+.card-status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.mac-title { font-weight: bold; font-family: monospace; color: #60a5fa; font-size: 1.1rem; }
+
+.data-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 12px; }
+
+/* --- ESTADOS --- */
+.status-pill { padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+.status-pill.connected { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.status-pill.disconnected { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+
+.presence-tag.occupied { color: #3b82f6; font-weight: 600; }
+.presence-tag.empty { color: var(--text-muted); }
+
+.mac-cell code { color: #60a5fa; background: rgba(96, 165, 250, 0.1); padding: 4px 8px; border-radius: 4px; }
+
+/* --- UTILIDADES --- */
+.p-4 { padding: 1.5rem; }
+.mb-5 { margin-bottom: 3rem; }
+.mb-3 { margin-bottom: 1rem; }
+.bg-success { background-color: #10b981; }
+.bg-danger { background-color: #ef4444; }
+.text-success { color: #10b981 !important; }
+.text-danger { color: #ef4444 !important; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.dot-title { display: flex; align-items: center; gap: 12px; }
+.btn-icon { background: none; border: none; cursor: pointer; opacity: 0.6; font-size: 1.1rem; }
+
+/* --- AJUSTES TEXTO MODO OSCURO (Solución al Type) --- */
+.dark-mode .value,
+.dark-mode .device-name strong,
+.dark-mode .value-text,
+.dark-mode .container-title,
+.dark-mode .type-tag {
+  color: #ffffff !important;
+}
+
+.dark-mode .label,
+.dark-mode .summary-card label,
+.dark-mode .value-text.muted,
+.dark-mode .presence-tag.empty {
+  color: #94a3b8 !important;
+}
+
+.dark-mode .devices-table th {
+  color: #94a3b8 !important;
+}
+</style>
