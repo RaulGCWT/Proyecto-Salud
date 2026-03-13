@@ -1,6 +1,11 @@
 <template>
   <div class="alerts-page">
-    <h1>Historial de Alertas (DynamoDB)</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h1>Historial de Alertas (DynamoDB)</h1>
+      <button @click="healthStore.clearAllAlerts()" style="background: #ef4444; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+        🗑️ Borrar todo
+      </button>
+    </div>
     
     <div class="table-container">
       <table v-if="healthStore.alertHistory.length > 0">

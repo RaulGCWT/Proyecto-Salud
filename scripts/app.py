@@ -45,6 +45,17 @@ def get_events():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/events/clear', methods=['DELETE'])
+def clear_all_events():
+    try:
+        items = table_events.scan().get('Items', [])
+        with table_events.batch_writer() as batch:
+            for item in items:
+                batch.delete_item(Key={'id': item['id']})
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
     init_db()
     start_mqtt(socketio)

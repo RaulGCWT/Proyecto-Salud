@@ -31,6 +31,16 @@ export const useHealthStore = defineStore('health', {
       }
     },
 
+    async clearAllAlerts() {
+      if (!confirm("¿Seguro que quieres borrar todas las alertas de la base de datos?")) return
+      try {
+        await $fetch('http://localhost:5000/events/clear', { method: 'DELETE' })
+        this.alertHistory = []
+      } catch (err) {
+        console.error("Error al vaciar historial:", err)
+      }
+    },
+
     connectWebSocket() {
       if (this.socket) return
       this.socket = io('http://localhost:5000')

@@ -41,9 +41,7 @@ def check_rules_and_save(data):
             if triggered:
                 # --- LÓGICA ANTI-DUPLICADOS ---
                 key = (mac, rule_id)
-                # Si la regla saltó hace menos de 60 segundos, ignoramos
-                if key in last_triggered and (now - last_triggered[key]) < 60:
-                    continue 
+                
 
                 event_data = {
                     'id': str(uuid.uuid4()),
