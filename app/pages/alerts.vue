@@ -50,8 +50,11 @@ onMounted(async () => {
 .table-container { margin-top: 1.5rem; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
 table { width: 100%; border-collapse: collapse; text-align: left; }
 th, td { padding: 1rem; border-bottom: 1px solid #eee; }
-th { background: #f8fafc; font-weight: bold; }
-.badge { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+
+/* CAMBIO AQUÍ: Color negro para las cabeceras */
+th { background: #f8fafc; font-weight: bold; color: black; }
+
+.badge { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; color: #475569; }
 .critical { color: #ef4444; font-weight: bold; }
 .empty-state { padding: 3rem; text-align: center; color: #64748b; }
 </style>
