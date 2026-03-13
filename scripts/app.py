@@ -11,6 +11,7 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- RUTAS API ---
+
 @app.route('/rules', methods=['GET', 'POST'])
 def handle_rules():
     if request.method == 'POST':
@@ -30,7 +31,16 @@ def update_rule(rule_id):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# NUEVA RUTA: BORRAR REGLA
+@app.route('/rules/<rule_id>', methods=['DELETE'])
+def delete_rule(rule_id):
+    try:
+        table_rules.delete_item(Key={'id': rule_id})
+        return jsonify({"status": "deleted"}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
-    init_db()        # Iniciamos DB
-    start_mqtt(socketio) # Iniciamos MQTT pasando SocketIO
+    init_db()
+    start_mqtt(socketio)
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)

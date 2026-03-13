@@ -4,10 +4,10 @@ import { io } from "socket.io-client"
 
 export const useHealthStore = defineStore('health', {
   state: () => ({
-    heartRate: 72,
-    respiratoryRate: 16,
-    hrv: 45,
-    isOccupied: true,
+    heartRate: 0,
+    respiratoryRate: 0,
+    hrv: 0,
+    isOccupied: false,
     alertHistory: [],
     hrHistory: [],
     hrvHistory: [],
@@ -27,7 +27,6 @@ export const useHealthStore = defineStore('health', {
         this.isOccupied = data.isOccupied
         
         const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-        
         this.hrHistory.push({ time: now, value: this.heartRate })
         this.hrvHistory.push({ time: now, value: this.hrv })
         this.respHistory.push({ time: now, value: this.respiratoryRate })
@@ -40,19 +39,30 @@ export const useHealthStore = defineStore('health', {
     },
     checkRules() {
       const rulesStore = useRulesStore()
-      const now = new Date().toLocaleTimeString()
-
       rulesStore.rules.forEach(rule => {
-        let val = rule.variable === 'hr' ? this.heartRate : rule.variable === 'hrv' ? this.hrv : this.respiratoryRate
-        const isTriggered = rule.operator === '>' ? val > rule.value : val < rule.value
+        // Obtenemos el valor actual basado en el parámetro de la regla
+        let val = 0
+        const param = rule.parameter || rule.variable // Soporta ambos por si acaso
+        
+        if (param === 'hr' || param === 'heartRate') val = this.heartRate
+        else if (param === 'hrv') val = this.hrv
+        else if (param === 'resp' || param === 'respiratoryRate') val = this.respiratoryRate
 
-        if (isTriggered) {
+        const condition = rule.condition || rule.operator
+        const threshold = Number(rule.value)
+        
+        let isTriggered = false
+        if (condition === '>') isTriggered = val > threshold
+        else if (condition === '<') isTriggered = val < threshold
+        else if (condition === '==' || condition === '=') isTriggered = val == threshold
+
+        if (isTriggered && val > 0) {
           const newAlert = { 
-            id: Date.now(), 
-            time: now, 
-            sensor: rule.name, 
-            message: `Valor ${val} fuera de rango`,
-            level: 'Critical' 
+            id: Date.now(),
+            time: new Date().toLocaleTimeString(),
+            sensor: (param || 'UNKNOWN').toUpperCase(),
+            message: `${rule.name}: ${val} detectado`,
+            level: 'Critical'
           }
           this.alertHistory.unshift(newAlert)
           this.lastToast = newAlert

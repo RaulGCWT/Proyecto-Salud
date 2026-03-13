@@ -3,30 +3,61 @@ import time
 from decimal import Decimal
 from database import table_rules, table_events
 
+# Diccionario para recordar cuándo saltó cada regla por última vez
+# Estructura: {(mac, rule_id): timestamp}
+last_triggered = {}
+
 def check_rules_and_save(data):
     try:
         rules = table_rules.scan().get('Items', [])
+        now = time.time()
+        
         for rule in rules:
-            param = rule.get('parameter')
-            condition = rule.get('condition')
-            threshold = float(rule.get('value'))
-            current_value = float(data.get(param, 0))
+            param = rule.get('parameter') or rule.get('variable')
+            condition = rule.get('condition') or rule.get('operator')
+            rule_id = rule.get('id')
+            mac = data.get('mac', 'unknown')
+            
+            if not param or not condition: continue
 
+            mapping = {
+                'hr': 'heartRate', 'heartRate': 'heartRate',
+                'resp': 'respiratoryRate', 'respiratoryRate': 'respiratoryRate',
+                'hrv': 'hrv'
+            }
+            
+            sensor_key = mapping.get(param)
+            if not sensor_key or sensor_key not in data: continue
+
+            current_value = float(data[sensor_key])
+            threshold = float(rule.get('value', 0))
+
+            # Evaluación de la regla
             triggered = False
             if condition == ">" and current_value > threshold: triggered = True
             elif condition == "<" and current_value < threshold: triggered = True
             elif condition == "==" and current_value == threshold: triggered = True
 
             if triggered:
+                # --- LÓGICA ANTI-DUPLICADOS ---
+                key = (mac, rule_id)
+                # Si la regla saltó hace menos de 60 segundos, ignoramos
+                if key in last_triggered and (now - last_triggered[key]) < 60:
+                    continue 
+
                 event_data = {
                     'id': str(uuid.uuid4()),
-                    'mac': data['mac'],
+                    'mac': mac,
                     'parameter': param,
                     'value': Decimal(str(current_value)),
-                    'rule_id': rule['id'],
-                    'timestamp': str(time.time())
+                    'rule_id': rule_id,
+                    'timestamp': str(now),
+                    'message': f"Alerta: {param} en {current_value}"
                 }
+                
                 table_events.put_item(Item=event_data)
-                print(f"⚠️ REGLA ACTIVADA: {param} {condition} {threshold} para {data['mac']}")
+                last_triggered[key] = now  # Actualizamos el momento del último guardado
+                print(f"💾 ALERTA ÚNICA GUARDADA: {param} para {mac}")
+                
     except Exception as e:
         print(f"❌ Error en rules_engine: {e}")
