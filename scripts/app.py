@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO
 from flask_cors import CORS
 import uuid
-from database import init_db, table_rules, decimal_default
+from database import init_db, table_rules, table_events, decimal_default
 from mqtt_handler import start_mqtt
 
 app = Flask(__name__)
@@ -21,22 +21,27 @@ def handle_rules():
         return jsonify(rule), 201
     return jsonify(table_rules.scan().get('Items', []))
 
-@app.route('/rules/<rule_id>', methods=['PUT'])
-def update_rule(rule_id):
-    try:
+@app.route('/rules/<rule_id>', methods=['PUT', 'DELETE'])
+def handle_rule_operations(rule_id):
+    if request.method == 'PUT':
         new_data = request.json
         new_data['id'] = rule_id
         table_rules.put_item(Item=new_data)
         return jsonify(new_data), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# NUEVA RUTA: BORRAR REGLA
-@app.route('/rules/<rule_id>', methods=['DELETE'])
-def delete_rule(rule_id):
-    try:
+    
+    if request.method == 'DELETE':
         table_rules.delete_item(Key={'id': rule_id})
         return jsonify({"status": "deleted"}), 200
+
+# NUEVA RUTA: Obtener historial de alertas de la DB
+@app.route('/events', methods=['GET'])
+def get_events():
+    try:
+        response = table_events.scan()
+        items = response.get('Items', [])
+        # Ordenamos por timestamp (más reciente primero)
+        items.sort(key=lambda x: float(x.get('timestamp', 0)), reverse=True)
+        return jsonify(items), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

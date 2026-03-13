@@ -1,54 +1,52 @@
 <template>
-  <div>
-    <header class="main-header">
-      <h1 class="page-title">Health Alerts Log</h1>
-      <p class="page-subtitle">Historical events detected by sensors</p>
-    </header>
-
-    <section class="table-container">
-      <table class="custom-table">
+  <div class="alerts-page">
+    <h1>Historial de Alertas (DynamoDB)</h1>
+    
+    <div class="table-container">
+      <table v-if="healthStore.alertHistory.length > 0">
         <thead>
-          <tr><th>Time</th><th>Sensor</th><th>Message</th><th>Level</th></tr>
+          <tr>
+            <th>Hora</th>
+            <th>Sensor</th>
+            <th>Mensaje</th>
+            <th>Nivel</th>
+          </tr>
         </thead>
         <tbody>
-          <tr v-for="(alert, index) in health.alertHistory" :key="index">
+          <tr v-for="alert in healthStore.alertHistory" :key="alert.id">
             <td>{{ alert.time }}</td>
-            <td>{{ alert.sensor }}</td>
+            <td><span class="badge">{{ alert.sensor }}</span></td>
             <td>{{ alert.message }}</td>
-            <td>
-              <span :class="['badge', alert.level === 'Critical' ? 'badge-error' : 'badge-warn']">
-                {{ alert.level }}
-              </span>
-            </td>
+            <td class="critical">{{ alert.level }}</td>
           </tr>
         </tbody>
       </table>
-    </section>
+      <div v-else class="empty-state">
+        No hay alertas registradas en la base de datos.
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { useHealthStore } from '~/stores/health'
-const health = useHealthStore()
+import { onMounted } from 'vue'
+
+const healthStore = useHealthStore()
+
+onMounted(async () => {
+  // Al cargar la página, pedimos los datos reales al Backend
+  await healthStore.fetchAlertHistory()
+})
 </script>
 
 <style scoped>
-.page-title { color: var(--text-main); margin: 0; }
-.page-subtitle { color: var(--text-muted); margin: 5px 0 20px 0; }
-
-.table-container { 
-  background: var(--bg-card); 
-  padding: 24px; 
-  border-radius: 16px; 
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
-  border: 1px solid var(--border-color);
-}
-
-.custom-table { width: 100%; border-collapse: collapse; color: var(--text-main); }
-.custom-table th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border-color); color: var(--text-muted); }
-.custom-table td { text-align: left; padding: 12px; border-bottom: 1px solid var(--border-color); }
-
-.badge { padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; }
-.badge-error { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
-.badge-warn { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.alerts-page { padding: 2rem; }
+.table-container { margin-top: 1.5rem; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th, td { padding: 1rem; border-bottom: 1px solid #eee; }
+th { background: #f8fafc; font-weight: bold; }
+.badge { background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+.critical { color: #ef4444; font-weight: bold; }
+.empty-state { padding: 3rem; text-align: center; color: #64748b; }
 </style>
