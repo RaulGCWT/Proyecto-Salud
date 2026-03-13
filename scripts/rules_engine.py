@@ -4,7 +4,6 @@ from decimal import Decimal
 from database import table_rules, table_events
 
 # Diccionario para recordar cuándo saltó cada regla por última vez
-# Estructura: {(mac, rule_id): timestamp}
 last_triggered = {}
 
 def check_rules_and_save(data):
@@ -32,17 +31,14 @@ def check_rules_and_save(data):
             current_value = float(data[sensor_key])
             threshold = float(rule.get('value', 0))
 
-            # Evaluación de la regla
             triggered = False
             if condition == ">" and current_value > threshold: triggered = True
             elif condition == "<" and current_value < threshold: triggered = True
             elif condition == "==" and current_value == threshold: triggered = True
 
             if triggered:
-                # --- LÓGICA ANTI-DUPLICADOS ---
                 key = (mac, rule_id)
                 
-
                 event_data = {
                     'id': str(uuid.uuid4()),
                     'mac': mac,
@@ -54,7 +50,7 @@ def check_rules_and_save(data):
                 }
                 
                 table_events.put_item(Item=event_data)
-                last_triggered[key] = now  # Actualizamos el momento del último guardado
+                last_triggered[key] = now
                 print(f"💾 ALERTA ÚNICA GUARDADA: {param} para {mac}")
                 
     except Exception as e:

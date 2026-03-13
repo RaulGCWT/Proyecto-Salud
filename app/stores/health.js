@@ -8,6 +8,7 @@ export const useHealthStore = defineStore('health', {
     respiratoryRate: 0,
     hrv: 0,
     isOccupied: false,
+    currentMac: 'N/A', // <--- Añadimos este estado para guardar la MAC actual
     alertHistory: [],
     hrHistory: [],
     hrvHistory: [],
@@ -23,6 +24,7 @@ export const useHealthStore = defineStore('health', {
           id: event.id,
           time: new Date(parseFloat(event.timestamp) * 1000).toLocaleTimeString(),
           sensor: (event.parameter || 'Sín Título').toUpperCase(),
+          mac: event.mac || 'N/A', 
           message: event.message || `Alerta en ${event.parameter}`,
           level: 'Critical'
         }))
@@ -50,6 +52,7 @@ export const useHealthStore = defineStore('health', {
         this.respiratoryRate = data.respiratoryRate
         this.hrv = data.hrv
         this.isOccupied = data.isOccupied
+        this.currentMac = data.mac || 'N/A' // <--- Guardamos la MAC que viene del sensor
         
         const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
         this.hrHistory.push({ time: now, value: this.heartRate })
@@ -85,10 +88,10 @@ export const useHealthStore = defineStore('health', {
             id: Date.now(),
             time: new Date().toLocaleTimeString(),
             sensor: (param || 'SENSOR').toUpperCase(),
+            mac: this.currentMac, // <--- Ahora usa la MAC real del sensor
             message: `${rule.name}: ${val} detectado`,
             level: 'Critical'
           }
-          // Añadimos visualmente al inicio
           this.alertHistory.unshift(newAlert)
           this.lastToast = newAlert
         }
