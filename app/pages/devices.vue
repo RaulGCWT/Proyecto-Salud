@@ -157,6 +157,7 @@ import { io } from "socket.io-client";
 
 const beds = ref([])
 const filters = ref({ search: '', status: 'all', type: 'all', presence: 'all' })
+const lastSeen = ref({}) // Objeto para trackear el tiempo del último mensaje recibido
 
 // Lógica de edición
 const isEditing = ref(false)
@@ -170,16 +171,13 @@ const fetchInventory = async () => {
     const dbDevices = data || []
 
     dbDevices.forEach(dbDev => {
-      // Ignoramos mayúsculas para evitar fallos de cruce
       const dbMac = (dbDev.mac || dbDev.id || '').toLowerCase()
       const existing = beds.value.find(b => b.mac.toLowerCase() === dbMac)
 
       if (existing) {
-        // Actualizamos nombre y tipo por si se editaron, mantenemos el resto de datos del socket intactos
         existing.name = dbDev.name || existing.name
         existing.type = dbDev.type || existing.type
       } else {
-        // Cama registrada en DB pero que no ha enviado datos por Socket todavía (Offline)
         beds.value.push({
           mac: dbDev.mac || dbDev.id,
           name: dbDev.name || `Bed-${(dbDev.mac || dbDev.id).slice(-5)}`,
@@ -201,19 +199,21 @@ const socket = io("http://localhost:5000");
 
 socket.on("sensor_update", (data) => {
   const incomingMac = (data.mac || '').toLowerCase();
+  
+  // REGISTRAMOS EL MOMENTO ACTUAL (Heartbeat)
+  lastSeen.value[incomingMac] = Date.now();
+
   const existingBed = beds.value.find(b => b.mac.toLowerCase() === incomingMac);
 
   if (existingBed) {
-    // Actualizar estado en tiempo real
     existingBed.isOnline = true;
     existingBed.presence = data.isOccupied ? 'Occupied' : 'Empty';
     existingBed.lastEventDate = new Date().toLocaleString();
     
-    // Incrementar contador de eventos con seguridad
     let currentEvents = parseInt((existingBed.eventCount || '0/0').split('/')[0]) || 0;
     existingBed.eventCount = (currentEvents + 1) + "/" + (currentEvents + 1);
   } else {
-    // Autodescubrimiento: si es nueva y el fetchInventory no la ha pillado aún
+    // Autodescubrimiento si no estaba en la lista inicial
     beds.value.push({
       mac: data.mac,
       name: `Bed-${data.mac.slice(-5)}`,
@@ -223,10 +223,25 @@ socket.on("sensor_update", (data) => {
       lastEventDate: new Date().toLocaleString(),
       eventCount: '1/1'
     });
-    // Forzamos sincronización con DB para obtener nombre real si existe
     fetchInventory();
   }
 });
+
+// --- LÓGICA DE DETECCIÓN DE DESCONEXIÓN AUTOMÁTICA ---
+const checkConnections = () => {
+  const now = Date.now();
+  const TIMEOUT = 4000; // Si pasan 4 segundos sin recibir nada, desconectar
+
+  beds.value.forEach(bed => {
+    const bedMac = bed.mac.toLowerCase();
+    const lastTimestamp = lastSeen.value[bedMac];
+
+    // Si hemos visto esta cama antes y la diferencia de tiempo supera el TIMEOUT
+    if (lastTimestamp && (now - lastTimestamp > TIMEOUT)) {
+      bed.isOnline = false;
+    }
+  });
+};
 
 // --- LÓGICA DE EDICIÓN ---
 const editDevice = (bed) => {
@@ -238,18 +253,15 @@ const editDevice = (bed) => {
 const saveChanges = async () => {
   if (editingBed.value) {
     try {
-      // Guardar de forma persistente en la Base de Datos
       await $fetch('http://localhost:5000/devices', {
         method: 'POST',
         body: {
           mac: editingBed.value.mac,
-          id: editingBed.value.mac, // Aseguramos enviar el id
+          id: editingBed.value.mac,
           name: editForm.value.name,
           type: editForm.value.type
         }
       });
-      
-      // Actualizar visualmente
       editingBed.value.name = editForm.value.name
       editingBed.value.type = editForm.value.type
       isEditing.value = false
@@ -274,13 +286,15 @@ const resetFilters = () => { filters.value = { search: '', status: 'all', type: 
 
 onMounted(() => {
   fetchInventory();
-  // Refrescar cada 5 segundos para descubrir nuevas camas guardadas en la DB
   setInterval(fetchInventory, 5000);
+  
+  // IMPORTANTE: Ejecutamos el chequeo de "vida" cada segundo
+  setInterval(checkConnections, 1000);
 })
 </script>
 
 <style scoped>
-/* SE MANTIENEN TODOS TUS ESTILOS SIN CAMBIOS */
+/* ESTILOS ORIGINALES INTACTOS */
 .devices-page { padding: 20px; }
 .shadow-sm { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; }
 .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 35px; }
@@ -318,7 +332,7 @@ onMounted(() => {
 .card-body .text-success.status-pill-card { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
 .card-body .text-danger.status-pill-card { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); }
 
-/* ESTILOS DEL MODAL DE EDICIÓN */
+/* MODAL STYLES */
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .edit-modal { background: white; padding: 25px; border-radius: 12px; width: 400px; color: #333; }
 .dark-mode .edit-modal { background: #1a202c; color: white; }
