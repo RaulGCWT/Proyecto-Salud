@@ -21,10 +21,11 @@ dynamodb = boto3.resource(
 # Definición de tablas
 table_rules = dynamodb.Table('MonitoringRules')
 table_events = dynamodb.Table('DeviceEvents')
+table_devices = dynamodb.Table('Devices')
 
 def init_db():
     """Crea las tablas si no existen al arrancar"""
-    for t_name in ['MonitoringRules', 'DeviceEvents']:
+    for t_name in ['MonitoringRules', 'DeviceEvents', 'Devices']:
         try:
             dynamodb.create_table(
                 TableName=t_name,
@@ -34,5 +35,5 @@ def init_db():
             )
             print(f"✅ Tabla {t_name} creada.")
         except Exception:
-            # La tabla ya existe o hay un error de conexión inicial
+            # La tabla ya existe
             pass

@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify
 from flask_socketio import SocketIO
 from flask_cors import CORS
 import uuid
-from database import init_db, table_rules, table_events, decimal_default
+from database import init_db, table_rules, table_events, table_devices, decimal_default
 from mqtt_handler import start_mqtt
 
 app = Flask(__name__)
@@ -11,6 +11,19 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # --- RUTAS API ---
+
+@app.route('/devices', methods=['GET', 'POST'])
+def handle_devices():
+    if request.method == 'POST':
+        device = request.json
+        # Aseguramos que la MAC esté en ambos campos para evitar fallos de cruce
+        device['id'] = device.get('mac')
+        device['mac'] = device.get('mac')
+        table_devices.put_item(Item=device)
+        return jsonify(device), 201
+    
+    response = table_devices.scan()
+    return jsonify(response.get('Items', [])), 200
 
 @app.route('/rules', methods=['GET', 'POST'])
 def handle_rules():
@@ -28,18 +41,15 @@ def handle_rule_operations(rule_id):
         new_data['id'] = rule_id
         table_rules.put_item(Item=new_data)
         return jsonify(new_data), 200
-    
     if request.method == 'DELETE':
         table_rules.delete_item(Key={'id': rule_id})
         return jsonify({"status": "deleted"}), 200
 
-# NUEVA RUTA: Obtener historial de alertas de la DB
 @app.route('/events', methods=['GET'])
 def get_events():
     try:
         response = table_events.scan()
         items = response.get('Items', [])
-        # Ordenamos por timestamp (más reciente primero)
         items.sort(key=lambda x: float(x.get('timestamp', 0)), reverse=True)
         return jsonify(items), 200
     except Exception as e:
@@ -52,7 +62,7 @@ def clear_all_events():
         with table_events.batch_writer() as batch:
             for item in items:
                 batch.delete_item(Key={'id': item['id']})
-        return jsonify({"status": "success"}), 200
+        return jsonify({"status": "cleared"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

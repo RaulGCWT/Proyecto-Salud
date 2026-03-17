@@ -3,6 +3,7 @@ import time
 import json
 import random
 import sys
+import requests # <--- Nueva importación
 
 MQTT_BROKER = "mqtt-broker"
 MQTT_TOPIC = "welltech/sensors"
@@ -16,16 +17,35 @@ def generate_random_mac():
         random.randint(0, 255),
     )
 
+def register_device(mac):
+    """Registra el dispositivo intentando varias rutas de red"""
+    for host in ['backend', 'localhost']:
+        try:
+            url = f'http://{host}:5000/devices'
+            requests.post(url, json={
+                "mac": mac,
+                "name": f"Bed {mac[-5:]}",
+                "type": "Smart Mattress"
+            }, timeout=1)
+            print(f"📦 [Cama {mac}] Registrada vía {host}")
+            return
+        except:
+            continue
+    print(f"⚠️ No se pudo registrar en DB (Backend inaccesible)")
+
 def run_simulation(mac_address=None):
     if not mac_address:
         mac_address = generate_random_mac()
+    
+    # Registro en base de datos antes de empezar
+    register_device(mac_address)
     
     connected = False
     while not connected:
         try:
             client.connect(MQTT_BROKER, 1883, 60)
             connected = True
-            print(f"✅ [Cama {mac_address}] Conectada")
+            print(f"✅ [Cama {mac_address}] Conectada a MQTT")
         except:
             time.sleep(2)
 
@@ -38,9 +58,4 @@ def run_simulation(mac_address=None):
             "isOccupied": random.choice([True, False])
         }
         client.publish(MQTT_TOPIC, json.dumps(data))
-        print(f"📤 [{mac_address}] Datos enviados")
-        time.sleep(random.uniform(2.0, 5.0))
-
-if __name__ == "__main__":
-    target_mac = sys.argv[1] if len(sys.argv) > 1 else None
-    run_simulation(target_mac)
+        time.sleep(3)

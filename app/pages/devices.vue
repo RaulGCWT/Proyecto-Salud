@@ -155,9 +155,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { io } from "socket.io-client";
 
-// Mantenemos beds inicializado como array vacío para que se llene solo
 const beds = ref([])
-
 const filters = ref({ search: '', status: 'all', type: 'all', presence: 'all' })
 
 // Lógica de edición
@@ -165,46 +163,99 @@ const isEditing = ref(false)
 const editingBed = ref(null)
 const editForm = ref({ name: '', type: '' })
 
-// --- CONEXIÓN SOCKET.IO ---
+// --- CARGAR DATOS DE LA BASE DE DATOS ---
+const fetchInventory = async () => {
+  try {
+    const data = await $fetch('http://localhost:5000/devices')
+    const dbDevices = data || []
+
+    dbDevices.forEach(dbDev => {
+      // Ignoramos mayúsculas para evitar fallos de cruce
+      const dbMac = (dbDev.mac || dbDev.id || '').toLowerCase()
+      const existing = beds.value.find(b => b.mac.toLowerCase() === dbMac)
+
+      if (existing) {
+        // Actualizamos nombre y tipo por si se editaron, mantenemos el resto de datos del socket intactos
+        existing.name = dbDev.name || existing.name
+        existing.type = dbDev.type || existing.type
+      } else {
+        // Cama registrada en DB pero que no ha enviado datos por Socket todavía (Offline)
+        beds.value.push({
+          mac: dbDev.mac || dbDev.id,
+          name: dbDev.name || `Bed-${(dbDev.mac || dbDev.id).slice(-5)}`,
+          type: dbDev.type || 'Standard',
+          isOnline: false,
+          presence: 'Empty',
+          lastEventDate: 'Never',
+          eventCount: '0/0'
+        })
+      }
+    })
+  } catch (err) {
+    console.error("Error fetching inventory from DB:", err)
+  }
+}
+
+// --- CONEXIÓN SOCKET.IO (TIEMPO REAL) ---
 const socket = io("http://localhost:5000");
 
 socket.on("sensor_update", (data) => {
-  const existingBed = beds.value.find(b => b.mac === data.mac);
+  const incomingMac = (data.mac || '').toLowerCase();
+  const existingBed = beds.value.find(b => b.mac.toLowerCase() === incomingMac);
 
   if (existingBed) {
-    // Actualizar datos en tiempo real
+    // Actualizar estado en tiempo real
     existingBed.isOnline = true;
     existingBed.presence = data.isOccupied ? 'Occupied' : 'Empty';
     existingBed.lastEventDate = new Date().toLocaleString();
     
-    // Incrementar contador de eventos (extraemos el número antes del /)
-    let currentEvents = parseInt(existingBed.eventCount.split('/')[0]);
+    // Incrementar contador de eventos con seguridad
+    let currentEvents = parseInt((existingBed.eventCount || '0/0').split('/')[0]) || 0;
     existingBed.eventCount = (currentEvents + 1) + "/" + (currentEvents + 1);
   } else {
-    // Autodescubrimiento: Añadir nueva cama si la MAC no existe
+    // Autodescubrimiento: si es nueva y el fetchInventory no la ha pillado aún
     beds.value.push({
       mac: data.mac,
-      name: `Bed-${data.mac.slice(-5)}`, // Nombre temporal basado en MAC
+      name: `Bed-${data.mac.slice(-5)}`,
       type: 'Standard',
       isOnline: true,
       presence: data.isOccupied ? 'Occupied' : 'Empty',
       lastEventDate: new Date().toLocaleString(),
       eventCount: '1/1'
     });
+    // Forzamos sincronización con DB para obtener nombre real si existe
+    fetchInventory();
   }
 });
 
+// --- LÓGICA DE EDICIÓN ---
 const editDevice = (bed) => {
   editingBed.value = bed
   editForm.value = { name: bed.name, type: bed.type }
   isEditing.value = true
 }
 
-const saveChanges = () => {
+const saveChanges = async () => {
   if (editingBed.value) {
-    editingBed.value.name = editForm.value.name
-    editingBed.value.type = editForm.value.type
-    isEditing.value = false
+    try {
+      // Guardar de forma persistente en la Base de Datos
+      await $fetch('http://localhost:5000/devices', {
+        method: 'POST',
+        body: {
+          mac: editingBed.value.mac,
+          id: editingBed.value.mac, // Aseguramos enviar el id
+          name: editForm.value.name,
+          type: editForm.value.type
+        }
+      });
+      
+      // Actualizar visualmente
+      editingBed.value.name = editForm.value.name
+      editingBed.value.type = editForm.value.type
+      isEditing.value = false
+    } catch (err) {
+      console.error("Error saving changes to DB:", err)
+    }
   }
 }
 
@@ -220,6 +271,12 @@ const filteredBeds = computed(() => {
 })
 
 const resetFilters = () => { filters.value = { search: '', status: 'all', type: 'all', presence: 'all' }; }
+
+onMounted(() => {
+  fetchInventory();
+  // Refrescar cada 5 segundos para descubrir nuevas camas guardadas en la DB
+  setInterval(fetchInventory, 5000);
+})
 </script>
 
 <style scoped>
