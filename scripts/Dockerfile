@@ -2,14 +2,14 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Instalamos las librerías necesarias para el backend y los simuladores
-RUN pip install --no-cache-dir flask flask-cors flask-socketio paho-mqtt boto3
+# Instalamos todas las librerías necesarias, incluyendo 'requests' para el registro en DB
+RUN pip install --no-cache-dir flask flask-cors flask-socketio paho-mqtt boto3 requests
 
-# Copiamos todo el contenido (app.py, database.py, mqtt_handler.py, etc.)
+# Copiamos el código fuente al contenedor
 COPY . .
 
-# Exponemos el puerto del backend
+# Exponemos el puerto del backend (solo relevante para el servicio backend)
 EXPOSE 5000
 
-# Por defecto el contenedor ejecutará el nuevo punto de entrada app.py
+# Comando por defecto (se sobrescribe en el docker-compose para cada servicio)
 CMD ["python", "app.py"]

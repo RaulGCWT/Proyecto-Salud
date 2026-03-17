@@ -39,21 +39,22 @@ services:
       - .:/app
     environment:
       - DYNAMODB_URL=http://dynamodb-local:8000
-    # Ahora ejecutamos app.py en lugar de script.py
     command: python app.py
     depends_on:
       - mqtt-broker
       - dynamodb-local
 
-  # 5. Generador Dinámico de Camas (Simulador)
+  # 5. Simulador de Cama (Se levanta automáticamente)
   cama-simulador:
     build: .
-    container_name: generador_camas_welltech
+    container_name: cama_simulada_1
     volumes:
       - .:/app
-    # IMPORTANTE: Usamos -u para ver los logs en tiempo real
-    command: python -u camasGenerador.py
-    stdin_open: true
-    tty: true
+    environment:
+      - MQTT_BROKER=mqtt-broker
+      - BACKEND_URL=http://backend:5000
+    # Usamos -u para ver los logs inmediatamente en la consola de Docker
+    command: python -u cama.py
     depends_on:
       - mqtt-broker
+      - backend
