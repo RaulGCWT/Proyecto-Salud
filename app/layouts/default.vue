@@ -19,7 +19,7 @@
 
       <div class="sidebar-footer">
         <p><strong>Admin_Health</strong></p>
-        <button class="btn-logout">Logout</button>
+        <button class="btn-logout" >Logout</button>
       </div>
     </aside>
     
