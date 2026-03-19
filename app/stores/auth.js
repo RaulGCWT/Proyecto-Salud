@@ -1,13 +1,34 @@
 import { defineStore } from 'pinia'
-import { jwtDecode } from 'jwt-decode' // Importación necesaria
+import { jwtDecode } from 'jwt-decode'
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    accessToken: useCookie('access_token').value || null,
-    idToken: useCookie('id_token').value || null,
-    refreshToken: useCookie('refresh_token').value || null,
-    isAuthenticated: !!useCookie('access_token').value
-  }),
+  state: () => {
+    const idToken = useCookie('id_token').value
+    let userData = null
+
+    // Recuperar info del usuario si la cookie ya existe (al refrescar F5)
+    if (idToken) {
+      try {
+        const decoded = jwtDecode(idToken)
+        userData = {
+          name: decoded.name || 'Usuario',
+          email: decoded.email,
+          groups: decoded['cognito:groups'] || [],
+          tenantKey: decoded['custom:tenant_key'] || ''
+        }
+      } catch (e) {
+        console.error("Error decodificando token inicial", e)
+      }
+    }
+
+    return {
+      accessToken: useCookie('access_token').value || null,
+      idToken: idToken || null,
+      refreshToken: useCookie('refresh_token').value || null,
+      user: userData,
+      isAuthenticated: !!useCookie('access_token').value
+    }
+  },
 
   actions: {
     async login(username, password) {
@@ -26,39 +47,41 @@ export const useAuthStore = defineStore('auth', {
     },
 
     updateTokens(data) {
-      // --- LÓGICA CON JWT-DECODE ---
-      const decoded = jwtDecode(data.access_token)
-      const currentTime = Math.floor(Date.now() / 1000)
-      const secondsRemaining = decoded.exp - currentTime
-
-      // Si el token ya expiró por algún motivo, le damos 1s para que se borre
-      const maxAge = secondsRemaining > 0 ? secondsRemaining : 1
+      const decodedAccess = jwtDecode(data.access_token)
+      const decodedId = jwtDecode(data.id_token)
       
+      const currentTime = Math.floor(Date.now() / 1000)
+      const secondsRemaining = decodedAccess.exp - currentTime
+      const maxAge = secondsRemaining > 0 ? secondsRemaining : 1
       const config = { maxAge, path: '/' }
-      // --- FIN LÓGICA ---
 
-      // Actualizar Pinia
+      // Actualizar estado de Pinia (dispara reactividad)
       this.accessToken = data.access_token
       this.idToken = data.id_token
       if (data.refresh_token) this.refreshToken = data.refresh_token
       this.isAuthenticated = true
+      
+      // Guardar todos los detalles del usuario
+      this.user = { 
+        name: decodedId.name || 'Usuario',
+        email: decodedId.email,
+        groups: decodedId['cognito:groups'] || [],
+        tenantKey: decodedId['custom:tenant_key'] || ''
+      }
 
-      // Actualizar Cookies
+      // Guardar en Cookies
       useCookie('access_token', config).value = data.access_token
       useCookie('id_token', config).value = data.id_token
-      
-      // El refresh token suele durar mucho más, lo dejamos en 7 días
       if (data.refresh_token) {
         useCookie('refresh_token', { maxAge: 60 * 60 * 24 * 7, path: '/' }).value = data.refresh_token
       }
-      
-      console.log(`Sesión sincronizada. Expira en: ${maxAge} segundos.`)
     },
 
     logout() {
       this.accessToken = null
       this.idToken = null
       this.refreshToken = null
+      this.user = null
       this.isAuthenticated = false
       
       useCookie('access_token').value = null

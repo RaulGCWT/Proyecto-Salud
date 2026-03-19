@@ -8,6 +8,7 @@
       
       <nav class="sidebar-nav">
         <NuxtLink to="/" class="nav-item" active-class="active">📊 Dashboard</NuxtLink>
+        <NuxtLink to="/profile" class="nav-item" active-class="active">👤 Mi Perfil</NuxtLink>
         <NuxtLink to="/alerts" class="nav-item" active-class="active">⚠️ Alerts</NuxtLink>
         <NuxtLink to="/rules" class="nav-item" active-class="active">⚙️ Rules</NuxtLink>
         <NuxtLink to="/devices" class="nav-item" active-class="active">🛏️ Devices</NuxtLink>
@@ -18,8 +19,8 @@
       </nav>
 
       <div class="sidebar-footer">
-        <p><strong>Admin_Health</strong></p>
-        <button class="btn-logout" >Logout</button>
+        <p><strong>{{ displayUserName }}</strong></p>
+        <button class="btn-logout" @click="handleLogout">Logout</button>
       </div>
     </aside>
     
@@ -30,17 +31,28 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useHealthStore } from '~/stores/health'
+import { useAuthStore } from '~/stores/auth'
 
 const health = useHealthStore()
+const auth = useAuthStore() 
 const isDark = ref(false)
+
+// Reactividad mágica: se actualiza en cuanto haces login
+const displayUserName = computed(() => {
+  return auth.user?.name || 'Invitado'
+})
 
 onMounted(() => { 
   health.connectWebSocket() 
   const savedTheme = localStorage.getItem('theme')
   if (savedTheme === 'dark') isDark.value = true
 })
+
+const handleLogout = () => {
+  auth.logout()
+}
 
 const toggleDark = () => {
   isDark.value = !isDark.value
@@ -52,7 +64,9 @@ onUnmounted(() => {
 })
 </script>
 
+
 <style>
+/* ... (El resto de tu CSS se mantiene exactamente igual) ... */
 /* --- 1. VARIABLES --- */
 :root {
   --bg-main: #f8fafc;
@@ -64,13 +78,12 @@ onUnmounted(() => {
 
 .dark-mode {
   --bg-main: #020617;
-  --bg-card: #0f172a;   /* <-- CAMBIADO: Azul oscuro para tarjetas y gráfica */
-  --text-main: #f1f5f9;  /* <-- CAMBIADO: Texto principal claro */
+  --bg-card: #0f172a;  
+  --text-main: #f1f5f9; 
   --text-muted: #94a3b8;
   --border-color: #1e293b;
 }
 
-/* --- 2. ESTILOS BASE --- */
 * { box-sizing: border-box; }
 
 body { 
@@ -123,9 +136,6 @@ body {
 .sidebar-footer { padding: 24px; border-top: 1px solid rgba(255,255,255,0.1); }
 .btn-logout { width: 100%; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
 
-/* --- 3. INYECCIÓN PARA MODO OSCURO --- */
-
-/* Aplicamos el fondo oscuro a tarjetas, gráfica y tablas */
 .dark-mode .card, 
 .dark-mode .chart-container,
 .dark-mode .table-container {
@@ -134,7 +144,6 @@ body {
   color: var(--text-main) !important;
 }
 
-/* Títulos fuera de tarjetas */
 .dark-mode h1, 
 .dark-mode .page-title, 
 .dark-mode .section-title {
@@ -146,22 +155,21 @@ body {
   color: var(--text-muted) !important;
 }
 
-/* BOTONES DE LA GRÁFICA: Ahora blancos porque el fondo de la gráfica es oscuro */
 .dark-mode .control-btn {
   color: #ffffff !important; 
   background: rgba(255, 255, 255, 0.05) !important;
   border: 1px solid var(--border-color) !important;
 }
 
-/* Estilo para el botón pulsado (Azul) */
 .dark-mode .control-btn.active {
   background: #3b82f6 !important; 
   color: #ffffff !important;
   border-color: #3b82f6 !important;
 }
 
-/* Etiquetas dentro de las tarjetas */
 .dark-mode .card-label {
   color: var(--text-muted) !important;
 }
+.sidebar-footer { padding: 24px; border-top: 1px solid rgba(255,255,255,0.1); }
+.btn-logout { width: 100%; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 10px; }
 </style>
