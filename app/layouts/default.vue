@@ -10,10 +10,10 @@
       
       <nav class="sidebar-nav">
         <NuxtLink to="/" class="nav-item" active-class="active">📊 Dashboard</NuxtLink>
-        <NuxtLink to="/profile" class="nav-item" active-class="active">👤 My profile</NuxtLink>
+        <NuxtLink to="/devices" class="nav-item" active-class="active">🛏️ Devices</NuxtLink>
         <NuxtLink to="/alerts" class="nav-item" active-class="active">⚠️ Alerts</NuxtLink>
         <NuxtLink to="/rules" class="nav-item" active-class="active">⚙️ Rules</NuxtLink>
-        <NuxtLink to="/devices" class="nav-item" active-class="active">🛏️ Devices</NuxtLink>
+        <NuxtLink to="/profile" class="nav-item" active-class="active">👤 My profile</NuxtLink>
       </nav>
 
       <div class="sidebar-footer">

@@ -6,7 +6,7 @@
     </header>
 
     <div class="list-container">
-      <div v-if="rulesStore.rules.length === 0" class="empty tech-font">no_rules_active_in_system</div>
+      <div v-if="rulesStore.rules.length === 0" class="empty tech-font">no rules active in system</div>
       
       <div v-for="rule in rulesStore.rules" :key="rule.id" class="card rule-card">
         <div class="rule-info">
@@ -55,7 +55,7 @@
 
         <div class="modal-btns">
           <button @click="isModalOpen = false" class="btn-secondary tech-font">CANCEL</button>
-          <button @click="save" class="btn-primary tech-font">SAVE_CHANGES</button>
+          <button @click="save" class="btn-primary tech-font">SAVE CHANGES</button>
         </div>
       </div>
     </div>
