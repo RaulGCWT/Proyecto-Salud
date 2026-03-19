@@ -56,7 +56,7 @@ onMounted(async () => {
   await rulesStore.fetchRules()
 })
 
-// Función auxiliar para comprobar si el valor actual rompe alguna regla
+// FunciÃ³n auxiliar para comprobar si el valor actual rompe alguna regla
 const checkCurrentValue = (variable, currentVal) => {
   if (!rulesStore.rules) return false
   return rulesStore.rules.some(rule => {
@@ -73,10 +73,10 @@ const isRespAlert = computed(() => checkCurrentValue('resp', health.respiratoryR
 </script>
 
 <style scoped>
-.main-header { margin-bottom: 32px; }
-.main-header h1 { font-size: 1.875rem; font-weight: 800; color: #0f172a; margin: 0; }
-.main-header p { color: #64748b; margin: 4px 0 0 0; }
+.main-header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+.main-header h1 { margin: 0; font-size: 1.9rem; font-weight: 800; color: var(--text-main); }
+.main-header p { margin: 4px 0 0; color: var(--text-muted); }
 .sensor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
-.analytics-section { margin-top: 48px; }
-.section-title { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin-bottom: 16px; font-family: 'Inter', sans-serif; }
+.analytics-section { margin-top: 2rem; padding: 1.5rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; }
+.section-title { margin: 0 0 1rem; font-size: 1.1rem; font-weight: 700; color: var(--text-main); }
 </style>

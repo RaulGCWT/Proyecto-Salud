@@ -65,36 +65,18 @@ const handleLogin = async () => {
 </script>
 
 <style scoped>
-.login-wrapper {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; background-color: #0f172a; font-family: 'Inter', sans-serif;
-}
-.login-card {
-  background: #1e293b; padding: 40px; border-radius: 20px;
-  width: 100%; max-width: 400px; border: 1px solid #334155; text-align: center;
-}
-.logo-circle {
-  background: #3b82f6; width: 60px; height: 60px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 15px;
-}
-.login-header h1 { color: white; margin: 0; font-size: 24px; letter-spacing: 2px; }
-.login-header p { color: #94a3b8; font-size: 14px; margin-top: 5px; margin-bottom: 30px; }
+.login-wrapper { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1.5rem; background: var(--bg-main); font-family: 'Inter', sans-serif; }
+.login-card { background: var(--bg-card); padding: 40px; border-radius: 20px; width: 100%; max-width: 420px; border: 1px solid var(--border-color); text-align: center; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
+.logo-circle { background: #3b82f6; width: 60px; height: 60px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 30px; margin: 0 auto 15px; }
+.login-header h1 { color: var(--text-main); margin: 0; font-size: 24px; letter-spacing: 2px; }
+.login-header p { color: var(--text-muted); font-size: 14px; margin-top: 5px; margin-bottom: 30px; }
 .form-group { text-align: left; margin-bottom: 20px; }
-.form-group label { display: block; color: #cbd5e1; font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
-.form-group input {
-  width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid #334155;
-  background: #0f172a; color: white; outline: none; box-sizing: border-box;
-}
+.form-group label { display: block; color: var(--text-muted); font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; }
+.form-group input { width: 100%; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); outline: none; box-sizing: border-box; }
 .form-group input:focus { border-color: #3b82f6; }
-.btn-submit {
-  width: 100%; padding: 14px; background: #3b82f6; color: white; border: none;
-  border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s;
-}
+.btn-submit { width: 100%; padding: 14px; background: #3b82f6; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s; }
 .btn-submit:hover:not(:disabled) { background: #2563eb; transform: translateY(-1px); }
 .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-.error-alert {
-  background: rgba(239, 68, 68, 0.1); color: #f87171; padding: 10px;
-  border-radius: 8px; font-size: 13px; margin-bottom: 20px; border: 1px solid rgba(239, 68, 68, 0.2);
-}
-.login-footer p { color: #64748b; font-size: 11px; margin-top: 30px; }
+.error-alert { background: rgba(239, 68, 68, 0.1); color: #f87171; padding: 10px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; border: 1px solid rgba(239, 68, 68, 0.2); }
+.login-footer p { color: var(--text-muted); font-size: 11px; margin-top: 30px; }
 </style>
