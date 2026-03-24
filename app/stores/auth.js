@@ -44,12 +44,16 @@ export const useAuthStore = defineStore('auth', {
       try {
         const response = await $fetch('https://dev.api.welltechelectronics.com/auth-microservice/login', {
           method: 'POST',
-          headers: { 'App-Tenant': 'f8489cfd-1205-47e0-b611-1234567890ab' },
+          headers: { 'App-Tenant': 'f8489cfd-1205-47ac-bad3-8e0a501be570' },
+                                    
           body: { username, password }
         })
+        const data = response.data || response 
 
-        const data = response.data
-        if (!data.access_token) throw new Error("No se recibió el token de acceso")
+        if (!data.access_token) {
+          console.error("Estructura de data recibida:", data)
+          throw new Error("No se recibió el token de acceso")
+      }
 
         const decodedAccess = jwtDecode(data.access_token)
         const decodedId = jwtDecode(data.id_token)

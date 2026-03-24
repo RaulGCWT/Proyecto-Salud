@@ -67,7 +67,7 @@
               <th>Type</th>
               <th>Connection</th>
               <th>Presence</th>
-              <th>Actions</th>
+              <th v-if="auth.permissions.includes(PERMISSIONS.DEVICES_EDIT)">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -85,7 +85,9 @@
                   {{ bed.presence }}
                 </span>
               </td>
-              <td><button class="btn-icon" @click="editDevice(bed)">⚙️</button></td>
+              <td v-if="auth.permissions.includes(PERMISSIONS.DEVICES_EDIT)">
+                <button class="btn-icon" @click="editDevice(bed)">⚙️</button>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -153,18 +155,21 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { io } from "socket.io-client";
+import { io } from "socket.io-client"
+// CAMBIO 3: Importar Store y Permisos
+import { useAuthStore } from '~/stores/auth'
+import { PERMISSIONS } from '~/utils/permissions'
 
+const auth = useAuthStore()
 const beds = ref([])
 const filters = ref({ search: '', status: 'all', type: 'all', presence: 'all' })
-const lastSeen = ref({}) // Objeto para trackear el tiempo del Ãºltimo mensaje recibido
+const lastSeen = ref({})
 
-// LÃ³gica de ediciÃ³n
 const isEditing = ref(false)
 const editingBed = ref(null)
 const editForm = ref({ name: '', type: '' })
 
-// --- CARGAR DATOS DE LA BASE DE DATOS ---
+// ... (fetchInventory y Socket.io se mantienen igual) ...
 const fetchInventory = async () => {
   try {
     const data = await $fetch('http://localhost:5000/devices')
@@ -194,26 +199,20 @@ const fetchInventory = async () => {
   }
 }
 
-// --- CONEXIÃ“N SOCKET.IO (TIEMPO REAL) ---
 const socket = io("http://localhost:5000");
 
 socket.on("sensor_update", (data) => {
   const incomingMac = (data.mac || '').toLowerCase();
-  
-  // REGISTRAMOS EL MOMENTO ACTUAL (Heartbeat)
   lastSeen.value[incomingMac] = Date.now();
-
   const existingBed = beds.value.find(b => b.mac.toLowerCase() === incomingMac);
 
   if (existingBed) {
     existingBed.isOnline = true;
     existingBed.presence = data.isOccupied ? 'Occupied' : 'Empty';
     existingBed.lastEventDate = new Date().toLocaleString();
-    
     let currentEvents = parseInt((existingBed.eventCount || '0/0').split('/')[0]) || 0;
     existingBed.eventCount = (currentEvents + 1) + "/" + (currentEvents + 1);
   } else {
-    // Autodescubrimiento si no estaba en la lista inicial
     beds.value.push({
       mac: data.mac,
       name: `Bed-${data.mac.slice(-5)}`,
@@ -227,30 +226,37 @@ socket.on("sensor_update", (data) => {
   }
 });
 
-// --- LÃ“GICA DE DETECCIÃ“N DE DESCONEXIÃ“N AUTOMÃTICA ---
 const checkConnections = () => {
   const now = Date.now();
-  const TIMEOUT = 4000; // Si pasan 4 segundos sin recibir nada, desconectar
-
+  const TIMEOUT = 4000;
   beds.value.forEach(bed => {
     const bedMac = bed.mac.toLowerCase();
     const lastTimestamp = lastSeen.value[bedMac];
-
-    // Si hemos visto esta cama antes y la diferencia de tiempo supera el TIMEOUT
     if (lastTimestamp && (now - lastTimestamp > TIMEOUT)) {
       bed.isOnline = false;
     }
   });
 };
 
-// --- LÃ“GICA DE EDICIÃ“N ---
+// --- CAMBIO 4: Protección de lógica de edición ---
 const editDevice = (bed) => {
+  // Verificación de seguridad antes de abrir el modal
+  if (!auth.permissions.includes(PERMISSIONS.DEVICES_EDIT)) {
+    console.error("Unauthorized: You don't have permission to edit devices.")
+    return
+  }
   editingBed.value = bed
   editForm.value = { name: bed.name, type: bed.type }
   isEditing.value = true
 }
 
 const saveChanges = async () => {
+  // Verificación de seguridad antes de enviar a la base de datos
+  if (!auth.permissions.includes(PERMISSIONS.DEVICES_EDIT)) {
+    alert("Unauthorized action.")
+    return
+  }
+
   if (editingBed.value) {
     try {
       await $fetch('http://localhost:5000/devices', {
@@ -287,13 +293,12 @@ const resetFilters = () => { filters.value = { search: '', status: 'all', type: 
 onMounted(() => {
   fetchInventory();
   setInterval(fetchInventory, 5000);
-  
-  // IMPORTANTE: Ejecutamos el chequeo de "vida" cada segundo
   setInterval(checkConnections, 1000);
 })
 </script>
 
 <style scoped>
+/* Estilos se mantienen igual */
 .devices-page { max-width: 1280px; margin: 0 auto; }
 .main-header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
 .page-title { margin: 0; font-size: 1.9rem; font-weight: 800; color: var(--text-main); }
@@ -301,7 +306,6 @@ onMounted(() => {
 .shadow-sm { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; }
 .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 35px; }
 .summary-card { background: var(--bg-card); padding: 22px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 18px; }
-.summary-card,.styled-container,.filters-bar,.devices-table,.data-row,.form-group input,.form-group select,.select-group select,.search-box input,.btn-reset,.btn-icon,.btn-cancel,.btn-save { font-family: inherit; }
 .summary-card .value { font-size: 1.6rem; font-weight: 700; }
 .styled-container { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
 .container-header { padding: 16px 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-main); }
