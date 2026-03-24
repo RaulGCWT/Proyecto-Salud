@@ -9,11 +9,15 @@
       </div>
       
       <nav class="sidebar-nav">
-        <NuxtLink to="/" class="nav-item" active-class="active">📊 Dashboard</NuxtLink>
-        <NuxtLink to="/devices" class="nav-item" active-class="active">🛏️ Devices</NuxtLink>
-        <NuxtLink to="/alerts" class="nav-item" active-class="active">⚠️ Alerts</NuxtLink>
-        <NuxtLink to="/rules" class="nav-item" active-class="active">⚙️ Rules</NuxtLink>
-        <NuxtLink to="/profile" class="nav-item" active-class="active">👤 My profile</NuxtLink>
+        <NuxtLink 
+          v-for="item in menuItems" 
+          :key="item.to" 
+          :to="item.to" 
+          class="nav-item" 
+          active-class="active"
+        >
+          {{ item.icon }} {{ item.label }}
+        </NuxtLink>
       </nav>
 
       <div class="sidebar-footer">
@@ -23,10 +27,10 @@
             {{ isDark ? '☀️' : '🌙' }}
           </button>
         </div>
-        <button class="btn-logout" @click="handleLogout">Logout</button>
+        <button @click="handleLogout" class="btn-logout">Cerrar Sesión</button>
       </div>
     </aside>
-    
+
     <main class="content-area">
       <slot />
     </main>
@@ -34,23 +38,25 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { useHealthStore } from '~/stores/health'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
+// 1. Importamos la lista global de items de navegación con sus permisos
+import { APP_NAV_ITEMS } from '~/utils/permissions'
 
-const health = useHealthStore()
-const auth = useAuthStore() 
+const auth = useAuthStore()
 const isDark = ref(false)
 
-const displayUserName = computed(() => {
-  return auth.user?.name || 'Invitado'
+// 2. Filtramos los items del menú según los permisos del usuario en Pinia
+const menuItems = computed(() => {
+  return APP_NAV_ITEMS.filter(item => {
+    // Si el item no requiere permiso, se muestra (opcional)
+    if (!item.permission) return true
+    // Verificamos si el permiso del item está en el array de permisos del usuario
+    return auth.permissions.includes(item.permission)
+  })
 })
 
-onMounted(() => { 
-  health.connectWebSocket() 
-  const savedTheme = localStorage.getItem('theme')
-  if (savedTheme === 'dark') isDark.value = true
-})
+const displayUserName = computed(() => auth.user?.name || 'Usuario')
 
 const handleLogout = () => {
   auth.logout()
@@ -61,8 +67,9 @@ const toggleDark = () => {
   localStorage.setItem('theme', isDark.value ? 'dark' : 'light')
 }
 
-onUnmounted(() => {
-  if (health.socket) health.socket.disconnect()
+onMounted(() => {
+  const savedTheme = localStorage.getItem('theme')
+  isDark.value = savedTheme === 'dark'
 })
 </script>
 
