@@ -13,6 +13,10 @@ import { useHealthStore } from '~/stores/health'
 const health = useHealthStore()
 const activeToast = ref(null)
 
+onMounted(() => {
+  health.connectWebSocket()
+})
+
 // Vigilamos si llega una nueva alerta al Store
 watch(() => health.lastToast, (newVal) => {
   if (newVal) {

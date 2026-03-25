@@ -2,7 +2,6 @@
   <div>
     <header class="main-header">
       <h1>Live Sensor Monitoring</h1>
-      <p>Real-time status of smart mattresses</p>
     </header>
 
     <section class="sensor-grid">

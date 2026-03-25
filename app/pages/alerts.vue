@@ -4,9 +4,14 @@
       <div class="header-content">
         <div>
           <h1 class="page-title">Alert History</h1>
-          <h3 class="subtitle">Critical records stored in DynamoDB</h3>
         </div>
-        <button @click="healthStore.clearAllAlerts()" class="btn-clear">🗑️ Clear History</button>
+        <button 
+          v-if="auth.permissions.includes(PERMISSIONS.ALERTS_EDIT)"
+          @click="healthStore.clearAllAlerts()" 
+          class="btn-clear"
+        >
+          🗑️ Clear History
+        </button>
       </div>
     </header>
 
@@ -52,8 +57,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useHealthStore } from '~/stores/health'
+import { useAuthStore } from '~/stores/auth'
+import { PERMISSIONS } from '~/utils/permissions'
 
 const healthStore = useHealthStore()
+const auth = useAuthStore() 
 const searchQuery = ref('')
 
 const filteredAlerts = computed(() => {
@@ -67,7 +75,9 @@ const filteredAlerts = computed(() => {
   ))
 })
 
-onMounted(async () => { await healthStore.fetchAlertHistory() })
+onMounted(async () => { 
+  await healthStore.fetchAlertHistory() 
+})
 </script>
 
 <style scoped>
