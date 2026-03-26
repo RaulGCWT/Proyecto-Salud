@@ -6,7 +6,7 @@
           <h1 class="page-title">Alert History</h1>
         </div>
         <button 
-          v-if="auth.permissions.includes(PERMISSIONS.ALERTS_EDIT)"
+          v-if="auth.permissions.includes(PERMISSIONS.ALERTS_CLEAR)"
           @click="healthStore.clearAllAlerts()" 
           class="btn-clear"
         >
