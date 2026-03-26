@@ -10,20 +10,24 @@ app.json_provider_class.default = staticmethod(decimal_default)
 CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# --- RUTAS API ---
 
 @app.route('/devices', methods=['GET', 'POST'])
 def handle_devices():
     if request.method == 'POST':
-        device = request.json
-        # Aseguramos que la MAC esté en ambos campos para evitar fallos de cruce
-        device['id'] = device.get('mac')
-        device['mac'] = device.get('mac')
+        device = dict(request.json or {})
+        device_id = device.get('id') or device.get('mac')
+
+        if not device_id:
+            return jsonify({"error": "Device id is required"}), 400
+
+        device['id'] = device_id
+        device.pop('mac', None)
         table_devices.put_item(Item=device)
         return jsonify(device), 201
-    
+
     response = table_devices.scan()
     return jsonify(response.get('Items', [])), 200
+
 
 @app.route('/rules', methods=['GET', 'POST'])
 def handle_rules():
@@ -33,6 +37,7 @@ def handle_rules():
         table_rules.put_item(Item=rule)
         return jsonify(rule), 201
     return jsonify(table_rules.scan().get('Items', []))
+
 
 @app.route('/rules/<rule_id>', methods=['PUT', 'DELETE'])
 def handle_rule_operations(rule_id):
@@ -45,6 +50,7 @@ def handle_rule_operations(rule_id):
         table_rules.delete_item(Key={'id': rule_id})
         return jsonify({"status": "deleted"}), 200
 
+
 @app.route('/events', methods=['GET'])
 def get_events():
     try:
@@ -54,6 +60,7 @@ def get_events():
         return jsonify(items), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/events/clear', methods=['DELETE'])
 def clear_all_events():
@@ -65,6 +72,7 @@ def clear_all_events():
         return jsonify({"status": "cleared"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     init_db()

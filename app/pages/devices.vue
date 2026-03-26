@@ -262,7 +262,6 @@ const saveChanges = async () => {
       await $fetch('http://localhost:5000/devices', {
         method: 'POST',
         body: {
-          mac: editingBed.value.mac,
           id: editingBed.value.mac,
           name: editForm.value.name,
           type: editForm.value.type

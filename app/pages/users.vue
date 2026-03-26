@@ -21,7 +21,7 @@
     </section>
 
     <section class="panel toolbar">
-      <input v-model="search" class="search" type="text" placeholder="Search by user, email, device or tenant..." />
+      <input v-model="search" class="search" type="text" placeholder="Search by user, email or device..." />
 
       <div class="tabs">
         <button
@@ -48,7 +48,6 @@
             <div class="item-main">
               <div class="item-top">
                 <strong>{{ member.name }}</strong>
-                <span :class="['pill', member.status === 'Online' ? 'ok' : 'muted']">{{ member.status }}</span>
               </div>
               <span class="meta">{{ member.role }} · {{ member.area }}</span>
               <span class="meta">{{ member.email }}</span>
@@ -105,7 +104,6 @@
           <div v-for="resource in filteredResources" :key="resource.id" class="table-row">
             <div>
               <strong>{{ resource.patientName }}</strong>
-              <span class="meta block">{{ resource.tenant }}</span>
             </div>
             <code class="tag">{{ resource.deviceId }}</code>
             <span :class="['pill', resource.status === 'Occupied' ? 'warn' : 'ok']">{{ resource.status }}</span>
@@ -132,17 +130,14 @@
           </label>
           <label class="field">
             <span>Role</span>
-            <input v-model="staffForm.role" class="search" type="text" />
+            <select v-model="staffForm.role" class="search">
+              <option v-for="role in staffRoles" :key="role" :value="role">{{ role }}</option>
+            </select>
           </label>
           <label class="field">
             <span>Area</span>
-            <input v-model="staffForm.area" class="search" type="text" />
-          </label>
-          <label class="field">
-            <span>Status</span>
-            <select v-model="staffForm.status" class="search">
-              <option>Online</option>
-              <option>Offline</option>
+            <select v-model="staffForm.area" class="search">
+              <option v-for="area in staffAreas" :key="area" :value="area">{{ area }}</option>
             </select>
           </label>
         </div>
@@ -210,11 +205,24 @@ const tabs = [
   { id: 'resources', label: 'Resources' }
 ]
 
+const staffRoles = [
+  'Call Center Admin',
+  'Clinical Staff',
+  'Technical Operator'
+]
+
+const staffAreas = [
+  'Floor 1',
+  'ICU',
+  'Recovery',
+  'Devices'
+]
+
 const staffMembers = ref([
-  { id: 1, name: 'Marta Lozano', role: 'Call Center Admin', area: 'Tenant A · Floor 1', email: 'marta.lozano@health.local', status: 'Online' },
-  { id: 2, name: 'Diego Perez', role: 'Clinical Staff', area: 'Tenant A · ICU', email: 'diego.perez@health.local', status: 'Online' },
-  { id: 3, name: 'Lucia Martin', role: 'Clinical Staff', area: 'Tenant A · Recovery', email: 'lucia.martin@health.local', status: 'Offline' },
-  { id: 4, name: 'Carlos Vega', role: 'Technical Operator', area: 'Tenant A · Devices', email: 'carlos.vega@health.local', status: 'Online' }
+  { id: 1, name: 'Marta Lozano', role: 'Call Center Admin', area: 'Floor 1', email: 'marta.lozano@health.local' },
+  { id: 2, name: 'Diego Perez', role: 'Clinical Staff', area: 'ICU', email: 'diego.perez@health.local' },
+  { id: 3, name: 'Lucia Martin', role: 'Clinical Staff', area: 'Recovery', email: 'lucia.martin@health.local' },
+  { id: 4, name: 'Carlos Vega', role: 'Technical Operator', area: 'Devices', email: 'carlos.vega@health.local' }
 ])
 
 const familyAccounts = ref([
@@ -225,13 +233,13 @@ const familyAccounts = ref([
 ])
 
 const patientResources = ref([
-  { id: 1, patientName: 'Jose Robles', deviceId: 'BED-201-AF12', tenant: 'Tenant A', status: 'Occupied' },
-  { id: 2, patientName: 'Elena Ruiz', deviceId: 'BED-114-CD45', tenant: 'Tenant A', status: 'Occupied' },
-  { id: 3, patientName: 'Antonio Leon', deviceId: 'BED-317-ZX90', tenant: 'Tenant A', status: 'Available' },
-  { id: 4, patientName: 'Carmen Moreno', deviceId: 'BED-203-QW77', tenant: 'Tenant A', status: 'Occupied' }
+  { id: 1, patientName: 'Jose Robles', deviceId: 'BED-201-AF12', status: 'Occupied' },
+  { id: 2, patientName: 'Elena Ruiz', deviceId: 'BED-114-CD45', status: 'Occupied' },
+  { id: 3, patientName: 'Antonio Leon', deviceId: 'BED-317-ZX90', status: 'Available' },
+  { id: 4, patientName: 'Carmen Moreno', deviceId: 'BED-203-QW77', status: 'Occupied' }
 ])
 
-const emptyStaffForm = () => ({ id: null, name: '', email: '', role: '', area: '', status: 'Online' })
+const emptyStaffForm = () => ({ id: null, name: '', email: '', role: staffRoles[0], area: staffAreas[0] })
 const emptyFamilyForm = () => ({ id: null, name: '', email: '', patientName: '', relationship: '', state: 'Pending', beds: [] })
 
 const staffForm = ref(emptyStaffForm())
@@ -255,17 +263,16 @@ const filteredFamilies = computed(() =>
 
 const filteredResources = computed(() =>
   patientResources.value.filter(resource =>
-    matchesSearch([resource.patientName, resource.deviceId, resource.tenant, resource.status])
+    matchesSearch([resource.patientName, resource.deviceId, resource.status])
   )
 )
 
 const activeFamilies = computed(() => familyAccounts.value.filter(item => item.state === 'Active').length)
 const pendingInvites = computed(() => familyAccounts.value.filter(item => item.state === 'Pending').length)
-const staffOnline = computed(() => staffMembers.value.filter(item => item.status === 'Online').length)
 const occupiedResources = computed(() => patientResources.value.filter(item => item.status === 'Occupied').length)
 
 const summaryCards = computed(() => [
-  { label: 'Staff', value: staffMembers.value.length, meta: `${staffOnline.value} online` },
+  { label: 'Staff', value: staffMembers.value.length, meta: 'Registered users' },
   { label: 'Families', value: activeFamilies.value, meta: `${pendingInvites.value} pending` },
   { label: 'Resources', value: patientResources.value.length, meta: `${occupiedResources.value} occupied` },
   { label: 'Roles', value: 4, meta: 'Global to guest scope' }
@@ -319,7 +326,7 @@ const saveFamily = () => {
   } else {
     familyAccounts.value.unshift({ ...payload, id: nextFamilyId.value++ })
   }
-  closeModal().email.$event
+  closeModal()
 }
 
 const saveModal = () => {
