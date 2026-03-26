@@ -108,8 +108,7 @@
             </div>
 
             <div class="row-actions">
-              <button class="link-btn" @click="openFamilyModal(relative)">Edit</button>
-              <button class="link-btn danger" @click="removeFamily(relative.id)">Remove</button>
+              <span class="meta">Registered family user</span>
             </div>
           </div>
         </div>
@@ -248,9 +247,6 @@
 const search = ref('')
 const activeTab = ref('all')
 const modal = ref({ type: '' })
-const nextStaffId = ref(5)
-const nextResidentId = ref(4)
-const nextFamilyId = ref(5)
 
 const tabs = [
   { id: 'all', label: 'All' },
@@ -263,27 +259,25 @@ const tabs = [
 const staffRoles = ['Call Center Admin', 'Clinical Staff', 'Technical Operator']
 const staffAreas = ['Floor 1', 'ICU', 'Recovery', 'Devices']
 
-const staffMembers = ref([
-  { id: 1, name: 'Marta Lozano', role: 'Call Center Admin', area: 'Floor 1', email: 'marta.lozano@health.local' },
-  { id: 2, name: 'Diego Perez', role: 'Clinical Staff', area: 'ICU', email: 'diego.perez@health.local' },
-  { id: 3, name: 'Lucia Martin', role: 'Clinical Staff', area: 'Recovery', email: 'lucia.martin@health.local' },
-  { id: 4, name: 'Carlos Vega', role: 'Technical Operator', area: 'Devices', email: 'carlos.vega@health.local' }
-])
+const { data: staffData, refresh: refreshStaff } = await useFetch('http://localhost:5000/staff-members', {
+  server: false,
+  default: () => []
+})
 
-const residents = ref([
-  { id: 1, name: 'Jose Robles', deviceId: 'BED-201-AF12', status: 'Active', notes: 'Linked to family access' },
-  { id: 2, name: 'Elena Ruiz', deviceId: 'BED-114-CD45', status: 'Monitoring', notes: '' },
-  { id: 3, name: 'Carmen Moreno', deviceId: 'BED-203-QW77', status: 'Active', notes: '' }
-])
+const { data: residentsData, refresh: refreshResidents } = await useFetch('http://localhost:5000/residents', {
+  server: false,
+  default: () => []
+})
 
-const familyAccounts = ref([
-  { id: 1, residentId: 1, name: 'Ana Robles', email: 'ana.robles@mail.com', patientName: 'Jose Robles', deviceId: 'BED-201-AF12', relationship: 'Daughter', state: 'Active' },
-  { id: 2, residentId: 2, name: 'Daniel Ruiz', email: 'daniel.ruiz@mail.com', patientName: 'Elena Ruiz', deviceId: 'BED-114-CD45', relationship: 'Son', state: 'Active' },
-  { id: 3, residentId: null, name: 'Sofia Leon', email: 'sofia.leon@mail.com', patientName: 'Unassigned', deviceId: '', relationship: 'Sister', state: 'Pending' },
-  { id: 4, residentId: 3, name: 'Paula Moreno', email: 'paula.moreno@mail.com', patientName: 'Carmen Moreno', deviceId: 'BED-203-QW77', relationship: 'Spouse', state: 'Active' }
-])
+const staffMembers = computed(() => Array.isArray(staffData.value) ? staffData.value : [])
+const residents = computed(() => Array.isArray(residentsData.value) ? residentsData.value : [])
 
 const { data: devicesData, pending: resourcesLoading } = await useFetch('http://localhost:5000/devices', {
+  server: false,
+  default: () => []
+})
+
+const { data: familyUsersData, refresh: refreshFamilyUsers } = await useFetch('http://localhost:5000/family-users', {
   server: false,
   default: () => []
 })
@@ -296,6 +290,28 @@ const devices = computed(() =>
       patientName: device.name || `Bed ${String(deviceId).slice(-5)}`,
       deviceId,
       status: device.type || 'Registered'
+    }
+  })
+)
+
+const sameId = (a, b) => String(a ?? '') === String(b ?? '')
+const findResidentById = (residentId) => residents.value.find(resident => sameId(resident.id, residentId))
+
+const familyAccounts = computed(() =>
+  (Array.isArray(familyUsersData.value) ? familyUsersData.value : []).map((user, index) => {
+    const linkedResident = residents.value.find(resident =>
+      sameId(resident.id, user.residentId) || resident.name === user.patientName
+    )
+
+    return {
+      id: user.id || index + 1,
+      residentId: user.residentId || linkedResident?.id || null,
+      name: user.name || 'Unknown user',
+      email: user.email || '',
+      patientName: linkedResident?.name || user.patientName || 'Unassigned',
+      deviceId: linkedResident?.deviceId || user.deviceId || '',
+      relationship: user.relationship || 'Family',
+      state: 'Active'
     }
   })
 )
@@ -327,14 +343,14 @@ const filteredDevices = computed(() =>
 )
 
 const assignedDeviceIds = computed(() => new Set(residents.value.map(resident => resident.deviceId).filter(Boolean)))
-const activeFamilies = computed(() => familyAccounts.value.filter(item => item.state === 'Active').length)
+const activeFamilies = computed(() => familyAccounts.value.length)
 const assignedResidents = computed(() => residents.value.filter(item => item.deviceId).length)
 const availableBeds = computed(() => devices.value.filter(device => !assignedDeviceIds.value.has(device.deviceId)).length)
 
 const summaryCards = computed(() => [
   { label: 'Staff', value: staffMembers.value.length, meta: 'Registered users' },
   { label: 'Residents', value: residents.value.length, meta: `${assignedResidents.value} with assigned bed` },
-  { label: 'Families', value: activeFamilies.value, meta: `${familyAccounts.value.length} invitations total` },
+  { label: 'Families', value: activeFamilies.value, meta: 'Registered family users' },
   { label: 'Beds', value: devices.value.length, meta: `${availableBeds.value} available` }
 ])
 
@@ -379,7 +395,7 @@ const closeModal = () => {
 }
 
 const syncFamilyResidentLink = () => {
-  const resident = residents.value.find(item => item.id === Number(familyForm.value.residentId))
+  const resident = findResidentById(familyForm.value.residentId)
   familyForm.value.patientName = resident?.name || 'Unassigned'
   familyForm.value.deviceId = resident?.deviceId || ''
 }
@@ -390,7 +406,7 @@ const familyCountForResident = (residentName) =>
 const isAssignedDevice = (deviceId) => assignedDeviceIds.value.has(deviceId)
 
 const availableDeviceOptions = (currentResidentId = null) => {
-  const currentResident = residents.value.find(item => item.id === currentResidentId)
+  const currentResident = findResidentById(currentResidentId)
   return devices.value.filter(device => {
     if (!isAssignedDevice(device.deviceId)) return true
     return currentResident?.deviceId === device.deviceId
@@ -398,51 +414,15 @@ const availableDeviceOptions = (currentResidentId = null) => {
 }
 
 const saveStaff = () => {
-  if (!staffForm.value.name || !staffForm.value.email) return
-  if (staffForm.value.id) {
-    const index = staffMembers.value.findIndex(item => item.id === staffForm.value.id)
-    if (index !== -1) staffMembers.value[index] = { ...staffForm.value }
-  } else {
-    staffMembers.value.unshift({ ...staffForm.value, id: nextStaffId.value++ })
-  }
-  closeModal()
+  return saveStaffMember()
 }
 
 const saveResident = () => {
-  if (!residentForm.value.name) return
-  if (residentForm.value.id) {
-    const index = residents.value.findIndex(item => item.id === residentForm.value.id)
-    if (index !== -1) residents.value[index] = { ...residentForm.value }
-  } else {
-    residents.value.unshift({ ...residentForm.value, id: nextResidentId.value++ })
-  }
-
-  familyAccounts.value = familyAccounts.value.map(relative =>
-    relative.residentId === residentForm.value.id
-      ? { ...relative, patientName: residentForm.value.name, deviceId: residentForm.value.deviceId }
-      : relative
-  )
-
-  closeModal()
+  return saveResidentRecord()
 }
 
 const saveFamily = () => {
-  if (!familyForm.value.name || !familyForm.value.email) return
-  const resident = residents.value.find(item => item.id === Number(familyForm.value.residentId))
-  const payload = {
-    ...familyForm.value,
-    residentId: resident?.id || null,
-    patientName: resident?.name || 'Unassigned',
-    deviceId: resident?.deviceId || ''
-  }
-
-  if (payload.id) {
-    const index = familyAccounts.value.findIndex(item => item.id === payload.id)
-    if (index !== -1) familyAccounts.value[index] = payload
-  } else {
-    familyAccounts.value.unshift({ ...payload, id: nextFamilyId.value++ })
-  }
-  closeModal()
+  return saveFamilyInvite()
 }
 
 const saveModal = () => {
@@ -451,8 +431,67 @@ const saveModal = () => {
   else saveFamily()
 }
 
-const removeFamily = (id) => {
-  familyAccounts.value = familyAccounts.value.filter(item => item.id !== id)
+const saveFamilyInvite = async () => {
+  if (!familyForm.value.name || !familyForm.value.email) return
+
+  const resident = findResidentById(familyForm.value.residentId)
+  if (!resident) {
+    alert('Selecciona un residente valido antes de crear la invitacion.')
+    return
+  }
+
+  const payload = {
+    ...familyForm.value,
+    residentId: resident.id,
+    patientName: resident.name,
+    deviceId: resident.deviceId || '',
+    state: 'Pending'
+  }
+
+  try {
+    const invitation = await $fetch('http://localhost:5000/invites', {
+      method: 'POST',
+      body: payload
+    })
+
+    alert('Invitation created. Puedes ver el enlace en F12 > Network, en la respuesta de /invites.')
+    await refreshFamilyUsers()
+    closeModal()
+  } catch (error) {
+    console.error('Error creating invitation:', error)
+    alert('No se pudo crear la invitacion.')
+  }
+}
+
+const saveStaffMember = async () => {
+  if (!staffForm.value.name || !staffForm.value.email) return
+  try {
+    await $fetch('http://localhost:5000/staff-members', {
+      method: 'POST',
+      body: { ...staffForm.value }
+    })
+    await refreshStaff()
+    closeModal()
+  } catch (error) {
+    console.error('Error saving staff member:', error)
+    alert('No se pudo guardar el staff.')
+  }
+}
+
+const saveResidentRecord = async () => {
+  if (!residentForm.value.name) return
+  try {
+    await $fetch('http://localhost:5000/residents', {
+      method: 'POST',
+      body: { ...residentForm.value }
+    })
+    await refreshResidents()
+    await refreshFamilyUsers()
+    closeModal()
+  } catch (error) {
+    console.error('Error saving resident:', error)
+    alert('No se pudo guardar el residente.')
+  }
 }
 </script>
 

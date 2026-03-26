@@ -22,10 +22,14 @@ dynamodb = boto3.resource(
 table_rules = dynamodb.Table('MonitoringRules')
 table_events = dynamodb.Table('DeviceEvents')
 table_devices = dynamodb.Table('Devices')
+table_invites = dynamodb.Table('FamilyInvites')
+table_family_users = dynamodb.Table('FamilyUsers')
+table_residents = dynamodb.Table('Residents')
+table_staff_members = dynamodb.Table('StaffMembers')
 
 def init_db():
     """Crea las tablas si no existen al arrancar"""
-    for t_name in ['MonitoringRules', 'DeviceEvents', 'Devices']:
+    for t_name in ['MonitoringRules', 'DeviceEvents', 'Devices', 'FamilyInvites', 'FamilyUsers', 'Residents', 'StaffMembers']:
         try:
             dynamodb.create_table(
                 TableName=t_name,
