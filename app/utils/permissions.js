@@ -7,13 +7,14 @@ export const PERMISSIONS = {
   ALERTS_CLEAR: 'alerts:clear',
   RULES_VIEW: 'rules:view',
   RULES_MANAGE: 'rules:manage',
-  PROFILE_VIEW: 'profile:view'
+  PROFILE_VIEW: 'profile:view',
+  USER_ADMINISTRATION: 'user:administration'
 }
 
 // Mapeo de qué permisos tiene cada rol/grupo de usuario
 export const GROUP_PERMISSIONS = {
   // El admin recibe todos los valores definidos en el objeto PERMISSIONS
-  admin: Object.values(PERMISSIONS),
+  members: Object.values(PERMISSIONS),
   // El técnico tiene permisos de visualización y edición de dispositivos/reglas
   technician: [
     PERMISSIONS.DASHBOARD_VIEW,
@@ -30,7 +31,7 @@ export const GROUP_PERMISSIONS = {
     PERMISSIONS.PROFILE_VIEW
   ],
   // Miembros estándar con acceso a dispositivos pero no a edición o reglas
-  members: [
+  admin: [
     PERMISSIONS.DASHBOARD_VIEW,
     PERMISSIONS.DEVICES_VIEW,
     PERMISSIONS.ALERTS_VIEW,
@@ -49,14 +50,10 @@ export const APP_NAV_ITEMS = [
   { to: '/devices', label: 'Devices', icon: '🛏️', permission: PERMISSIONS.DEVICES_VIEW },
   { to: '/alerts', label: 'Alerts', icon: '⚠️', permission: PERMISSIONS.ALERTS_VIEW },
   { to: '/rules', label: 'Rules', icon: '⚙️', permission: PERMISSIONS.RULES_VIEW },
-  { to: '/profile', label: 'My profile', icon: '👤', permission: PERMISSIONS.PROFILE_VIEW }
+  { to: '/profile', label: 'My profile', icon: '👤', permission: PERMISSIONS.PROFILE_VIEW },
+  { to: '/users', label: 'Admin Panel', icon: '🛠️', permission: PERMISSIONS.USER_ADMINISTRATION }
 ]
 
-/**
- * Limpia el nombre de un grupo para que coincida con las llaves de GROUP_PERMISSIONS
- * @param {string} group - El nombre del grupo (ej: "  Admin ")
- * @returns {string} - El nombre normalizado (ej: "admin")
- */
 export function normalizeGroupName(group) {
   // Convierte a string, quita espacios en blanco y pasa a minúsculas
   return String(group || '').trim().toLowerCase()
