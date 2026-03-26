@@ -95,20 +95,28 @@
           <div v-for="relative in filteredFamilies" :key="relative.id" class="card-row">
             <div class="row-head">
               <div>
-                <strong>{{ relative.name }}</strong>
-                <span class="meta block">{{ relative.email }}</span>
+                <strong class="family-name">{{ relative.name }}</strong>
+                <span class="meta block"><strong class="label-strong">Role:</strong> Family</span>
+                <span class="meta block"><strong class="label-strong">Contact:</strong> {{ relative.email }}</span>
               </div>
               <span :class="['pill', relative.state === 'Active' ? 'ok' : 'warn']">{{ relative.state }}</span>
             </div>
 
             <div class="row-inline">
-              <span>{{ relative.patientName }}</span>
-              <code v-if="relative.deviceId" class="tag">{{ relative.deviceId }}</code>
-              <span class="meta">{{ relative.relationship }}</span>
+              <span class="meta family-line"><strong class="label-strong">Family of:</strong> {{ relative.patientName }}</span>
+              <span class="meta"><strong class="label-strong">Information:</strong> {{ relative.relationship }}</span>
+            </div>
+
+            <div v-if="relative.deviceId" class="row-inline">
+              <code class="tag"><strong class="label-strong">Associated devices:</strong> {{ relative.deviceId }}</code>
             </div>
 
             <div class="row-actions">
               <span class="meta">Registered family user</span>
+              <button class="link-btn" @click="openFamilyUserModal(relative)">Edit</button>
+              <button class="link-btn" @click="toggleFamilyState(relative.id)">
+                {{ relative.state === 'Active' ? 'Deactivate' : 'Activate' }}
+              </button>
             </div>
           </div>
         </div>
@@ -203,7 +211,7 @@
           </label>
         </div>
 
-        <div v-else class="form-grid">
+        <div v-else-if="modal.type === 'family'" class="form-grid">
           <label class="field">
             <span>Name</span>
             <input v-model="familyForm.name" class="search" type="text" />
@@ -229,6 +237,46 @@
               <option value="">Select resident</option>
               <option v-for="resident in residents" :key="resident.id" :value="resident.id">
                 {{ resident.name }}{{ resident.deviceId ? ` · ${resident.deviceId}` : '' }}
+              </option>
+            </select>
+          </label>
+        </div>
+
+        <div v-else class="form-grid">
+          <label class="field">
+            <span>Name</span>
+            <input v-model="familyUserForm.name" class="search" type="text" />
+          </label>
+          <label class="field">
+            <span>Email</span>
+            <input v-model="familyUserForm.email" class="search" type="email" />
+          </label>
+          <label class="field">
+            <span>Information</span>
+            <input v-model="familyUserForm.relationship" class="search" type="text" />
+          </label>
+          <label class="field">
+            <span>Status</span>
+            <select v-model="familyUserForm.state" class="search">
+              <option>Active</option>
+              <option>Inactive</option>
+            </select>
+          </label>
+          <label class="field field-full">
+            <span>Resident</span>
+            <select v-model="familyUserForm.residentId" class="search" @change="syncFamilyUserResidentLink">
+              <option value="">Select resident</option>
+              <option v-for="resident in residents" :key="resident.id" :value="resident.id">
+                {{ resident.name }}{{ resident.deviceId ? ` · ${resident.deviceId}` : '' }}
+              </option>
+            </select>
+          </label>
+          <label class="field field-full">
+            <span>Associated device</span>
+            <select v-model="familyUserForm.deviceIdOverride" class="search">
+              <option value="">Use resident device</option>
+              <option v-for="device in devices" :key="device.id" :value="device.deviceId">
+                {{ device.patientName }} · {{ device.deviceId }}
               </option>
             </select>
           </label>
@@ -309,9 +357,10 @@ const familyAccounts = computed(() =>
       name: user.name || 'Unknown user',
       email: user.email || '',
       patientName: linkedResident?.name || user.patientName || 'Unassigned',
-      deviceId: linkedResident?.deviceId || user.deviceId || '',
+      deviceId: user.deviceIdOverride || linkedResident?.deviceId || user.deviceId || '',
       relationship: user.relationship || 'Family',
-      state: 'Active'
+      state: user.state || 'Active',
+      deviceIdOverride: user.deviceIdOverride || ''
     }
   })
 )
@@ -319,6 +368,7 @@ const familyAccounts = computed(() =>
 const staffForm = ref({ id: null, name: '', email: '', role: staffRoles[0], area: staffAreas[0] })
 const residentForm = ref({ id: null, name: '', deviceId: '', status: 'Pending Setup', notes: '' })
 const familyForm = ref({ id: null, residentId: '', name: '', email: '', relationship: '', state: 'Pending', patientName: 'Unassigned', deviceId: '' })
+const familyUserForm = ref({ id: null, residentId: '', name: '', email: '', relationship: '', state: 'Active', patientName: 'Unassigned', deviceId: '', deviceIdOverride: '' })
 
 const query = computed(() => search.value.trim().toLowerCase())
 const matchesSearch = (values) => !query.value || values.some(value => String(value).toLowerCase().includes(query.value))
@@ -357,13 +407,15 @@ const summaryCards = computed(() => [
 const modalTitle = computed(() => {
   if (modal.value.type === 'staff') return staffForm.value.id ? 'Edit Staff' : 'Create Staff'
   if (modal.value.type === 'resident') return residentForm.value.id ? 'Edit Resident' : 'Create Resident'
-  return familyForm.value.id ? 'Edit Family Access' : 'Invite Family'
+  if (modal.value.type === 'family') return familyForm.value.id ? 'Edit Family Access' : 'Invite Family'
+  return 'Edit Family User'
 })
 
 const resetForms = () => {
   staffForm.value = { id: null, name: '', email: '', role: staffRoles[0], area: staffAreas[0] }
   residentForm.value = { id: null, name: '', deviceId: '', status: 'Pending Setup', notes: '' }
   familyForm.value = { id: null, residentId: '', name: '', email: '', relationship: '', state: 'Pending', patientName: 'Unassigned', deviceId: '' }
+  familyUserForm.value = { id: null, residentId: '', name: '', email: '', relationship: '', state: 'Active', patientName: 'Unassigned', deviceId: '', deviceIdOverride: '' }
 }
 
 const openStaffModal = (member = null) => {
@@ -389,6 +441,21 @@ const openFamilyModalForResident = (resident) => {
   syncFamilyResidentLink()
 }
 
+const openFamilyUserModal = (relative) => {
+  familyUserForm.value = {
+    id: relative.id,
+    residentId: relative.residentId || '',
+    name: relative.name || '',
+    email: relative.email || '',
+    relationship: relative.relationship || '',
+    state: relative.state || 'Active',
+    patientName: relative.patientName || 'Unassigned',
+    deviceId: relative.deviceId || '',
+    deviceIdOverride: relative.deviceIdOverride || ''
+  }
+  modal.value = { type: 'family-user' }
+}
+
 const closeModal = () => {
   modal.value = { type: '' }
   resetForms()
@@ -398,6 +465,13 @@ const syncFamilyResidentLink = () => {
   const resident = findResidentById(familyForm.value.residentId)
   familyForm.value.patientName = resident?.name || 'Unassigned'
   familyForm.value.deviceId = resident?.deviceId || ''
+}
+
+const syncFamilyUserResidentLink = () => {
+  const resident = findResidentById(familyUserForm.value.residentId)
+  familyUserForm.value.patientName = resident?.name || 'Unassigned'
+  familyUserForm.value.deviceId = resident?.deviceId || ''
+  familyUserForm.value.deviceIdOverride = ''
 }
 
 const familyCountForResident = (residentName) =>
@@ -428,7 +502,33 @@ const saveFamily = () => {
 const saveModal = () => {
   if (modal.value.type === 'staff') saveStaff()
   else if (modal.value.type === 'resident') saveResident()
-  else saveFamily()
+  else if (modal.value.type === 'family') saveFamily()
+  else saveFamilyUser()
+}
+
+const toggleFamilyState = async (familyId) => {
+  const familyUser = familyAccounts.value.find(relative => sameId(relative.id, familyId))
+  if (!familyUser) return
+
+  try {
+    await $fetch(`http://localhost:5000/family-users/${familyUser.id}`, {
+      method: 'PUT',
+      body: {
+        name: familyUser.name,
+        email: familyUser.email,
+        relationship: familyUser.relationship,
+        residentId: familyUser.residentId,
+        patientName: familyUser.patientName,
+        deviceId: familyUser.deviceId,
+        deviceIdOverride: familyUser.deviceIdOverride || '',
+        state: familyUser.state === 'Active' ? 'Inactive' : 'Active'
+      }
+    })
+    await refreshFamilyUsers()
+  } catch (error) {
+    console.error('Error updating family user state:', error)
+    alert('Could not update the family user status.')
+  }
 }
 
 const saveFamilyInvite = async () => {
@@ -460,6 +560,34 @@ const saveFamilyInvite = async () => {
   } catch (error) {
     console.error('Error creating invitation:', error)
     alert('No se pudo crear la invitacion.')
+  }
+}
+
+const saveFamilyUser = async () => {
+  if (!familyUserForm.value.id || !familyUserForm.value.name || !familyUserForm.value.email) return
+
+  const resident = findResidentById(familyUserForm.value.residentId)
+  const payload = {
+    name: familyUserForm.value.name,
+    email: familyUserForm.value.email,
+    relationship: familyUserForm.value.relationship,
+    state: familyUserForm.value.state,
+    residentId: resident?.id || null,
+    patientName: resident?.name || 'Unassigned',
+    deviceId: resident?.deviceId || familyUserForm.value.deviceId || '',
+    deviceIdOverride: familyUserForm.value.deviceIdOverride || ''
+  }
+
+  try {
+    await $fetch(`http://localhost:5000/family-users/${familyUserForm.value.id}`, {
+      method: 'PUT',
+      body: payload
+    })
+    await refreshFamilyUsers()
+    closeModal()
+  } catch (error) {
+    console.error('Error saving family user:', error)
+    alert('Could not update the family user.')
   }
 }
 
@@ -524,6 +652,9 @@ const saveResidentRecord = async () => {
 .avatar { width: 42px; height: 42px; border-radius: 10px; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; }
 .item-main { min-width: 0; }
 .meta { font-size: .84rem; }
+.label-strong { color: var(--text-main); font-weight: 700; }
+.family-name { text-decoration: underline; text-underline-offset: 3px; }
+.family-line { font-size: .84rem; }
 .block { display: block; margin-top: 3px; }
 .pill { display: inline-flex; align-items: center; justify-content: center; padding: 4px 9px; border-radius: 999px; font-size: .75rem; font-weight: 700; }
 .pill.ok { background: rgba(16,185,129,.15); color: #10b981; }
@@ -532,7 +663,7 @@ const saveResidentRecord = async () => {
 .link-btn.danger { color: #ef4444; }
 .row-inline, .row-actions { margin-top: 10px; flex-wrap: wrap; }
 .row-actions { justify-content: flex-end; }
-.tag { font-size: .75rem; color: var(--text-main); background: var(--bg-card); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); }
+.tag { font-size: .84rem; color: var(--text-main); background: var(--bg-card); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border-color); }
 .table { border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; }
 .table-head { padding: 10px 12px; background: var(--bg-main); color: var(--text-muted); font-size: .75rem; text-transform: uppercase; font-weight: 700; }
 .table-row { border-top: 1px solid var(--border-color); }

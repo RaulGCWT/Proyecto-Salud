@@ -219,10 +219,12 @@ def register_from_invite():
         'name': name,
         'password': password,
         'role': 'family',
+        'state': 'Active',
         'residentId': invitation.get('residentId'),
         'relationship': invitation.get('relationship', ''),
         'patientName': invitation.get('patientName', 'Unassigned'),
         'deviceId': invitation.get('deviceId', ''),
+        'deviceIdOverride': '',
         'invitationId': invitation.get('id'),
         'createdAt': utc_now_iso()
     }
@@ -253,6 +255,24 @@ def register_from_invite():
 def get_family_users():
     response = table_family_users.scan()
     return jsonify(response.get('Items', [])), 200
+
+
+@app.route('/family-users/<family_user_id>', methods=['PUT'])
+def update_family_user(family_user_id):
+    payload = dict(request.json or {})
+    items = table_family_users.scan().get('Items', [])
+    family_user = next((item for item in items if item.get('id') == family_user_id), None)
+
+    if not family_user:
+        return jsonify({"error": "Family user not found"}), 404
+
+    updated_user = {
+        **family_user,
+        **payload,
+        'id': family_user_id
+    }
+    table_family_users.put_item(Item=updated_user)
+    return jsonify(updated_user), 200
 
 
 if __name__ == '__main__':
