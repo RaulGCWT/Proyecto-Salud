@@ -47,9 +47,9 @@
           <div v-for="member in filteredStaff" :key="member.id" class="item-row">
             <div class="avatar">{{ member.name.charAt(0) }}</div>
             <div class="item-main">
-              <strong>{{ member.name }}</strong>
+              <strong class="entity-name">{{ member.name }}</strong>
               <span class="meta block">{{ member.role }} · {{ member.area }}</span>
-              <span class="meta">{{ member.email }}</span>
+              <span class="meta"><strong class="label-strong">Contact:</strong> {{ member.email }}</span>
             </div>
             <button class="link-btn" @click="openStaffModal(member)">Manage</button>
           </div>
@@ -66,15 +66,15 @@
           <div v-for="resident in filteredResidents" :key="resident.id" class="card-row">
             <div class="row-head">
               <div>
-                <strong>{{ resident.name }}</strong>
-                <span class="meta block">{{ resident.status }}</span>
-              </div>
-              <code class="tag">{{ resident.deviceId || 'Unassigned' }}</code>
+              <strong class="entity-name">{{ resident.name }}</strong>
+              <span class="meta block"><strong class="label-strong">Status:</strong> {{ resident.status }}</span>
+            </div>
+              <code class="tag"><strong class="label-strong">Bed:</strong> {{ resident.deviceId || 'Unassigned' }}</code>
             </div>
 
             <div class="row-inline">
-              <span class="meta">Family linked: {{ familyCountForResident(resident.name) }}</span>
-              <span class="meta">{{ resident.notes || 'No notes' }}</span>
+              <span class="meta"><strong class="label-strong">Family linked:</strong> {{ familyCountForResident(resident.name) }}</span>
+              <span class="meta"><strong class="label-strong">Notes:</strong> {{ resident.notes || 'No notes' }}</span>
             </div>
 
             <div class="row-actions">
@@ -117,6 +117,45 @@
               <button class="link-btn" @click="toggleFamilyState(relative.id)">
                 {{ relative.state === 'Active' ? 'Deactivate' : 'Activate' }}
               </button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article v-if="showSection('invitations')" class="panel">
+        <div class="section-head">
+          <h3>Pending Invitations</h3>
+          <span class="meta">{{ filteredInvitations.length }} visible</span>
+        </div>
+
+        <div class="stack">
+          <div v-if="!filteredInvitations.length" class="card-row empty-card">
+            <span class="meta">No invitations match the current filter.</span>
+          </div>
+
+          <div v-for="invite in filteredInvitations" :key="invite.id" class="card-row">
+            <div class="row-head">
+              <div>
+                <strong class="family-name">{{ invite.email }}</strong>
+                <span class="meta block"><strong class="label-strong">Resident:</strong> {{ invite.patientName }}</span>
+                <span class="meta block"><strong class="label-strong">Relationship:</strong> {{ invite.relationship || 'Family' }}</span>
+              </div>
+              <span :class="['pill', invite.stateClass]">{{ invite.stateLabel }}</span>
+            </div>
+
+            <div class="row-inline">
+              <span class="meta"><strong class="label-strong">Created:</strong> {{ formatDate(invite.createdAt) }}</span>
+              <span class="meta"><strong class="label-strong">Expires:</strong> {{ formatDate(invite.expiresAt) }}</span>
+            </div>
+
+            <div v-if="invite.acceptUrl" class="row-inline">
+              <code class="tag invitation-link">{{ invite.acceptUrl }}</code>
+            </div>
+
+            <div class="row-actions">
+              <button v-if="invite.acceptUrl" class="link-btn" @click="copyInviteLink(invite.acceptUrl)">Copy link</button>
+              <button v-if="invite.state === 'PENDING'" class="link-btn danger" @click="updateInviteState(invite.id, 'CANCELLED')">Cancel</button>
+              <button v-if="invite.state === 'CANCELLED' || invite.state === 'EXPIRED'" class="link-btn" @click="updateInviteState(invite.id, 'PENDING')">Reopen</button>
             </div>
           </div>
         </div>
@@ -305,6 +344,7 @@ const tabs = [
   { id: 'staff', label: 'Staff' },
   { id: 'residents', label: 'Residents' },
   { id: 'family', label: 'Family' },
+  { id: 'invitations', label: 'Invitations' },
   { id: 'devices', label: 'Beds' }
 ]
 
@@ -330,6 +370,11 @@ const { data: devicesData, pending: resourcesLoading } = await useFetch('http://
 })
 
 const { data: familyUsersData, refresh: refreshFamilyUsers } = await useFetch('http://localhost:5000/family-users', {
+  server: false,
+  default: () => []
+})
+
+const { data: invitesData, refresh: refreshInvites } = await useFetch('http://localhost:5000/invites', {
   server: false,
   default: () => []
 })
@@ -369,6 +414,30 @@ const familyAccounts = computed(() =>
   })
 )
 
+const invitations = computed(() =>
+  (Array.isArray(invitesData.value) ? invitesData.value : []).map((invite, index) => ({
+    id: invite.id || index + 1,
+    email: invite.email || '',
+    name: invite.name || '',
+    patientName: invite.patientName || 'Unassigned',
+    relationship: invite.relationship || '',
+    residentId: invite.residentId || null,
+    deviceId: invite.deviceId || '',
+    state: String(invite.state || 'PENDING').toUpperCase(),
+    createdAt: invite.createdAt || '',
+    expiresAt: invite.expiresAt || '',
+    acceptedAt: invite.acceptedAt || null,
+    cancelledAt: invite.cancelledAt || null,
+    acceptUrl: invite.acceptUrl || '',
+    stateLabel: String(invite.state || 'PENDING').toUpperCase(),
+    stateClass: ['ACCEPTED'].includes(String(invite.state || '').toUpperCase())
+      ? 'ok'
+      : ['EXPIRED', 'CANCELLED'].includes(String(invite.state || '').toUpperCase())
+        ? 'danger'
+        : 'warn'
+  }))
+)
+
 const staffForm = ref({ id: null, name: '', email: '', role: staffRoles[0], area: staffAreas[0] })
 const residentForm = ref({ id: null, name: '', deviceId: '', status: 'Pending Setup', notes: '' })
 const familyForm = ref({ id: null, residentId: '', name: '', email: '', relationship: '', state: 'Pending', patientName: 'Unassigned', deviceId: '' })
@@ -393,12 +462,19 @@ const filteredFamilies = computed(() =>
   )
 )
 
+const filteredInvitations = computed(() =>
+  invitations.value.filter(invite =>
+    matchesSearch([invite.email, invite.name, invite.patientName, invite.relationship, invite.state, invite.deviceId])
+  )
+)
+
 const filteredDevices = computed(() =>
   devices.value.filter(device => matchesSearch([device.patientName, device.deviceId, device.status]))
 )
 
 const assignedDeviceIds = computed(() => new Set(residents.value.map(resident => resident.deviceId).filter(Boolean)))
 const activeFamilies = computed(() => familyAccounts.value.length)
+const pendingInvitations = computed(() => invitations.value.filter(invite => invite.state === 'PENDING').length)
 const assignedResidents = computed(() => residents.value.filter(item => item.deviceId).length)
 const availableBeds = computed(() => devices.value.filter(device => !assignedDeviceIds.value.has(device.deviceId)).length)
 
@@ -406,6 +482,7 @@ const summaryCards = computed(() => [
   { label: 'Staff', value: staffMembers.value.length, meta: 'Registered users' },
   { label: 'Residents', value: residents.value.length, meta: `${assignedResidents.value} with assigned bed` },
   { label: 'Families', value: activeFamilies.value, meta: 'Registered family users' },
+  { label: 'Invites', value: pendingInvitations.value, meta: 'Pending invitations' },
   { label: 'Beds', value: devices.value.length, meta: `${availableBeds.value} available` }
 ])
 
@@ -566,8 +643,13 @@ const saveFamilyInvite = async () => {
       body: payload
     })
 
-    alert('Invitation created. Puedes ver el enlace en F12 > Network, en la respuesta de /invites.')
-    await refreshFamilyUsers()
+    await refreshInvites()
+    if (invitation?.acceptUrl && navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(invitation.acceptUrl)
+      alert(`Invitation created. Link copied to clipboard:\n${invitation.acceptUrl}`)
+    } else {
+      alert(`Invitation created:\n${invitation?.acceptUrl || 'Link unavailable'}`)
+    }
     closeModal()
   } catch (error) {
     console.error('Error creating invitation:', error)
@@ -635,10 +717,43 @@ const saveResidentRecord = async () => {
     })
     await refreshResidents()
     await refreshFamilyUsers()
+    await refreshInvites()
     closeModal()
   } catch (error) {
     console.error('Error saving resident:', error)
     alert('No se pudo guardar el residente.')
+  }
+}
+
+const formatDate = (value) => {
+  if (!value) return 'N/A'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+}
+
+const copyInviteLink = async (acceptUrl) => {
+  try {
+    if (navigator?.clipboard?.writeText) {
+      await navigator.clipboard.writeText(acceptUrl)
+      alert('Invitation link copied.')
+      return
+    }
+  } catch (error) {
+    console.error('Could not copy invite link:', error)
+  }
+  alert(acceptUrl)
+}
+
+const updateInviteState = async (inviteId, state) => {
+  try {
+    await $fetch(`http://localhost:5000/invites/${inviteId}/state`, {
+      method: 'PUT',
+      body: { state }
+    })
+    await refreshInvites()
+  } catch (error) {
+    console.error('Error updating invitation state:', error)
+    alert('Could not update invitation state.')
   }
 }
 </script>
@@ -653,7 +768,7 @@ const saveResidentRecord = async () => {
 .actions, .tabs, .row-actions, .tags, .bed-options { display: flex; gap: 10px; flex-wrap: wrap; }
 .summary-grid, .content-grid, .stack, .form-grid { display: grid; }
 .summary-grid, .content-grid, .stack { gap: 16px; }
-.summary-grid { grid-template-columns: repeat(4, 1fr); margin-bottom: 1.25rem; }
+.summary-grid { grid-template-columns: repeat(5, 1fr); margin-bottom: 1.25rem; }
 .content-grid { grid-template-columns: repeat(2, 1fr); }
 .stack { gap: 10px; }
 :is(.panel, .item-row, .card-row, .table-row, .bed-option) { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; }
@@ -667,18 +782,22 @@ const saveResidentRecord = async () => {
 .btn-muted, .btn-ghost, .tab { background: var(--bg-main); color: var(--text-main); }
 .section-head { margin-bottom: 12px; }
 .section-head h3 { margin: 0; color: var(--text-main); font-size: 1.05rem; }
-.item-row { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; }
+.item-row { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; background: linear-gradient(180deg, var(--bg-card), color-mix(in srgb, var(--bg-card) 88%, var(--bg-main))); }
 .item-row, .card-row, .table-row, .bed-option { padding: 12px; }
 .avatar { width: 42px; height: 42px; border-radius: 10px; background: #3b82f6; color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; }
 .item-main { min-width: 0; }
 .meta { font-size: .84rem; }
 .label-strong { color: var(--text-main); font-weight: 700; }
+.entity-name { display: inline-block; font-size: 1rem; line-height: 1.2; margin-bottom: 2px; text-decoration: underline; text-underline-offset: 3px; }
+.item-main .block { margin-top: 4px; }
+.item-main .meta:last-child { display: block; margin-top: 4px; }
 .family-name { text-decoration: underline; text-underline-offset: 3px; }
 .family-line { font-size: .84rem; }
 .block { display: block; margin-top: 3px; }
 .pill { display: inline-flex; align-items: center; justify-content: center; padding: 4px 9px; border-radius: 999px; font-size: .75rem; font-weight: 700; }
 .pill.ok { background: rgba(16,185,129,.15); color: #10b981; }
 .pill.warn { background: rgba(249,115,22,.14); color: #ea580c; }
+.pill.danger { background: rgba(239,68,68,.14); color: #ef4444; }
 .link-btn { border: none; background: transparent; color: #3b82f6; padding: 0; }
 .link-btn.danger { color: #ef4444; }
 .row-inline, .row-actions { margin-top: 10px; flex-wrap: wrap; }
@@ -695,7 +814,10 @@ const saveResidentRecord = async () => {
 .form-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; margin: 14px 0; }
 .field { display: grid; gap: 6px; color: var(--text-main); font-size: .85rem; }
 .field-full { grid-column: 1 / -1; }
-@media (max-width: 1024px) { .summary-grid, .content-grid { grid-template-columns: 1fr 1fr; } }
+.empty-card { justify-content: center; }
+.invitation-link { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+@media (max-width: 1200px) { .summary-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 1024px) { .content-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 820px) {
   .page-header, .toolbar, .row-head, .table-head, .table-row { flex-direction: column; align-items: flex-start; }
   .summary-grid, .content-grid, .form-grid { grid-template-columns: 1fr; }

@@ -15,7 +15,7 @@ export const PERMISSIONS = {
 // Mapeo de qué permisos tiene cada rol/grupo de usuario
 export const GROUP_PERMISSIONS = {
   // El admin recibe todos los valores definidos en el objeto PERMISSIONS
-  technician: Object.values(PERMISSIONS),
+  members: Object.values(PERMISSIONS),
   // El técnico tiene permisos de visualización y edición de dispositivos/reglas
   technician: [
     PERMISSIONS.DASHBOARD_VIEW,

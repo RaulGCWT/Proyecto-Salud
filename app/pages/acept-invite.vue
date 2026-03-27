@@ -17,9 +17,14 @@
           <strong>{{ invitation.patientName }}</strong>
         </div>
 
-        <p class="invite-copy">Complete your registration to activate family access.</p>
+        <div class="resident-box secondary-box">
+          <span class="resident-label">Invitation status</span>
+          <strong>{{ invitation.state }}</strong>
+        </div>
 
-        <form v-if="invitation.state !== 'ACCEPTED'" class="register-form" @submit.prevent="completeRegistration">
+        <p v-if="invitation.state === 'PENDING'" class="invite-copy">Complete your registration to activate family access.</p>
+
+        <form v-if="invitation.state === 'PENDING'" class="register-form" @submit.prevent="completeRegistration">
           <div class="form-group">
             <label>Name</label>
             <input v-model="form.name" type="text" required />
@@ -44,9 +49,10 @@
           </button>
         </form>
 
-        <div v-else class="success-box">
-          This invitation has already been used.
-        </div>
+        <div v-else-if="invitation.state === 'ACCEPTED'" class="success-box">This invitation has already been used.</div>
+        <div v-else-if="invitation.state === 'EXPIRED'" class="error-alert">This invitation has expired. Please request a new one.</div>
+        <div v-else-if="invitation.state === 'CANCELLED'" class="error-alert">This invitation was cancelled by an administrator.</div>
+        <div v-else class="error-alert">This invitation is not currently available.</div>
       </template>
 
       <div v-else class="error-alert">
@@ -118,6 +124,7 @@ const completeRegistration = async () => {
 .status-box, .resident-box, .success-box { border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
 .status-box { background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.2); color: #bfdbfe; }
 .resident-box { background: #020617; border: 1px solid #334155; text-align: left; }
+.secondary-box { margin-top: -6px; }
 .resident-label { display: block; color: #94a3b8; font-size: 12px; text-transform: uppercase; font-weight: 700; margin-bottom: 6px; }
 .resident-box strong { color: #f8fafc; font-size: 1rem; }
 .invite-copy { color: #cbd5e1; font-size: 14px; margin: 0 0 20px; }
