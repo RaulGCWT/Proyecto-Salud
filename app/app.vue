@@ -2,9 +2,11 @@
   <div>
     <ToastNotification v-model="activeToast" />
 
-    <NuxtLayout>
+    <NuxtLayout v-if="!disableLayout" :name="layoutName">
       <NuxtPage />
     </NuxtLayout>
+
+    <NuxtPage v-else />
   </div>
 </template>
 
@@ -12,6 +14,9 @@
 import { useHealthStore } from '~/stores/health'
 const health = useHealthStore()
 const activeToast = ref(null)
+const route = useRoute()
+const disableLayout = computed(() => route.meta.layout === false)
+const layoutName = computed(() => disableLayout.value ? undefined : route.meta.layout)
 
 onMounted(() => {
   health.connectWebSocket()
