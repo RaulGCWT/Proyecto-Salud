@@ -8,13 +8,14 @@ export const PERMISSIONS = {
   RULES_VIEW: 'rules:view',
   RULES_MANAGE: 'rules:manage',
   PROFILE_VIEW: 'profile:view',
-  USER_ADMINISTRATION: 'user:administration'
+  USER_ADMINISTRATION: 'user:administration',
+  USER_CREATE_RECORDS: 'user:create-records'
 }
 
 // Mapeo de qué permisos tiene cada rol/grupo de usuario
 export const GROUP_PERMISSIONS = {
   // El admin recibe todos los valores definidos en el objeto PERMISSIONS
-  members: Object.values(PERMISSIONS),
+  technician: Object.values(PERMISSIONS),
   // El técnico tiene permisos de visualización y edición de dispositivos/reglas
   technician: [
     PERMISSIONS.DASHBOARD_VIEW,
@@ -22,7 +23,8 @@ export const GROUP_PERMISSIONS = {
     PERMISSIONS.DEVICES_EDIT,
     PERMISSIONS.ALERTS_VIEW,
     PERMISSIONS.RULES_VIEW,
-    PERMISSIONS.PROFILE_VIEW
+    PERMISSIONS.PROFILE_VIEW,
+    PERMISSIONS.USER_CREATE_RECORDS
   ],
   // El clínico tiene un acceso más restringido (lectura básica)
   clinician: [
@@ -35,7 +37,8 @@ export const GROUP_PERMISSIONS = {
     PERMISSIONS.DASHBOARD_VIEW,
     PERMISSIONS.DEVICES_VIEW,
     PERMISSIONS.ALERTS_VIEW,
-    PERMISSIONS.PROFILE_VIEW
+    PERMISSIONS.PROFILE_VIEW,
+    PERMISSIONS.USER_CREATE_RECORDS
   ]
 }
 

@@ -7,9 +7,9 @@
       </div>
 
       <div class="actions">
-        <button class="btn btn-muted" @click="openFamilyModal()">Invite Family</button>
-        <button class="btn btn-secondary" @click="openResidentModal()">Create Resident</button>
-        <button class="btn btn-primary" @click="openStaffModal()">Create Staff</button>
+        <button v-if="canCreateRecords" class="btn btn-muted" @click="openFamilyModal()">Invite Family</button>
+        <button v-if="canCreateRecords" class="btn btn-secondary" @click="openResidentModal()">Create Resident</button>
+        <button v-if="canCreateRecords" class="btn btn-primary" @click="openStaffModal()">Create Staff</button>
       </div>
     </header>
 
@@ -40,7 +40,7 @@
       <article v-if="showSection('staff')" class="panel">
         <div class="section-head">
           <h3>Staff Team</h3>
-          <button class="btn btn-ghost" @click="openStaffModal()">New user</button>
+          <button v-if="canCreateRecords" class="btn btn-ghost" @click="openStaffModal()">New user</button>
         </div>
 
         <div class="stack">
@@ -59,7 +59,7 @@
       <article v-if="showSection('residents')" class="panel">
         <div class="section-head">
           <h3>Residents</h3>
-          <button class="btn btn-ghost" @click="openResidentModal()">New resident</button>
+          <button v-if="canCreateRecords" class="btn btn-ghost" @click="openResidentModal()">New resident</button>
         </div>
 
         <div class="stack">
@@ -79,7 +79,7 @@
 
             <div class="row-actions">
               <button class="link-btn" @click="openResidentModal(resident)">Edit</button>
-              <button class="link-btn" @click="openFamilyModalForResident(resident)">Invite Family</button>
+              <button v-if="canCreateRecords" class="link-btn" @click="openFamilyModalForResident(resident)">Invite Family</button>
             </div>
           </div>
         </div>
@@ -88,7 +88,7 @@
       <article v-if="showSection('family')" class="panel">
         <div class="section-head">
           <h3>Family Access</h3>
-          <button class="btn btn-ghost" @click="openFamilyModal()">Send invite</button>
+          <button v-if="canCreateRecords" class="btn btn-ghost" @click="openFamilyModal()">Send invite</button>
         </div>
 
         <div class="stack">
@@ -292,6 +292,10 @@
 </template>
 
 <script setup>
+import { useAuthStore } from '~/stores/auth'
+import { PERMISSIONS } from '~/utils/permissions'
+
+const auth = useAuthStore()
 const search = ref('')
 const activeTab = ref('all')
 const modal = ref({ type: '' })
@@ -371,6 +375,7 @@ const familyForm = ref({ id: null, residentId: '', name: '', email: '', relation
 const familyUserForm = ref({ id: null, residentId: '', name: '', email: '', relationship: '', state: 'Active', patientName: 'Unassigned', deviceId: '', deviceIdOverride: '' })
 
 const query = computed(() => search.value.trim().toLowerCase())
+const canCreateRecords = computed(() => auth.permissions.includes(PERMISSIONS.USER_CREATE_RECORDS))
 const matchesSearch = (values) => !query.value || values.some(value => String(value).toLowerCase().includes(query.value))
 const showSection = (section) => activeTab.value === 'all' || activeTab.value === section
 
@@ -419,16 +424,19 @@ const resetForms = () => {
 }
 
 const openStaffModal = (member = null) => {
+  if (!member && !canCreateRecords.value) return
   staffForm.value = member ? { ...member } : { id: null, name: '', email: '', role: staffRoles[0], area: staffAreas[0] }
   modal.value = { type: 'staff' }
 }
 
 const openResidentModal = (resident = null) => {
+  if (!resident && !canCreateRecords.value) return
   residentForm.value = resident ? { ...resident } : { id: null, name: '', deviceId: '', status: 'Pending Setup', notes: '' }
   modal.value = { type: 'resident' }
 }
 
 const openFamilyModal = (relative = null) => {
+  if (!relative && !canCreateRecords.value) return
   familyForm.value = relative
     ? { ...relative, residentId: relative.residentId || '' }
     : { id: null, residentId: '', name: '', email: '', relationship: '', state: 'Pending', patientName: 'Unassigned', deviceId: '' }
@@ -532,6 +540,10 @@ const toggleFamilyState = async (familyId) => {
 }
 
 const saveFamilyInvite = async () => {
+  if (!canCreateRecords.value) {
+    alert('You do not have permission to create invitations.')
+    return
+  }
   if (!familyForm.value.name || !familyForm.value.email) return
 
   const resident = findResidentById(familyForm.value.residentId)
@@ -592,6 +604,10 @@ const saveFamilyUser = async () => {
 }
 
 const saveStaffMember = async () => {
+  if (!canCreateRecords.value && !staffForm.value.id) {
+    alert('You do not have permission to create staff users.')
+    return
+  }
   if (!staffForm.value.name || !staffForm.value.email) return
   try {
     await $fetch('http://localhost:5000/staff-members', {
@@ -607,6 +623,10 @@ const saveStaffMember = async () => {
 }
 
 const saveResidentRecord = async () => {
+  if (!canCreateRecords.value && !residentForm.value.id) {
+    alert('You do not have permission to create residents.')
+    return
+  }
   if (!residentForm.value.name) return
   try {
     await $fetch('http://localhost:5000/residents', {
