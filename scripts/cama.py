@@ -59,3 +59,7 @@ def run_simulation(mac_address=None):
         }
         client.publish(MQTT_TOPIC, json.dumps(data))
         time.sleep(3)
+
+
+if __name__ == "__main__":
+    run_simulation()
