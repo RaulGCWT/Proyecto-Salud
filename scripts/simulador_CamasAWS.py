@@ -12,7 +12,8 @@ PATH_TO_KEY = "certs/cama01-private.pem.key"
 PATH_TO_ROOT = "certs/cama01-AmazonRootCA1.pem"
 TOPIC = "residencia/camas/01/datos"
 DEVICE_ID = "Bed-01"
-DEVICE_MAC = "52:54:00:ab:cd:ef"
+DEVICE_MAC = "52:54:00:ab:cd:ea"
+SAMPLING_SECONDS = 10
 
 
 myMQTTClient = AWSIoTMQTTClient(CLIENT_ID)
@@ -20,26 +21,30 @@ myMQTTClient.configureEndpoint(ENDPOINT, 8883)
 myMQTTClient.configureCredentials(PATH_TO_ROOT, PATH_TO_KEY, PATH_TO_CERT)
 
 
-def generar_lectura():
+def generar_lectura(ts):
     return {
-        "heartRate": random.randint(65, 85),
-        "respiratoryRate": random.randint(12, 18),
+        "heartRate": random.randint(65, 120),
+        "respiratoryRate": random.randint(12, 35),
         "hrv": random.randint(25, 75),
         "isOccupied": random.choice([True, False]),
-        "ts": int(time.time())
+        "ts": ts
     }
 
 
 def generar_lote(cantidad=40):
     lecturas = []
+    ahora = int(time.time())
+    inicio_lote = ahora - ((cantidad - 1) * SAMPLING_SECONDS)
 
-    for _ in range(cantidad):
-        lecturas.append(generar_lectura())
+    for i in range(cantidad):
+        ts = inicio_lote + (i * SAMPLING_SECONDS)
+        lecturas.append(generar_lectura(ts))
 
     return {
         "mac": DEVICE_MAC,
         "deviceId": DEVICE_ID,
         "samplingCount": cantidad,
+        "samplingSeconds": SAMPLING_SECONDS,
         "data": lecturas
     }
 

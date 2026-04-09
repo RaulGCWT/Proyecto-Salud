@@ -17,13 +17,16 @@ app.register_blueprint(users_bp)
 def handle_devices():
     if request.method == 'POST':
         device = dict(request.json or {})
-        device_id = device.get('id') or device.get('mac')
+        mac = (device.get('mac') or '').strip().lower()
+        fallback_id = (device.get('id') or '').strip()
+        device_id = mac or fallback_id
 
         if not device_id:
             return jsonify({"error": "Device id is required"}), 400
 
         device['id'] = device_id
-        device.pop('mac', None)
+        device['mac'] = mac or fallback_id
+        device.pop('name', None)
         table_devices.put_item(Item=device)
         return jsonify(device), 201
 

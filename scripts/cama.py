@@ -24,7 +24,6 @@ def register_device(mac):
             url = f'http://{host}:5000/devices'
             requests.post(url, json={
                 "id": mac,
-                "name": f"Bed {mac[-5:]}",
                 "type": "Smart Mattress"
             }, timeout=1)
             print(f"📦 [Cama {mac}] Registrada vía {host}")

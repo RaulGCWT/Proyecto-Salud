@@ -202,23 +202,25 @@ const fetchInventory = async () => {
 const socket = io("http://localhost:5000");
 
 socket.on("sensor_update", (data) => {
+  const lastReading = data.lastReading || {};
   const incomingMac = (data.mac || '').toLowerCase();
   lastSeen.value[incomingMac] = Date.now();
   const existingBed = beds.value.find(b => b.mac.toLowerCase() === incomingMac);
 
   if (existingBed) {
     existingBed.isOnline = true;
-    existingBed.presence = data.isOccupied ? 'Occupied' : 'Empty';
+    existingBed.presence = lastReading.isOccupied ? 'Occupied' : 'Empty';
     existingBed.lastEventDate = new Date().toLocaleString();
     let currentEvents = parseInt((existingBed.eventCount || '0/0').split('/')[0]) || 0;
     existingBed.eventCount = (currentEvents + 1) + "/" + (currentEvents + 1);
   } else {
+    const fallbackId = data.deviceId || data.mac || 'Unknown';
     beds.value.push({
       mac: data.mac,
-      name: `Bed-${data.mac.slice(-5)}`,
+      name: `Bed-${fallbackId.slice(-5)}`,
       type: 'Standard',
       isOnline: true,
-      presence: data.isOccupied ? 'Occupied' : 'Empty',
+      presence: lastReading.isOccupied ? 'Occupied' : 'Empty',
       lastEventDate: new Date().toLocaleString(),
       eventCount: '1/1'
     });
@@ -230,6 +232,11 @@ const checkConnections = () => {
   const now = Date.now();
   const TIMEOUT = 4000;
   beds.value.forEach(bed => {
+    if (bed.presence === 'Occupied') {
+      bed.isOnline = true;
+      return;
+    }
+
     const bedMac = bed.mac.toLowerCase();
     const lastTimestamp = lastSeen.value[bedMac];
     if (lastTimestamp && (now - lastTimestamp > TIMEOUT)) {
