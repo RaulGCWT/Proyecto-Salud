@@ -31,7 +31,9 @@
             <th>Device (MAC)</th>
             <th>Sensor</th>
             <th>Message</th>
-            <th>Status</th>
+            <th>Read State</th>
+            <th>Severity</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -40,7 +42,20 @@
             <td><code class="mac-badge">{{ alert.mac }}</code></td>
             <td><span class="badge">{{ alert.sensor }}</span></td>
             <td>{{ alert.message }}</td>
+            <td>
+              <span :class="['state-tag', alert.status === 'READ' ? 'read' : 'pending']">
+                {{ alert.status || 'PENDING' }}
+              </span>
+            </td>
             <td><span class="level-tag critical">{{ alert.level }}</span></td>
+            <td>
+              <button
+                class="btn-mark"
+                @click="toggleAlertStatus(alert)"
+              >
+                {{ alert.status === 'READ' ? 'Mark Pending' : 'Mark Read' }}
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -75,6 +90,11 @@ const filteredAlerts = computed(() => {
   ))
 })
 
+const toggleAlertStatus = async (alert) => {
+  const nextStatus = alert.status === 'READ' ? 'PENDING' : 'READ'
+  await healthStore.setAlertStatus(alert.id, nextStatus)
+}
+
 onMounted(async () => { 
   await healthStore.fetchAlertHistory() 
 })
@@ -99,6 +119,10 @@ td { padding: 16px; border-bottom: 1px solid var(--border-color); color: var(--t
 .mac-badge { background: rgba(59, 130, 246, 0.1); padding: 4px 8px; border-radius: 4px; font-family: monospace; color: #2563eb; }
 .badge { background: #e0f2fe; color: #0369a1; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
 .level-tag.critical { color: #ef4444; font-weight: 800; }
+.state-tag { padding: 4px 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+.state-tag.pending { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+.state-tag.read { background: rgba(16, 185, 129, 0.15); color: #047857; }
+.btn-mark { border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 700; }
 .empty-state { padding: 60px; text-align: center; color: var(--text-muted); }
 .empty-icon { font-size: 3rem; margin-bottom: 10px; }
 @media (max-width: 900px) { .header-content, .filters-bar { flex-direction: column; align-items: stretch; } .search-box { width: auto; } }

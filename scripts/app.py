@@ -13,6 +13,17 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 app.register_blueprint(users_bp)
 
 
+def normalize_alert_status(value):
+    raw = str(value or '').strip().upper()
+    mapping = {
+        'PENDIENTE': 'PENDING',
+        'LEIDA': 'READ',
+        'PENDING': 'PENDING',
+        'READ': 'READ'
+    }
+    return mapping.get(raw, 'PENDING')
+
+
 @app.route('/devices', methods=['GET', 'POST'])
 def handle_devices():
     if request.method == 'POST':
@@ -60,8 +71,27 @@ def get_events():
     try:
         response = table_events.scan()
         items = response.get('Items', [])
+        for item in items:
+            item['status'] = normalize_alert_status(item.get('status'))
         items.sort(key=lambda x: float(x.get('timestamp', 0)), reverse=True)
         return jsonify(items), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/events/<event_id>/status', methods=['PUT'])
+def update_event_status(event_id):
+    try:
+        payload = request.json or {}
+        new_status = normalize_alert_status(payload.get('status'))
+
+        table_events.update_item(
+            Key={'id': event_id},
+            UpdateExpression='SET #s = :s',
+            ExpressionAttributeNames={'#s': 'status'},
+            ExpressionAttributeValues={':s': new_status}
+        )
+        return jsonify({"id": event_id, "status": new_status}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

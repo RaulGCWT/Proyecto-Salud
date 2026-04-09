@@ -19,19 +19,55 @@ export const useHealthStore = defineStore('health', {
     socket: null
   }),
   actions: {
+    normalizeAlertStatus(status) {
+      const value = String(status || '').toUpperCase()
+      if (value === 'LEIDA') return 'READ'
+      if (value === 'PENDIENTE') return 'PENDING'
+      if (value === 'READ') return 'READ'
+      return 'PENDING'
+    },
+
     async fetchAlertHistory() {
       try {
         const data = await $fetch('http://localhost:5000/events')
         this.alertHistory = data.map(event => ({
           id: event.id,
           time: new Date(parseFloat(event.timestamp) * 1000).toLocaleTimeString(),
-          sensor: (event.parameter || 'Sin Titulo').toUpperCase(),
+          sensor: (event.parameter || 'UNTITLED').toUpperCase(),
           mac: event.mac || 'N/A',
-          message: event.message || `Alerta en ${event.parameter}`,
-          level: 'Critical'
+          message: event.message || `Alert on ${event.parameter}`,
+          level: 'Critical',
+          status: this.normalizeAlertStatus(event.status)
         }))
       } catch (err) {
         console.error('Error al cargar historial de DB:', err)
+      }
+    },
+
+    async setAlertStatus(alertId, status) {
+      let previousStatus = 'PENDING'
+      try {
+        const normalized = this.normalizeAlertStatus(status)
+        const target = this.alertHistory.find(a => a.id === alertId)
+        previousStatus = target?.status || 'PENDING'
+
+        if (target) target.status = normalized
+
+        const response = await $fetch(`http://localhost:5000/events/${alertId}/status`, {
+          method: 'PUT',
+          body: { status: normalized }
+        })
+
+        if (response?.status) {
+          const saved = this.normalizeAlertStatus(response.status)
+          if (target) target.status = saved
+        }
+
+        await this.fetchAlertHistory()
+      } catch (err) {
+        const target = this.alertHistory.find(a => a.id === alertId)
+        if (target) target.status = previousStatus || 'PENDING'
+        console.error('Error actualizando estado de alerta:', err)
       }
     },
 
@@ -137,8 +173,9 @@ export const useHealthStore = defineStore('health', {
             time: new Date().toLocaleTimeString(),
             sensor: (param || 'SENSOR').toUpperCase(),
             mac: this.currentMac,
-            message: `${rule.name}: ${val} detectado`,
-            level: 'Critical'
+            message: `${rule.name}: ${val} detected`,
+            level: 'Critical',
+            status: 'PENDING'
           }
           this.alertHistory.unshift(newAlert)
           this.lastToast = newAlert

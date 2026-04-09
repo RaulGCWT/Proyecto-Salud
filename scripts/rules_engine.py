@@ -46,7 +46,8 @@ def check_rules_and_save(data):
                     'value': Decimal(str(current_value)),
                     'rule_id': rule_id,
                     'timestamp': str(now),
-                    'message': f"Alerta: {param} en {current_value}"
+                    'message': f"Alert: {param} at {current_value}",
+                    'status': 'PENDING'
                 }
                 
                 table_events.put_item(Item=event_data)
