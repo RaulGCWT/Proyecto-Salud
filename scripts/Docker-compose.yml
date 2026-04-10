@@ -39,6 +39,12 @@ services:
       - .:/app
     environment:
       - DYNAMODB_URL=http://dynamodb-local:8000
+      - USE_AWS_DYNAMODB=${USE_AWS_DYNAMODB:-false}
+      - AWS_REGION=${AWS_REGION:-eu-west-1}
+      - ALERTS_TABLE_NAME=${ALERTS_TABLE_NAME:-}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
     command: python app.py
     depends_on:
       - mqtt-broker

@@ -71,7 +71,16 @@ def on_message(client, userdata, message, socketio):
     try:
         raw_payload = message.payload.decode() if isinstance(message.payload, bytes) else message.payload
         payload = json.loads(raw_payload)
+        print(f"[DEBUG] MQTT payload received. Keys: {list(payload.keys())}")
         normalized = normalizar_payload(payload)
+        print(f"[DEBUG] Normalized: {bool(normalized)}")
+        if normalized:
+            print(
+                "[DEBUG] Readings count: "
+                f"{len(normalized.get('readings', []))}, "
+                f"mac={normalized.get('mac')}, "
+                f"deviceId={normalized.get('deviceId')}"
+            )
 
 
         if not normalized:
@@ -83,6 +92,13 @@ def on_message(client, userdata, message, socketio):
 
         # Evaluamos reglas con cada lectura del lote para no perder alertas.
         for reading in normalized["readings"]:
+            print(
+                "[DEBUG] Evaluating reading "
+                f"hr={reading.get('heartRate')} "
+                f"resp={reading.get('respiratoryRate')} "
+                f"hrv={reading.get('hrv')} "
+                f"ts={reading.get('ts')}"
+            )
             data_for_rules = {
                 "mac": normalized["mac"],
                 "deviceId": normalized["deviceId"],
