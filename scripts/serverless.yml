@@ -1,0 +1,52 @@
+service: welltech-rules
+
+frameworkVersion: "4"
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: python3.11
+  region: ${env:AWS_REGION, 'eu-west-1'}
+  stage: ${opt:stage, 'local'}
+  environment:
+    AWS_REGION: ${env:AWS_REGION, 'eu-west-1'}
+    USE_AWS_DYNAMODB: ${env:USE_AWS_DYNAMODB, 'false'}
+    USE_AWS_ALERTS_TABLE: ${env:USE_AWS_ALERTS_TABLE, 'false'}
+    RULES_TABLE_NAME: ${env:RULES_TABLE_NAME, 'MonitoringRules'}
+
+plugins:
+  - serverless-offline
+
+custom:
+  serverless-offline:
+    httpPort: 3001
+
+functions:
+  getRules:
+    handler: handler.get_rules
+    events:
+      - httpApi:
+          path: /MonitoringRules
+          method: get
+
+  createRule:
+    handler: handler.create_rule
+    events:
+      - httpApi:
+          path: /MonitoringRules
+          method: post
+
+  updateRule:
+    handler: handler.update_rule
+    events:
+      - httpApi:
+          path: /MonitoringRules/{rule_id}
+          method: put
+
+  deleteRule:
+    handler: handler.delete_rule
+    events:
+      - httpApi:
+          path: /MonitoringRules/{rule_id}
+          method: delete

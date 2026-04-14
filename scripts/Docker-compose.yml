@@ -40,6 +40,7 @@ services:
     environment:
       - DYNAMODB_URL=http://dynamodb-local:8000
       - USE_AWS_DYNAMODB=${USE_AWS_DYNAMODB:-false}
+      - USE_AWS_ALERTS_TABLE=${USE_AWS_ALERTS_TABLE:-false}
       - AWS_REGION=${AWS_REGION:-eu-west-1}
       - ALERTS_TABLE_NAME=${ALERTS_TABLE_NAME:-}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}

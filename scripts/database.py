@@ -25,7 +25,7 @@ STAFF_TABLE_NAME = os.environ.get("STAFF_TABLE_NAME", "StaffMembers")
 
 
 def _build_local_dynamodb_resource():
-    endpoint = DYNAMODB_URL or "http://dynamodb-local:8000"
+    endpoint = DYNAMODB_URL or "http://localhost:8000"
     return boto3.resource(
         "dynamodb",
         endpoint_url=endpoint,

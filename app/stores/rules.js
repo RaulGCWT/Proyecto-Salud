@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 
+const RULES_API_BASE = 'http://localhost:3001/MonitoringRules'
+
 export const useRulesStore = defineStore('rules', {
   state: () => ({
     rules: []
@@ -7,15 +9,15 @@ export const useRulesStore = defineStore('rules', {
   actions: {
     async fetchRules() {
       try {
-        const data = await $fetch('http://localhost:5000/rules')
+        const data = await $fetch(RULES_API_BASE)
         this.rules = data || []
       } catch (err) {
-        console.error("Error fetchRules:", err)
+        console.error('Error fetchRules:', err)
       }
     },
     async addRule(rule) {
       try {
-        await $fetch('http://localhost:5000/rules', {
+        await $fetch(RULES_API_BASE, {
           method: 'POST',
           body: {
             name: rule.name,
@@ -26,13 +28,12 @@ export const useRulesStore = defineStore('rules', {
         })
         await this.fetchRules()
       } catch (err) {
-        console.error("Error addRule:", err)
+        console.error('Error addRule:', err)
       }
     },
-    // NUEVA ACCIÓN: EDITAR REGLA
     async updateRule(id, rule) {
       try {
-        await $fetch(`http://localhost:5000/rules/${id}`, {
+        await $fetch(`${RULES_API_BASE}/${id}`, {
           method: 'PUT',
           body: {
             name: rule.name,
@@ -43,15 +44,15 @@ export const useRulesStore = defineStore('rules', {
         })
         await this.fetchRules()
       } catch (err) {
-        console.error("Error updateRule:", err)
+        console.error('Error updateRule:', err)
       }
     },
     async deleteRule(id) {
       try {
-        await $fetch(`http://localhost:5000/rules/${id}`, { method: 'DELETE' })
+        await $fetch(`${RULES_API_BASE}/${id}`, { method: 'DELETE' })
         await this.fetchRules()
       } catch (err) {
-        console.error("Error deleteRule:", err)
+        console.error('Error deleteRule:', err)
       }
     }
   }
