@@ -1,6 +1,17 @@
 import { defineStore } from 'pinia'
+import { useAuthStore } from './auth'
 
 const RULES_API_BASE = 'http://localhost:3001/MonitoringRules'
+
+const getOwnerId = () => {
+  const auth = useAuthStore()
+  return auth.user?.email || auth.user?.tenantKey || ''
+}
+
+const ownerHeaders = () => {
+  const ownerId = getOwnerId()
+  return ownerId ? { 'X-Owner-Id': ownerId } : {}
+}
 
 export const useRulesStore = defineStore('rules', {
   state: () => ({
@@ -9,7 +20,11 @@ export const useRulesStore = defineStore('rules', {
   actions: {
     async fetchRules() {
       try {
-        const data = await $fetch(RULES_API_BASE)
+        const ownerId = getOwnerId()
+        const data = await $fetch(RULES_API_BASE, {
+          params: ownerId ? { ownerId } : {},
+          headers: ownerHeaders()
+        })
         this.rules = data || []
       } catch (err) {
         console.error('Error fetchRules:', err)
@@ -17,9 +32,12 @@ export const useRulesStore = defineStore('rules', {
     },
     async addRule(rule) {
       try {
+        const ownerId = getOwnerId()
         await $fetch(RULES_API_BASE, {
           method: 'POST',
+          headers: ownerHeaders(),
           body: {
+            ownerId,
             name: rule.name,
             variable: rule.variable,
             operator: rule.operator,
@@ -33,9 +51,12 @@ export const useRulesStore = defineStore('rules', {
     },
     async updateRule(id, rule) {
       try {
+        const ownerId = getOwnerId()
         await $fetch(`${RULES_API_BASE}/${id}`, {
           method: 'PUT',
+          headers: ownerHeaders(),
           body: {
+            ownerId,
             name: rule.name,
             variable: rule.variable,
             operator: rule.operator,
@@ -49,7 +70,12 @@ export const useRulesStore = defineStore('rules', {
     },
     async deleteRule(id) {
       try {
-        await $fetch(`${RULES_API_BASE}/${id}`, { method: 'DELETE' })
+        const ownerId = getOwnerId()
+        await $fetch(`${RULES_API_BASE}/${id}`, {
+          method: 'DELETE',
+          params: ownerId ? { ownerId } : {},
+          headers: ownerHeaders()
+        })
         await this.fetchRules()
       } catch (err) {
         console.error('Error deleteRule:', err)

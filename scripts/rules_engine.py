@@ -56,6 +56,7 @@ def check_rules_and_save(data):
                 key = (mac, rule_id)
                 event_data = {
                     "id": str(uuid.uuid4()),
+                    "ownerId": rule.get("ownerId", ""),
                     "mac": mac,
                     "parameter": param,
                     "value": Decimal(str(current_value)),

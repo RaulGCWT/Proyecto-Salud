@@ -47,17 +47,34 @@ def _parse_body(event):
     return json.loads(raw_body)
 
 
+def _get_owner_id(event, body=None):
+    body = body or {}
+    headers = event.get("headers") or {}
+    return (
+        body.get("ownerId")
+        or (event.get("queryStringParameters") or {}).get("ownerId")
+        or headers.get("x-owner-id")
+        or headers.get("X-Owner-Id")
+        or ""
+    )
+
+
 def get_rules(event, context):
     items = table_rules.scan().get("Items", [])
+    owner_id = _get_owner_id(event)
+    if owner_id:
+        items = [item for item in items if str(item.get("ownerId") or "") == str(owner_id)]
     return _response(200, items)
 
 
 def create_rule(event, context):
     body = _parse_body(event)
+    owner_id = _get_owner_id(event, body)
     value = body.get("value", 0)
 
     rule = {
         "id": str(uuid.uuid4()),
+        "ownerId": owner_id,
         "name": body.get("name", "").strip(),
         "variable": body.get("variable", "hr"),
         "operator": body.get("operator", ">"),
@@ -66,6 +83,8 @@ def create_rule(event, context):
 
     if not rule["name"]:
         return _response(400, {"error": "Rule name is required"})
+    if not rule["ownerId"]:
+        return _response(400, {"error": "ownerId is required"})
 
     table_rules.put_item(Item=rule)
     return _response(201, rule)
@@ -77,25 +96,34 @@ def update_rule(event, context):
         return _response(400, {"error": "rule_id is required"})
 
     body = _parse_body(event)
+    owner_id = _get_owner_id(event, body)
     value = body.get("value", 0)
     name = body.get("name", "").strip()
     if not name:
         return _response(400, {"error": "Rule name is required"})
 
+    current_item = table_rules.get_item(Key={"id": rule_id}).get("Item")
+    if not current_item:
+        return _response(404, {"error": "Rule not found"})
+    if owner_id and str(current_item.get("ownerId") or "") != str(owner_id):
+        return _response(403, {"error": "Rule does not belong to this user"})
+
     response = table_rules.update_item(
         Key={"id": rule_id},
-        UpdateExpression="SET #n = :n, #v = :v, #o = :o, #val = :val",
+        UpdateExpression="SET #n = :n, #v = :v, #o = :o, #val = :val, #owner = :owner",
         ExpressionAttributeNames={
             "#n": "name",
             "#v": "variable",
             "#o": "operator",
             "#val": "value",
+            "#owner": "ownerId",
         },
         ExpressionAttributeValues={
             ":n": name,
             ":v": body.get("variable", "hr"),
             ":o": body.get("operator", ">"),
             ":val": Decimal(str(value)),
+            ":owner": owner_id or current_item.get("ownerId", ""),
         },
         ReturnValues="ALL_NEW",
     )
@@ -107,6 +135,13 @@ def delete_rule(event, context):
     rule_id = (event.get("pathParameters") or {}).get("rule_id")
     if not rule_id:
         return _response(400, {"error": "rule_id is required"})
+
+    owner_id = _get_owner_id(event)
+    current_item = table_rules.get_item(Key={"id": rule_id}).get("Item")
+    if not current_item:
+        return _response(404, {"error": "Rule not found"})
+    if owner_id and str(current_item.get("ownerId") or "") != str(owner_id):
+        return _response(403, {"error": "Rule does not belong to this user"})
 
     table_rules.delete_item(Key={"id": rule_id})
     return _response(200, {"status": "deleted", "id": rule_id})
@@ -130,9 +165,12 @@ def _normalize_alert_status(value):
 
 def get_events(event, context):
     items = table_events.scan().get("Items", [])
+    owner_id = _get_owner_id(event)
     normalized_items = []
 
     for item in items:
+        if owner_id and str(item.get("ownerId") or "") != str(owner_id):
+            continue
         normalized_item = dict(item)
         normalized_item["status"] = _normalize_alert_status(normalized_item.get("status"))
         normalized_items.append(normalized_item)
@@ -148,6 +186,13 @@ def update_event_status(event, context):
 
     body = _parse_body(event)
     new_status = _normalize_alert_status(body.get("status"))
+    owner_id = _get_owner_id(event, body)
+
+    current_item = table_events.get_item(Key={"id": event_id}).get("Item")
+    if not current_item:
+        return _response(404, {"error": "Event not found"})
+    if owner_id and str(current_item.get("ownerId") or "") != str(owner_id):
+        return _response(403, {"error": "Event does not belong to this user"})
 
     response = table_events.update_item(
         Key={"id": event_id},
@@ -162,8 +207,11 @@ def update_event_status(event, context):
 
 def clear_events(event, context):
     items = table_events.scan().get("Items", [])
+    owner_id = _get_owner_id(event)
     with table_events.batch_writer() as batch:
         for item in items:
+            if owner_id and str(item.get("ownerId") or "") != str(owner_id):
+                continue
             batch.delete_item(Key={"id": item["id"]})
 
     return _response(200, {"status": "cleared"})
