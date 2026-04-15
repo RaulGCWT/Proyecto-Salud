@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { useRulesStore } from './rules'
 import { io } from 'socket.io-client'
 
+const EVENTS_API_BASE = 'http://localhost:3001/MonitoringEvents'
+
 export const useHealthStore = defineStore('health', {
   state: () => ({
     heartRate: 0,
@@ -29,7 +31,7 @@ export const useHealthStore = defineStore('health', {
 
     async fetchAlertHistory() {
       try {
-        const data = await $fetch('http://localhost:5000/events')
+        const data = await $fetch(EVENTS_API_BASE)
         this.alertHistory = data.map(event => ({
           id: event.id,
           time: new Date(parseFloat(event.timestamp) * 1000).toLocaleTimeString(),
@@ -53,7 +55,7 @@ export const useHealthStore = defineStore('health', {
 
         if (target) target.status = normalized
 
-        const response = await $fetch(`http://localhost:5000/events/${alertId}/status`, {
+        const response = await $fetch(`${EVENTS_API_BASE}/${alertId}/status`, {
           method: 'PUT',
           body: { status: normalized }
         })
@@ -74,7 +76,7 @@ export const useHealthStore = defineStore('health', {
     async clearAllAlerts() {
       if (!confirm('Seguro que quieres borrar todas las alertas de la base de datos?')) return
       try {
-        await $fetch('http://localhost:5000/events/clear', { method: 'DELETE' })
+        await $fetch(`${EVENTS_API_BASE}/clear`, { method: 'DELETE' })
         this.alertHistory = []
       } catch (err) {
         console.error('Error al vaciar historial:', err)

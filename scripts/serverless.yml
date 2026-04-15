@@ -14,6 +14,12 @@ provider:
     USE_AWS_DYNAMODB: ${env:USE_AWS_DYNAMODB, 'false'}
     USE_AWS_ALERTS_TABLE: ${env:USE_AWS_ALERTS_TABLE, 'false'}
     RULES_TABLE_NAME: ${env:RULES_TABLE_NAME, 'MonitoringRules'}
+    ALERTS_TABLE_NAME: ${env:ALERTS_TABLE_NAME, 'DeviceEvents'}
+    DEVICES_TABLE_NAME: ${env:DEVICES_TABLE_NAME, 'Devices'}
+    STAFF_TABLE_NAME: ${env:STAFF_TABLE_NAME, 'StaffMembers'}
+    RESIDENTS_TABLE_NAME: ${env:RESIDENTS_TABLE_NAME, 'Residents'}
+    INVITES_TABLE_NAME: ${env:INVITES_TABLE_NAME, 'FamilyInvites'}
+    FAMILY_USERS_TABLE_NAME: ${env:FAMILY_USERS_TABLE_NAME, 'FamilyUsers'}
 
 plugins:
   - serverless-offline
@@ -50,3 +56,129 @@ functions:
       - httpApi:
           path: /MonitoringRules/{rule_id}
           method: delete
+
+  getEvents:
+    handler: handler.get_events
+    events:
+      - httpApi:
+          path: /MonitoringEvents
+          method: get
+
+  updateEventStatus:
+    handler: handler.update_event_status
+    events:
+      - httpApi:
+          path: /MonitoringEvents/{event_id}/status
+          method: put
+
+  clearEvents:
+    handler: handler.clear_events
+    events:
+      - httpApi:
+          path: /MonitoringEvents/clear
+          method: delete
+
+  getDevices:
+    handler: handler.get_devices
+    events:
+      - httpApi:
+          path: /MonitoringDevices
+          method: get
+
+  saveDevice:
+    handler: handler.save_device
+    events:
+      - httpApi:
+          path: /MonitoringDevices
+          method: post
+
+  updateDevice:
+    handler: handler.update_device
+    events:
+      - httpApi:
+          path: /MonitoringDevices/{device_id}
+          method: put
+
+  getStaffMembers:
+    handler: handler.get_staff_members
+    events:
+      - httpApi:
+          path: /MonitoringStaffMembers
+          method: get
+
+  saveStaffMember:
+    handler: handler.save_staff_member
+    events:
+      - httpApi:
+          path: /MonitoringStaffMembers
+          method: post
+
+  getResidents:
+    handler: handler.get_residents
+    events:
+      - httpApi:
+          path: /MonitoringResidents
+          method: get
+
+  saveResident:
+    handler: handler.save_resident
+    events:
+      - httpApi:
+          path: /MonitoringResidents
+          method: post
+
+  getFamilyUsers:
+    handler: handler.get_family_users
+    events:
+      - httpApi:
+          path: /MonitoringFamilyUsers
+          method: get
+
+  updateFamilyUser:
+    handler: handler.update_family_user
+    events:
+      - httpApi:
+          path: /MonitoringFamilyUsers/{family_user_id}
+          method: put
+
+  getInvites:
+    handler: handler.get_invites
+    events:
+      - httpApi:
+          path: /MonitoringInvites
+          method: get
+
+  createInvite:
+    handler: handler.create_invite
+    events:
+      - httpApi:
+          path: /MonitoringInvites
+          method: post
+
+  updateInviteState:
+    handler: handler.update_invite_state
+    events:
+      - httpApi:
+          path: /MonitoringInvites/{invite_id}/state
+          method: put
+
+  verifyInvite:
+    handler: handler.verify_invite
+    events:
+      - httpApi:
+          path: /MonitoringInvites/verify
+          method: get
+
+  acceptInvite:
+    handler: handler.accept_invite
+    events:
+      - httpApi:
+          path: /MonitoringInvites/accept
+          method: post
+
+  registerInvite:
+    handler: handler.register_invite
+    events:
+      - httpApi:
+          path: /MonitoringInvites/register
+          method: post

@@ -160,6 +160,8 @@ import { io } from "socket.io-client"
 import { useAuthStore } from '~/stores/auth'
 import { PERMISSIONS } from '~/utils/permissions'
 
+const DEVICES_API_BASE = 'http://localhost:3001/MonitoringDevices'
+
 const auth = useAuthStore()
 const beds = ref([])
 const filters = ref({ search: '', status: 'all', type: 'all', presence: 'all' })
@@ -172,7 +174,7 @@ const editForm = ref({ name: '', type: '' })
 // ... (fetchInventory y Socket.io se mantienen igual) ...
 const fetchInventory = async () => {
   try {
-    const data = await $fetch('http://localhost:5000/devices')
+    const data = await $fetch(DEVICES_API_BASE)
     const dbDevices = data || []
 
     dbDevices.forEach(dbDev => {
@@ -266,10 +268,9 @@ const saveChanges = async () => {
 
   if (editingBed.value) {
     try {
-      await $fetch('http://localhost:5000/devices', {
-        method: 'POST',
+      await $fetch(`${DEVICES_API_BASE}/${editingBed.value.mac}`, {
+        method: 'PUT',
         body: {
-          id: editingBed.value.mac,
           name: editForm.value.name,
           type: editForm.value.type
         }

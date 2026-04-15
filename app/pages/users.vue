@@ -334,6 +334,12 @@
 import { useAuthStore } from '~/stores/auth'
 import { PERMISSIONS } from '~/utils/permissions'
 
+const STAFF_API_BASE = 'http://localhost:3001/MonitoringStaffMembers'
+const RESIDENTS_API_BASE = 'http://localhost:3001/MonitoringResidents'
+const DEVICES_API_BASE = 'http://localhost:3001/MonitoringDevices'
+const FAMILY_USERS_API_BASE = 'http://localhost:3001/MonitoringFamilyUsers'
+const INVITES_API_BASE = 'http://localhost:3001/MonitoringInvites'
+
 const auth = useAuthStore()
 const search = ref('')
 const activeTab = ref('all')
@@ -351,12 +357,12 @@ const tabs = [
 const staffRoles = ['Call Center Admin', 'Clinical Staff', 'Technical Operator']
 const staffAreas = ['Floor 1', 'ICU', 'Recovery', 'Devices']
 
-const { data: staffData, refresh: refreshStaff } = await useFetch('http://localhost:5000/staff-members', {
+const { data: staffData, refresh: refreshStaff } = await useFetch(STAFF_API_BASE, {
   server: false,
   default: () => []
 })
 
-const { data: residentsData, refresh: refreshResidents } = await useFetch('http://localhost:5000/residents', {
+const { data: residentsData, refresh: refreshResidents } = await useFetch(RESIDENTS_API_BASE, {
   server: false,
   default: () => []
 })
@@ -364,17 +370,17 @@ const { data: residentsData, refresh: refreshResidents } = await useFetch('http:
 const staffMembers = computed(() => Array.isArray(staffData.value) ? staffData.value : [])
 const residents = computed(() => Array.isArray(residentsData.value) ? residentsData.value : [])
 
-const { data: devicesData, pending: resourcesLoading } = await useFetch('http://localhost:5000/devices', {
+const { data: devicesData, pending: resourcesLoading } = await useFetch(DEVICES_API_BASE, {
   server: false,
   default: () => []
 })
 
-const { data: familyUsersData, refresh: refreshFamilyUsers } = await useFetch('http://localhost:5000/family-users', {
+const { data: familyUsersData, refresh: refreshFamilyUsers } = await useFetch(FAMILY_USERS_API_BASE, {
   server: false,
   default: () => []
 })
 
-const { data: invitesData, refresh: refreshInvites } = await useFetch('http://localhost:5000/invites', {
+const { data: invitesData, refresh: refreshInvites } = await useFetch(INVITES_API_BASE, {
   server: false,
   default: () => []
 })
@@ -596,7 +602,7 @@ const toggleFamilyState = async (familyId) => {
   if (!familyUser) return
 
   try {
-    await $fetch(`http://localhost:5000/family-users/${familyUser.id}`, {
+    await $fetch(`${FAMILY_USERS_API_BASE}/${familyUser.id}`, {
       method: 'PUT',
       body: {
         name: familyUser.name,
@@ -638,7 +644,7 @@ const saveFamilyInvite = async () => {
   }
 
   try {
-    const invitation = await $fetch('http://localhost:5000/invites', {
+    const invitation = await $fetch(INVITES_API_BASE, {
       method: 'POST',
       body: payload
     })
@@ -673,7 +679,7 @@ const saveFamilyUser = async () => {
   }
 
   try {
-    await $fetch(`http://localhost:5000/family-users/${familyUserForm.value.id}`, {
+    await $fetch(`${FAMILY_USERS_API_BASE}/${familyUserForm.value.id}`, {
       method: 'PUT',
       body: payload
     })
@@ -692,7 +698,7 @@ const saveStaffMember = async () => {
   }
   if (!staffForm.value.name || !staffForm.value.email) return
   try {
-    await $fetch('http://localhost:5000/staff-members', {
+    await $fetch(STAFF_API_BASE, {
       method: 'POST',
       body: { ...staffForm.value }
     })
@@ -711,7 +717,7 @@ const saveResidentRecord = async () => {
   }
   if (!residentForm.value.name) return
   try {
-    await $fetch('http://localhost:5000/residents', {
+    await $fetch(RESIDENTS_API_BASE, {
       method: 'POST',
       body: { ...residentForm.value }
     })
@@ -746,7 +752,7 @@ const copyInviteLink = async (acceptUrl) => {
 
 const updateInviteState = async (inviteId, state) => {
   try {
-    await $fetch(`http://localhost:5000/invites/${inviteId}/state`, {
+    await $fetch(`${INVITES_API_BASE}/${inviteId}/state`, {
       method: 'PUT',
       body: { state }
     })

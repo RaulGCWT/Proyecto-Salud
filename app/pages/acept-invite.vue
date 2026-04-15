@@ -80,9 +80,11 @@ const submitting = ref(false)
 const errorMessage = ref('')
 const form = ref({ name: '', email: '', password: '' })
 
+const INVITES_API_BASE = 'http://localhost:3001/MonitoringInvites'
+
 onMounted(async () => {
   try {
-    invitation.value = await $fetch(`http://localhost:5000/invites/verify?token=${token}`)
+    invitation.value = await $fetch(`${INVITES_API_BASE}/verify?token=${token}`)
     form.value.name = invitation.value?.name || ''
     form.value.email = invitation.value?.email || ''
   } catch (error) {
@@ -96,7 +98,7 @@ const completeRegistration = async () => {
   errorMessage.value = ''
   submitting.value = true
   try {
-    invitation.value = await $fetch('http://localhost:5000/invites/register', {
+    invitation.value = await $fetch(`${INVITES_API_BASE}/register`, {
       method: 'POST',
       body: {
         token,
