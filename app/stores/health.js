@@ -2,16 +2,22 @@ import { defineStore } from 'pinia'
 import { useRulesStore } from './rules'
 import { useAuthStore } from './auth'
 import { io } from 'socket.io-client'
+import { getScopedOwnerId } from '~/utils/permissions'
 
 const EVENTS_API_BASE = 'http://localhost:3001/MonitoringEvents'
 
-const getOwnerId = () => {
+const getUserOwnerId = () => {
   const auth = useAuthStore()
   return auth.user?.email || auth.user?.tenantKey || ''
 }
 
-const ownerHeaders = () => {
-  const ownerId = getOwnerId()
+const getScopeOwnerId = () => {
+  const auth = useAuthStore()
+  return getScopedOwnerId(auth.user || {})
+}
+
+const scopedHeaders = () => {
+  const ownerId = getScopeOwnerId()
   return ownerId ? { 'X-Owner-Id': ownerId } : {}
 }
 
@@ -42,10 +48,10 @@ export const useHealthStore = defineStore('health', {
 
     async fetchAlertHistory() {
       try {
-        const ownerId = getOwnerId()
+        const ownerId = getScopeOwnerId()
         const data = await $fetch(EVENTS_API_BASE, {
           params: ownerId ? { ownerId } : {},
-          headers: ownerHeaders()
+          headers: scopedHeaders()
         })
         this.alertHistory = data.map(event => ({
           id: event.id,
@@ -67,13 +73,13 @@ export const useHealthStore = defineStore('health', {
         const normalized = this.normalizeAlertStatus(status)
         const target = this.alertHistory.find(a => a.id === alertId)
         previousStatus = target?.status || 'PENDING'
-        const ownerId = getOwnerId()
+        const ownerId = getUserOwnerId()
 
         if (target) target.status = normalized
 
         const response = await $fetch(`${EVENTS_API_BASE}/${alertId}/status`, {
           method: 'PUT',
-          headers: ownerHeaders(),
+          headers: scopedHeaders(),
           body: {
             status: normalized,
             ownerId
@@ -96,11 +102,11 @@ export const useHealthStore = defineStore('health', {
     async clearAllAlerts() {
       if (!confirm('Seguro que quieres borrar todas las alertas de la base de datos?')) return
       try {
-        const ownerId = getOwnerId()
+        const ownerId = getScopeOwnerId()
         await $fetch(`${EVENTS_API_BASE}/clear`, {
           method: 'DELETE',
           params: ownerId ? { ownerId } : {},
-          headers: ownerHeaders()
+          headers: scopedHeaders()
         })
         this.alertHistory = []
       } catch (err) {
@@ -195,7 +201,7 @@ export const useHealthStore = defineStore('health', {
         else if (condition === '==' || condition === '=') isTriggered = val == threshold
 
         if (isTriggered && val > 0) {
-          const ownerId = getOwnerId()
+          const ownerId = getUserOwnerId()
           const newAlert = {
             id: Date.now(),
             time: new Date().toLocaleTimeString(),

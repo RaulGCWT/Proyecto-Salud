@@ -62,6 +62,56 @@ export function normalizeGroupName(group) {
   return String(group || '').trim().toLowerCase()
 }
 
+export function getPrimaryGroup(groups = []) {
+  if (!Array.isArray(groups) || !groups.length) return ''
+  return normalizeGroupName(groups[0])
+}
+
+export function buildAccessContext(user = {}) {
+  return {
+    role: normalizeGroupName(user.role || user.primaryGroup || getPrimaryGroup(user.groups)),
+    tenantKey: String(user.tenantKey || ''),
+    residenceId: String(user.residenceId || ''),
+    area: String(user.area || ''),
+    residentId: String(user.residentId || ''),
+    deviceIds: Array.isArray(user.deviceIds) ? user.deviceIds : []
+  }
+}
+
+export function isOwnerScopedRole(role) {
+  return new Set(['family', 'resident']).has(normalizeGroupName(role))
+}
+
+export function getScopedOwnerId(user = {}) {
+  const context = buildAccessContext(user)
+  if (!isOwnerScopedRole(context.role)) return ''
+  return String(user.email || user.tenantKey || '')
+}
+
+export function filterDevicesByAccessContext(devices = [], context = {}) {
+  const normalizedContext = buildAccessContext(context)
+  const role = normalizedContext.role
+  const staffRoles = new Set(['admin', 'technician', 'clinician', 'members'])
+  if (staffRoles.has(role)) {
+    return devices
+  }
+
+  const allowedDeviceIds = new Set(
+    (normalizedContext.deviceIds || [])
+      .map(deviceId => String(deviceId || '').trim().toLowerCase())
+      .filter(Boolean)
+  )
+
+  if (!allowedDeviceIds.size) {
+    return []
+  }
+
+  return devices.filter((device) => {
+    const deviceId = String(device.deviceId || device.id || device.mac || '').trim().toLowerCase()
+    return allowedDeviceIds.has(deviceId)
+  })
+}
+
 /**
  * Consolida todos los permisos de múltiples grupos en una sola lista sin duplicados
  */

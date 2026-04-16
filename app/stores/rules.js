@@ -1,15 +1,21 @@
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
+import { getScopedOwnerId } from '~/utils/permissions'
 
 const RULES_API_BASE = 'http://localhost:3001/MonitoringRules'
 
-const getOwnerId = () => {
+const getUserOwnerId = () => {
   const auth = useAuthStore()
   return auth.user?.email || auth.user?.tenantKey || ''
 }
 
-const ownerHeaders = () => {
-  const ownerId = getOwnerId()
+const getScopeOwnerId = () => {
+  const auth = useAuthStore()
+  return getScopedOwnerId(auth.user || {})
+}
+
+const scopedHeaders = () => {
+  const ownerId = getScopeOwnerId()
   return ownerId ? { 'X-Owner-Id': ownerId } : {}
 }
 
@@ -20,10 +26,10 @@ export const useRulesStore = defineStore('rules', {
   actions: {
     async fetchRules() {
       try {
-        const ownerId = getOwnerId()
+        const ownerId = getScopeOwnerId()
         const data = await $fetch(RULES_API_BASE, {
           params: ownerId ? { ownerId } : {},
-          headers: ownerHeaders()
+          headers: scopedHeaders()
         })
         this.rules = data || []
       } catch (err) {
@@ -32,10 +38,10 @@ export const useRulesStore = defineStore('rules', {
     },
     async addRule(rule) {
       try {
-        const ownerId = getOwnerId()
+        const ownerId = getUserOwnerId()
         await $fetch(RULES_API_BASE, {
           method: 'POST',
-          headers: ownerHeaders(),
+          headers: { ...(getScopeOwnerId() ? { 'X-Owner-Id': getScopeOwnerId() } : {}) },
           body: {
             ownerId,
             name: rule.name,
@@ -51,10 +57,10 @@ export const useRulesStore = defineStore('rules', {
     },
     async updateRule(id, rule) {
       try {
-        const ownerId = getOwnerId()
+        const ownerId = getUserOwnerId()
         await $fetch(`${RULES_API_BASE}/${id}`, {
           method: 'PUT',
-          headers: ownerHeaders(),
+          headers: { ...(getScopeOwnerId() ? { 'X-Owner-Id': getScopeOwnerId() } : {}) },
           body: {
             ownerId,
             name: rule.name,
@@ -70,11 +76,11 @@ export const useRulesStore = defineStore('rules', {
     },
     async deleteRule(id) {
       try {
-        const ownerId = getOwnerId()
+        const ownerId = getScopeOwnerId()
         await $fetch(`${RULES_API_BASE}/${id}`, {
           method: 'DELETE',
           params: ownerId ? { ownerId } : {},
-          headers: ownerHeaders()
+          headers: scopedHeaders()
         })
         await this.fetchRules()
       } catch (err) {

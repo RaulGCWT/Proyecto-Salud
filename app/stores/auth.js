@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { jwtDecode } from 'jwt-decode'
 // 1. Importamos el helper de permisos
-import { resolvePermissionsFromGroups } from '~/utils/permissions'
+import { buildAccessContext, getPrimaryGroup, resolvePermissionsFromGroups } from '~/utils/permissions'
 
 export const useAuthStore = defineStore('auth', {
   state: () => {
@@ -14,12 +14,21 @@ export const useAuthStore = defineStore('auth', {
       try {
         const decoded = jwtDecode(idToken)
         const groups = decoded['cognito:groups'] || []
+        const primaryGroup = getPrimaryGroup(groups)
         
         userData = {
           name: decoded.name || 'Usuario',
           email: decoded.email,
           groups: groups,
-          tenantKey: decoded['custom:tenant_key'] || ''
+          primaryGroup,
+          role: primaryGroup,
+          tenantKey: decoded['custom:tenant_key'] || '',
+          residenceId: decoded['custom:residence_id'] || '',
+          area: decoded['custom:area'] || '',
+          residentId: decoded['custom:resident_id'] || '',
+          deviceIds: decoded['custom:device_ids']
+            ? String(decoded['custom:device_ids']).split(',').map(item => item.trim()).filter(Boolean)
+            : []
         }
         
         // Traducimos los grupos guardados en la cookie a permisos reales
@@ -71,11 +80,20 @@ export const useAuthStore = defineStore('auth', {
         
         // 3. Extraer grupos y asignar permisos en el Login
         const groups = decodedId['cognito:groups'] || []
+        const primaryGroup = getPrimaryGroup(groups)
         this.user = { 
           name: decodedId.name || 'Usuario',
           email: decodedId.email,
           groups: groups,
-          tenantKey: decodedId['custom:tenant_key'] || ''
+          primaryGroup,
+          role: primaryGroup,
+          tenantKey: decodedId['custom:tenant_key'] || '',
+          residenceId: decodedId['custom:residence_id'] || '',
+          area: decodedId['custom:area'] || '',
+          residentId: decodedId['custom:resident_id'] || '',
+          deviceIds: decodedId['custom:device_ids']
+            ? String(decodedId['custom:device_ids']).split(',').map(item => item.trim()).filter(Boolean)
+            : []
         }
         
         // Convertimos grupos a permisos usando el helper
@@ -107,6 +125,10 @@ export const useAuthStore = defineStore('auth', {
       useCookie('refresh_token').value = null
       
       navigateTo('/login')
+    },
+
+    getAccessContext() {
+      return buildAccessContext(this.user || {})
     }
   }
 })

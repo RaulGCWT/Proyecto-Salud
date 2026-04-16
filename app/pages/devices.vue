@@ -10,21 +10,21 @@
         <span class="icon">🛏️</span>
         <div class="info">
           <label>Total Devices</label>
-          <div class="value">{{ beds.length }}</div>
+          <div class="value">{{ accessibleBeds.length }}</div>
         </div>
       </div>
       <div class="summary-card shadow-sm">
         <span class="icon text-success">●</span>
         <div class="info">
           <label>Connected</label>
-          <div class="value">{{ beds.filter(b => b.isOnline).length }}</div>
+          <div class="value">{{ accessibleBeds.filter(b => b.isOnline).length }}</div>
         </div>
       </div>
       <div class="summary-card shadow-sm">
         <span class="icon text-danger">●</span>
         <div class="info">
           <label>Disconnected</label>
-          <div class="value">{{ beds.filter(b => !b.isOnline).length }}</div>
+          <div class="value">{{ accessibleBeds.filter(b => !b.isOnline).length }}</div>
         </div>
       </div>
     </section>
@@ -96,7 +96,7 @@
 
     <h3 class="section-title mb-3">Connection status per device</h3>
     <div class="device-status-grid">
-      <div v-for="bed in beds" :key="'card-' + bed.mac" class="styled-container p-4 shadow-sm">
+      <div v-for="bed in accessibleBeds" :key="'card-' + bed.mac" class="styled-container p-4 shadow-sm">
         <div class="card-status-header">
           <div class="dot-title">
             <span :class="['dot', bed.isOnline ? 'bg-success' : 'bg-danger']"></span>
@@ -158,7 +158,7 @@ import { ref, computed, onMounted } from 'vue'
 import { io } from "socket.io-client"
 // CAMBIO 3: Importar Store y Permisos
 import { useAuthStore } from '~/stores/auth'
-import { PERMISSIONS } from '~/utils/permissions'
+import { filterDevicesByAccessContext, PERMISSIONS } from '~/utils/permissions'
 
 const DEVICES_API_BASE = 'http://localhost:3001/MonitoringDevices'
 
@@ -166,10 +166,12 @@ const auth = useAuthStore()
 const beds = ref([])
 const filters = ref({ search: '', status: 'all', type: 'all', presence: 'all' })
 const lastSeen = ref({})
+const accessContext = computed(() => auth.getAccessContext())
 
 const isEditing = ref(false)
 const editingBed = ref(null)
 const editForm = ref({ name: '', type: '' })
+const accessibleBeds = computed(() => filterDevicesByAccessContext(beds.value, accessContext.value))
 
 // ... (fetchInventory y Socket.io se mantienen igual) ...
 const fetchInventory = async () => {
@@ -285,7 +287,7 @@ const saveChanges = async () => {
 }
 
 const filteredBeds = computed(() => {
-  return beds.value.filter(bed => {
+  return accessibleBeds.value.filter(bed => {
     const matchesSearch = bed.name.toLowerCase().includes(filters.value.search.toLowerCase()) || 
                           bed.mac.toLowerCase().includes(filters.value.search.toLowerCase());
     const matchesStatus = filters.value.status === 'all' || (filters.value.status === 'online' ? bed.isOnline : !bed.isOnline);
