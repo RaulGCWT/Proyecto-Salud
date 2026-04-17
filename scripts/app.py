@@ -1,111 +1,21 @@
-from flask import Flask, request, jsonify
+from flask import Flask
 from flask_socketio import SocketIO
 from flask_cors import CORS
-import uuid
-from database import init_db, table_rules, table_events, table_devices, decimal_default
+from database import init_db, decimal_default
 from mqtt_handler import start_mqtt
+from routes.devices import devices_bp
+from routes.events import events_bp
+from routes.rules import rules_bp
 from routes.users import users_bp
 
 app = Flask(__name__)
 app.json_provider_class.default = staticmethod(decimal_default)
 CORS(app, resources={r"/*": {"origins": "*"}})
 socketio = SocketIO(app, cors_allowed_origins="*")
+app.register_blueprint(devices_bp)
+app.register_blueprint(events_bp)
+app.register_blueprint(rules_bp)
 app.register_blueprint(users_bp)
-
-
-def normalize_alert_status(value):
-    raw = str(value or '').strip().upper()
-    mapping = {
-        'PENDIENTE': 'PENDING',
-        'LEIDA': 'READ',
-        'PENDING': 'PENDING',
-        'READ': 'READ'
-    }
-    return mapping.get(raw, 'PENDING')
-
-
-@app.route('/devices', methods=['GET', 'POST'])
-def handle_devices():
-    if request.method == 'POST':
-        device = dict(request.json or {})
-        mac = (device.get('mac') or '').strip().lower()
-        fallback_id = (device.get('id') or '').strip()
-        device_id = mac or fallback_id
-
-        if not device_id:
-            return jsonify({"error": "Device id is required"}), 400
-
-        device['id'] = device_id
-        device['mac'] = mac or fallback_id
-        device.pop('name', None)
-        table_devices.put_item(Item=device)
-        return jsonify(device), 201
-
-    response = table_devices.scan()
-    return jsonify(response.get('Items', [])), 200
-
-@app.route('/rules', methods=['GET', 'POST'])
-def handle_rules():
-    if request.method == 'POST':
-        rule = request.json
-        rule['id'] = str(uuid.uuid4())
-        table_rules.put_item(Item=rule)
-        return jsonify(rule), 201
-    return jsonify(table_rules.scan().get('Items', []))
-
-
-@app.route('/rules/<rule_id>', methods=['PUT', 'DELETE'])
-def handle_rule_operations(rule_id):
-    if request.method == 'PUT':
-        new_data = request.json
-        new_data['id'] = rule_id
-        table_rules.put_item(Item=new_data)
-        return jsonify(new_data), 200
-    if request.method == 'DELETE':
-        table_rules.delete_item(Key={'id': rule_id})
-        return jsonify({"status": "deleted"}), 200
-
-
-@app.route('/events', methods=['GET'])
-def get_events():
-    try:
-        response = table_events.scan()
-        items = response.get('Items', [])
-        for item in items:
-            item['status'] = normalize_alert_status(item.get('status'))
-        items.sort(key=lambda x: float(x.get('timestamp', 0)), reverse=True)
-        return jsonify(items), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/events/<event_id>/status', methods=['PUT'])
-def update_event_status(event_id):
-    try:
-        payload = request.json or {}
-        new_status = normalize_alert_status(payload.get('status'))
-
-        table_events.update_item(
-            Key={'id': event_id},
-            UpdateExpression='SET #s = :s',
-            ExpressionAttributeNames={'#s': 'status'},
-            ExpressionAttributeValues={':s': new_status}
-        )
-        return jsonify({"id": event_id, "status": new_status}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route('/events/clear', methods=['DELETE'])
-def clear_all_events():
-    try:
-        items = table_events.scan().get('Items', [])
-        with table_events.batch_writer() as batch:
-            for item in items:
-                batch.delete_item(Key={'id': item['id']})
-        return jsonify({"status": "cleared"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     init_db()
