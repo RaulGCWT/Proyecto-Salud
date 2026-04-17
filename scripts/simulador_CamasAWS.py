@@ -12,7 +12,7 @@ PATH_TO_KEY = "certs/cama01-private.pem.key"
 PATH_TO_ROOT = "certs/cama01-AmazonRootCA1.pem"
 TOPIC = "residencia/camas/01/datos"
 DEVICE_ID = "Bed-01"
-DEVICE_MAC = "52:54:00:ab:cd:ea"
+DEVICE_MAC = "52:54:00:ab:cd:ok"
 SAMPLING_SECONDS = 10
 
 

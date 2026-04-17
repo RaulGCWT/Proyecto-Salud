@@ -173,10 +173,23 @@ const editingBed = ref(null)
 const editForm = ref({ name: '', type: '' })
 const accessibleBeds = computed(() => filterDevicesByAccessContext(beds.value, accessContext.value))
 
+const devicesHeaders = computed(() => ({
+  ...(auth.user?.role ? { 'X-Role': auth.user.role } : {}),
+  ...(auth.user?.residenceId ? { 'X-Residence-Id': auth.user.residenceId } : {}),
+  ...(auth.user?.area ? { 'X-Area': auth.user.area } : {}),
+  ...(auth.user?.residentId ? { 'X-Resident-Id': auth.user.residentId } : {}),
+  ...(Array.isArray(auth.user?.deviceIds) && auth.user.deviceIds.length
+    ? { 'X-Device-Ids': auth.user.deviceIds.join(',') }
+    : {}),
+  ...(auth.user?.email ? { 'X-Owner-Id': auth.user.email } : {})
+}))
+
 // ... (fetchInventory y Socket.io se mantienen igual) ...
 const fetchInventory = async () => {
   try {
-    const data = await $fetch(DEVICES_API_BASE)
+    const data = await $fetch(DEVICES_API_BASE, {
+      headers: devicesHeaders.value
+    })
     const dbDevices = data || []
 
     dbDevices.forEach(dbDev => {
@@ -186,11 +199,21 @@ const fetchInventory = async () => {
       if (existing) {
         existing.name = dbDev.name || existing.name
         existing.type = dbDev.type || existing.type
+        existing.ownerId = dbDev.ownerId || existing.ownerId || ''
+        existing.tenantKey = dbDev.tenantKey || existing.tenantKey || ''
+        existing.residenceId = dbDev.residenceId || existing.residenceId || ''
+        existing.area = dbDev.area || existing.area || ''
+        existing.residentId = dbDev.residentId || existing.residentId || ''
       } else {
         beds.value.push({
           mac: dbDev.mac || dbDev.id,
           name: dbDev.name || `Bed-${(dbDev.mac || dbDev.id).slice(-5)}`,
           type: dbDev.type || 'Standard',
+          ownerId: dbDev.ownerId || '',
+          tenantKey: dbDev.tenantKey || '',
+          residenceId: dbDev.residenceId || '',
+          area: dbDev.area || '',
+          residentId: dbDev.residentId || '',
           isOnline: false,
           presence: 'Empty',
           lastEventDate: 'Never',
@@ -272,9 +295,15 @@ const saveChanges = async () => {
     try {
       await $fetch(`${DEVICES_API_BASE}/${editingBed.value.mac}`, {
         method: 'PUT',
+        headers: devicesHeaders.value,
         body: {
           name: editForm.value.name,
-          type: editForm.value.type
+          type: editForm.value.type,
+          ownerId: auth.user?.email || '',
+          tenantKey: auth.user?.tenantKey || '',
+          residenceId: auth.user?.residenceId || '',
+          area: auth.user?.area || '',
+          residentId: auth.user?.residentId || ''
         }
       });
       editingBed.value.name = editForm.value.name
