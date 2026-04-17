@@ -12,5 +12,5 @@ COPY . .
 # Exponemos el puerto del backend (solo relevante para el servicio backend)
 EXPOSE 5000
 
-# Comando por defecto (se sobrescribe en el docker-compose para cada servicio)
-CMD ["python", "app.py"]
+# Ejecutamos la aplicación real directamente desde el paquete `src`.
+CMD ["python", "-m", "src.app"]

@@ -357,12 +357,12 @@ const tabs = [
 const staffRoles = ['Call Center Admin', 'Clinical Staff', 'Technical Operator']
 const staffAreas = ['Floor 1', 'ICU', 'Recovery', 'Devices']
 
-const { data: staffData, refresh: refreshStaff } = await useFetch(STAFF_API_BASE, {
+const { data: staffData, refresh: refreshStaff } = useFetch(STAFF_API_BASE, {
   server: false,
   default: () => []
 })
 
-const { data: residentsData, refresh: refreshResidents } = await useFetch(RESIDENTS_API_BASE, {
+const { data: residentsData, refresh: refreshResidents } = useFetch(RESIDENTS_API_BASE, {
   server: false,
   default: () => []
 })
@@ -370,17 +370,17 @@ const { data: residentsData, refresh: refreshResidents } = await useFetch(RESIDE
 const staffMembers = computed(() => Array.isArray(staffData.value) ? staffData.value : [])
 const residents = computed(() => Array.isArray(residentsData.value) ? residentsData.value : [])
 
-const { data: devicesData, pending: resourcesLoading } = await useFetch(DEVICES_API_BASE, {
+const { data: devicesData, pending: resourcesLoading } = useFetch(DEVICES_API_BASE, {
   server: false,
   default: () => []
 })
 
-const { data: familyUsersData, refresh: refreshFamilyUsers } = await useFetch(FAMILY_USERS_API_BASE, {
+const { data: familyUsersData, refresh: refreshFamilyUsers } = useFetch(FAMILY_USERS_API_BASE, {
   server: false,
   default: () => []
 })
 
-const { data: invitesData, refresh: refreshInvites } = await useFetch(INVITES_API_BASE, {
+const { data: invitesData, refresh: refreshInvites } = useFetch(INVITES_API_BASE, {
   server: false,
   default: () => []
 })
@@ -721,9 +721,11 @@ const saveResidentRecord = async () => {
       method: 'POST',
       body: { ...residentForm.value }
     })
-    await refreshResidents()
-    await refreshFamilyUsers()
-    await refreshInvites()
+    await Promise.all([
+      refreshResidents(),
+      refreshFamilyUsers(),
+      refreshInvites()
+    ])
     closeModal()
   } catch (error) {
     console.error('Error saving resident:', error)

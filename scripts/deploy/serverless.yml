@@ -4,6 +4,11 @@ frameworkVersion: "4"
 
 useDotenv: true
 
+package:
+  patterns:
+    - ../src/**
+    - handler.py
+
 provider:
   name: aws
   runtime: python3.11

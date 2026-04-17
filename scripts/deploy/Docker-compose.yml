@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # 1. Base de Datos DynamoDB Local
   dynamodb-local:
     image: amazon/dynamodb-local:latest
     container_name: dynamodb_welltech
@@ -9,7 +8,6 @@ services:
       - "8000:8000"
     command: "-jar DynamoDBLocal.jar -sharedDb"
 
-  # 2. Interfaz Gráfica para DynamoDB
   dynamodb-admin:
     image: aaronshaf/dynamodb-admin
     container_name: dynamodb_admin_welltech
@@ -20,23 +18,23 @@ services:
     depends_on:
       - dynamodb-local
 
-  # 3. Broker MQTT (Mosquitto)
   mqtt-broker:
     image: eclipse-mosquitto:latest
     container_name: mqtt_welltech
     ports:
       - "1883:1883"
     volumes:
-      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - ../config/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
 
-  # 4. Backend API (Flask + SocketIO)
   backend:
-    build: .
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
     container_name: backend_welltech
     ports:
       - "5000:5000"
     volumes:
-      - .:/app
+      - ..:/app
     environment:
       - DYNAMODB_URL=http://dynamodb-local:8000
       - USE_AWS_DYNAMODB=${USE_AWS_DYNAMODB:-false}
@@ -46,22 +44,7 @@ services:
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-}
       - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
-    command: python app.py
+    command: python -m src.app
     depends_on:
       - mqtt-broker
       - dynamodb-local
-
-  # 5. Simulador de Cama (Se levanta automáticamente)
-  cama-simulador:
-    build: .
-    container_name: cama_simulada_1
-    volumes:
-      - .:/app
-    environment:
-      - MQTT_BROKER=mqtt-broker
-      - BACKEND_URL=http://backend:5000
-    # Usamos -u para ver los logs inmediatamente en la consola de Docker
-    command: python -u cama.py
-    depends_on:
-      - mqtt-broker
-      - backend
