@@ -41,7 +41,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
 // 1. Importamos la lista global de items de navegación con sus permisos
-import { APP_NAV_ITEMS } from '~/utils/permissions'
+import { APP_NAV_ITEMS } from '~/utils/navigation'
 
 const auth = useAuthStore()
 const isDark = ref(false)

@@ -1,6 +1,6 @@
 import { useAuthStore } from '~/stores/auth'
 // Importamos la lista de rutas y la función de redirección
-import { APP_NAV_ITEMS, getDefaultRouteForPermissions } from '~/utils/permissions'
+import { APP_NAV_ITEMS, getDefaultRouteForPermissions } from '~/utils/navigation'
 
 export default defineNuxtRouteMiddleware((to, from) => {
   const auth = useAuthStore()

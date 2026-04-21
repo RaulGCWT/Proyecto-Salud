@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { buildAccessContext } from '~/utils/permissions'
+import { buildAccessContext } from '~/utils/accessContext'
 import {
   getTokenCookieConfig,
   getRefreshTokenCookieConfig,

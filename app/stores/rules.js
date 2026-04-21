@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
-import { getScopedOwnerId } from '~/utils/permissions'
+import { getScopedOwnerId } from '~/utils/accessContext'
 
 const RULES_API_BASE = 'http://localhost:3001/MonitoringRules'
 

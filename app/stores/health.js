@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { useRulesStore } from './rules'
 import { useAuthStore } from './auth'
-import { getScopedOwnerId } from '~/utils/permissions'
+import { getScopedOwnerId } from '~/utils/accessContext'
 import { normalizeAlertStatus } from '~/utils/healthData'
 
 const EVENTS_API_BASE = 'http://localhost:3001/MonitoringEvents'

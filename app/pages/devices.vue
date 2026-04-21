@@ -158,7 +158,8 @@ import { ref, computed, onMounted } from 'vue'
 import { io } from "socket.io-client"
 // CAMBIO 3: Importar Store y Permisos
 import { useAuthStore } from '~/stores/auth'
-import { filterDevicesByAccessContext, PERMISSIONS } from '~/utils/permissions'
+import { PERMISSIONS } from '~/utils/permissions'
+import { filterDevicesByAccessContext } from '~/utils/accessContext'
 
 const DEVICES_API_BASE = 'http://localhost:3001/MonitoringDevices'
 
