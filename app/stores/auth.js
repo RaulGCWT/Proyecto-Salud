@@ -24,6 +24,29 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
+    updateTokens(tokens = {}) {
+      if (tokens.access_token) {
+        this.accessToken = tokens.access_token
+        useCookie('access_token', getTokenCookieConfig(tokens.access_token)).value = tokens.access_token
+      }
+
+      if (tokens.id_token) {
+        this.idToken = tokens.id_token
+        useCookie('id_token', getTokenCookieConfig(tokens.id_token)).value = tokens.id_token
+
+        const authState = resolveAuthStateFromIdToken(tokens.id_token)
+        this.user = authState.user
+        this.permissions = authState.permissions
+      }
+
+      if (tokens.refresh_token) {
+        this.refreshToken = tokens.refresh_token
+        useCookie('refresh_token', getRefreshTokenCookieConfig()).value = tokens.refresh_token
+      }
+
+      this.isAuthenticated = !!this.accessToken
+    },
+
     async login(username, password) {
       try {
         const response = await $fetch('https://dev.api.welltechelectronics.com/auth-microservice/login', {
@@ -48,19 +71,11 @@ export const useAuthStore = defineStore('auth', {
           throw new Error('No se pudo construir la sesion de usuario')
         }
 
-        this.accessToken = data.access_token
-        this.idToken = data.id_token
-        this.refreshToken = data.refresh_token || null
-        this.user = authState.user
-        this.permissions = authState.permissions
-        this.isAuthenticated = true
-
-        useCookie('access_token', getTokenCookieConfig(data.access_token)).value = data.access_token
-        useCookie('id_token', getTokenCookieConfig(data.id_token)).value = data.id_token
-
-        if (data.refresh_token) {
-          useCookie('refresh_token', getRefreshTokenCookieConfig()).value = data.refresh_token
-        }
+        this.updateTokens({
+          access_token: data.access_token,
+          id_token: data.id_token,
+          refresh_token: data.refresh_token || null
+        })
       } catch (error) {
         console.error('Login Error:', error)
         throw error

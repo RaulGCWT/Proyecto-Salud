@@ -1,40 +1,75 @@
-  export const useApi = () => {
+const API_BASE_URL = 'https://dev.api.welltechelectronics.com'
+const APP_TENANT = 'f8489cfd-1205-47ac-bad3-8e0a501be570'
+
+function buildRequestHeaders(authToken = null) {
+  const headers = {
+    'App-Tenant': APP_TENANT
+  }
+
+  if (authToken) {
+    headers.Authorization = `Bearer ${authToken}`
+  }
+
+  return headers
+}
+
+async function refreshSession(auth) {
+  if (!auth.refreshToken) return null
+
+  const response = await $fetch(`${API_BASE_URL}/auth-microservice/refresh-token`, {
+    method: 'POST',
+    headers: buildRequestHeaders(),
+    body: { refreshToken: auth.refreshToken }
+  })
+
+  const data = response.data || response
+
+  if (data?.access_token) {
+    auth.updateTokens({
+      access_token: data.access_token,
+      id_token: data.id_token || null,
+      refresh_token: data.refresh_token || auth.refreshToken
+    })
+  }
+
+  return data
+}
+
+export const useApi = () => {
   const auth = useAuthStore()
 
   return $fetch.create({
-    baseURL: 'https://dev.api.welltechelectronics.com',
+    baseURL: API_BASE_URL,
 
     async onRequest({ options }) {
-      options.headers = options.headers || {}
-      options.headers['App-Tenant'] = 'f8489cfd-1205-47ac-bad3-8e0a501be570'
-      
-      if (auth.accessToken) {
-        options.headers['Authorization'] = `Bearer ${auth.accessToken}`
+      const headers = buildRequestHeaders(auth.accessToken)
+      options.headers = {
+        ...(options.headers || {}),
+        ...headers
       }
     },
 
     async onResponseError({ response, options }) {
-      // SI LA API DA ERROR 401 (Token caducado)
-      if (response.status === 401 && auth.refreshToken) {
-        try {
-          // Intentamos el refresco
-          const data = await $fetch(`${this.baseURL}/auth-microservice/refresh-token`, {
-            method: 'POST',
-            headers: { 'App-Tenant': 'f8489cfd-1205-47ac-bad3-8e0a501be570' },
-            body: { refreshToken: auth.refreshToken }
-          })
+      if (response.status !== 401 || !auth.refreshToken) {
+        return
+      }
 
-          // Guardamos los nuevos tokens (esto actualiza las cookies automáticamente)
-          auth.updateTokens(data)
+      try {
+        const data = await refreshSession(auth)
 
-          // Reintentamos la petición original con el nuevo token
-          options.headers['Authorization'] = `Bearer ${data.access_token}`
-          return $fetch(response.url, options)
-
-        } catch (err) {
-          // Si el refresh también falla, limpiamos y al login
+        if (!data?.access_token) {
           auth.logout()
+          return
         }
+
+        options.headers = {
+          ...(options.headers || {}),
+          ...buildRequestHeaders(data.access_token)
+        }
+
+        return $fetch(response.url, options)
+      } catch {
+        auth.logout()
       }
     }
   })
