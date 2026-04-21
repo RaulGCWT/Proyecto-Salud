@@ -48,7 +48,7 @@
             <div class="avatar">{{ member.name.charAt(0) }}</div>
             <div class="item-main">
               <strong class="entity-name">{{ member.name }}</strong>
-              <span class="meta block">{{ member.role }} · {{ member.area }}</span>
+              <span class="meta block">{{ member.role }} - {{ member.area }}</span>
               <span class="meta"><strong class="label-strong">Contact:</strong> {{ member.email }}</span>
             </div>
             <button class="link-btn" @click="openStaffModal(member)">Manage</button>
@@ -66,9 +66,9 @@
           <div v-for="resident in filteredResidents" :key="resident.id" class="card-row">
             <div class="row-head">
               <div>
-              <strong class="entity-name">{{ resident.name }}</strong>
-              <span class="meta block"><strong class="label-strong">Status:</strong> {{ resident.status }}</span>
-            </div>
+                <strong class="entity-name">{{ resident.name }}</strong>
+                <span class="meta block"><strong class="label-strong">Status:</strong> {{ resident.status }}</span>
+              </div>
               <code class="tag"><strong class="label-strong">Bed:</strong> {{ resident.deviceId || 'Unassigned' }}</code>
             </div>
 
@@ -192,578 +192,72 @@
       </article>
     </section>
 
-    <div v-if="modal.type" class="modal-backdrop" @click.self="closeModal">
-      <div class="modal panel">
-        <div class="section-head">
-          <h3>{{ modalTitle }}</h3>
-          <button class="link-btn" @click="closeModal">Close</button>
-        </div>
-
-        <div v-if="modal.type === 'staff'" class="form-grid">
-          <label class="field">
-            <span>Name</span>
-            <input v-model="staffForm.name" class="search" type="text" />
-          </label>
-          <label class="field">
-            <span>Email</span>
-            <input v-model="staffForm.email" class="search" type="email" />
-          </label>
-          <label class="field">
-            <span>Role</span>
-            <select v-model="staffForm.role" class="search">
-              <option v-for="role in staffRoles" :key="role" :value="role">{{ role }}</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Area</span>
-            <select v-model="staffForm.area" class="search">
-              <option v-for="area in staffAreas" :key="area" :value="area">{{ area }}</option>
-            </select>
-          </label>
-        </div>
-
-        <div v-else-if="modal.type === 'resident'" class="form-grid">
-          <label class="field">
-            <span>Name</span>
-            <input v-model="residentForm.name" class="search" type="text" />
-          </label>
-          <label class="field">
-            <span>Status</span>
-            <select v-model="residentForm.status" class="search">
-              <option>Active</option>
-              <option>Monitoring</option>
-              <option>Pending Setup</option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Assigned Bed</span>
-            <select v-model="residentForm.deviceId" class="search">
-              <option value="">Select bed</option>
-              <option v-for="device in availableDeviceOptions(residentForm.id)" :key="device.id" :value="device.deviceId">
-                {{ device.patientName }} · {{ device.deviceId }}
-              </option>
-            </select>
-          </label>
-          <label class="field">
-            <span>Notes</span>
-            <input v-model="residentForm.notes" class="search" type="text" />
-          </label>
-        </div>
-
-        <div v-else-if="modal.type === 'family'" class="form-grid">
-          <label class="field">
-            <span>Name</span>
-            <input v-model="familyForm.name" class="search" type="text" />
-          </label>
-          <label class="field">
-            <span>Email</span>
-            <input v-model="familyForm.email" class="search" type="email" />
-          </label>
-          <label class="field">
-            <span>Relationship</span>
-            <input v-model="familyForm.relationship" class="search" type="text" />
-          </label>
-          <label class="field">
-            <span>State</span>
-            <select v-model="familyForm.state" class="search">
-              <option>Active</option>
-              <option>Pending</option>
-            </select>
-          </label>
-          <label class="field field-full">
-            <span>Resident</span>
-            <select v-model="familyForm.residentId" class="search" @change="syncFamilyResidentLink">
-              <option value="">Select resident</option>
-              <option v-for="resident in residents" :key="resident.id" :value="resident.id">
-                {{ resident.name }}{{ resident.deviceId ? ` · ${resident.deviceId}` : '' }}
-              </option>
-            </select>
-          </label>
-        </div>
-
-        <div v-else class="form-grid">
-          <label class="field">
-            <span>Name</span>
-            <input v-model="familyUserForm.name" class="search" type="text" />
-          </label>
-          <label class="field">
-            <span>Email</span>
-            <input v-model="familyUserForm.email" class="search" type="email" />
-          </label>
-          <label class="field">
-            <span>Information</span>
-            <input v-model="familyUserForm.relationship" class="search" type="text" />
-          </label>
-          <label class="field">
-            <span>Status</span>
-            <select v-model="familyUserForm.state" class="search">
-              <option>Active</option>
-              <option>Inactive</option>
-            </select>
-          </label>
-          <label class="field field-full">
-            <span>Resident</span>
-            <select v-model="familyUserForm.residentId" class="search" @change="syncFamilyUserResidentLink">
-              <option value="">Select resident</option>
-              <option v-for="resident in residents" :key="resident.id" :value="resident.id">
-                {{ resident.name }}{{ resident.deviceId ? ` · ${resident.deviceId}` : '' }}
-              </option>
-            </select>
-          </label>
-          <label class="field field-full">
-            <span>Associated device</span>
-            <select v-model="familyUserForm.deviceIdOverride" class="search">
-              <option value="">Use resident device</option>
-              <option v-for="device in devices" :key="device.id" :value="device.deviceId">
-                {{ device.patientName }} · {{ device.deviceId }}
-              </option>
-            </select>
-          </label>
-        </div>
-
-        <div class="actions">
-          <button class="btn btn-muted" @click="closeModal">Cancel</button>
-          <button class="btn btn-primary" @click="saveModal">Save</button>
-        </div>
-      </div>
-    </div>
+    <UsersModal
+      :modal="modal"
+      :modal-title="modalTitle"
+      :staff-form="staffForm"
+      :resident-form="residentForm"
+      :family-form="familyForm"
+      :family-user-form="familyUserForm"
+      :staff-roles="staffRoles"
+      :staff-areas="staffAreas"
+      :residents="residents"
+      :devices="devices"
+      :available-device-options="availableDeviceOptions"
+      @close="closeModal"
+      @save="saveModal"
+      @family-resident-change="syncFamilyResidentLink"
+      @family-user-resident-change="syncFamilyUserResidentLink"
+    />
   </div>
 </template>
 
 <script setup>
-import { useAuthStore } from '~/stores/auth'
-import { PERMISSIONS } from '~/utils/permissions'
+import { useUsersManagement } from '~/composables/users/useUsersManagement'
 
-const STAFF_API_BASE = 'http://localhost:3001/MonitoringStaffMembers'
-const RESIDENTS_API_BASE = 'http://localhost:3001/MonitoringResidents'
-const DEVICES_API_BASE = 'http://localhost:3001/MonitoringDevices'
-const FAMILY_USERS_API_BASE = 'http://localhost:3001/MonitoringFamilyUsers'
-const INVITES_API_BASE = 'http://localhost:3001/MonitoringInvites'
-
-const auth = useAuthStore()
-const search = ref('')
-const activeTab = ref('all')
-const modal = ref({ type: '' })
-
-const tabs = [
-  { id: 'all', label: 'All' },
-  { id: 'staff', label: 'Staff' },
-  { id: 'residents', label: 'Residents' },
-  { id: 'family', label: 'Family' },
-  { id: 'invitations', label: 'Invitations' },
-  { id: 'devices', label: 'Beds' }
-]
-
-const staffRoles = ['Call Center Admin', 'Clinical Staff', 'Technical Operator']
-const staffAreas = ['Floor 1', 'ICU', 'Recovery', 'Devices']
-
-const { data: staffData, refresh: refreshStaff } = useFetch(STAFF_API_BASE, {
-  server: false,
-  default: () => []
-})
-
-const { data: residentsData, refresh: refreshResidents } = useFetch(RESIDENTS_API_BASE, {
-  server: false,
-  default: () => []
-})
-
-const staffMembers = computed(() => Array.isArray(staffData.value) ? staffData.value : [])
-const residents = computed(() => Array.isArray(residentsData.value) ? residentsData.value : [])
-
-const { data: devicesData, pending: resourcesLoading } = useFetch(DEVICES_API_BASE, {
-  server: false,
-  default: () => []
-})
-
-const { data: familyUsersData, refresh: refreshFamilyUsers } = useFetch(FAMILY_USERS_API_BASE, {
-  server: false,
-  default: () => []
-})
-
-const { data: invitesData, refresh: refreshInvites } = useFetch(INVITES_API_BASE, {
-  server: false,
-  default: () => []
-})
-
-const devices = computed(() =>
-  (Array.isArray(devicesData.value) ? devicesData.value : []).map((device, index) => {
-    const deviceId = device.id || ''
-    return {
-      id: deviceId || index + 1,
-      patientName: device.name || `Bed ${String(deviceId).slice(-5)}`,
-      deviceId,
-      status: device.type || 'Registered'
-    }
-  })
-)
-
-const sameId = (a, b) => String(a ?? '') === String(b ?? '')
-const findResidentById = (residentId) => residents.value.find(resident => sameId(resident.id, residentId))
-
-const familyAccounts = computed(() =>
-  (Array.isArray(familyUsersData.value) ? familyUsersData.value : []).map((user, index) => {
-    const linkedResident = residents.value.find(resident =>
-      sameId(resident.id, user.residentId) || resident.name === user.patientName
-    )
-
-    return {
-      id: user.id || index + 1,
-      residentId: user.residentId || linkedResident?.id || null,
-      name: user.name || 'Unknown user',
-      email: user.email || '',
-      patientName: linkedResident?.name || user.patientName || 'Unassigned',
-      deviceId: user.deviceIdOverride || linkedResident?.deviceId || user.deviceId || '',
-      relationship: user.relationship || 'Family',
-      state: user.state || 'Active',
-      deviceIdOverride: user.deviceIdOverride || ''
-    }
-  })
-)
-
-const invitations = computed(() =>
-  (Array.isArray(invitesData.value) ? invitesData.value : []).map((invite, index) => ({
-    id: invite.id || index + 1,
-    email: invite.email || '',
-    name: invite.name || '',
-    patientName: invite.patientName || 'Unassigned',
-    relationship: invite.relationship || '',
-    residentId: invite.residentId || null,
-    deviceId: invite.deviceId || '',
-    state: String(invite.state || 'PENDING').toUpperCase(),
-    createdAt: invite.createdAt || '',
-    expiresAt: invite.expiresAt || '',
-    acceptedAt: invite.acceptedAt || null,
-    cancelledAt: invite.cancelledAt || null,
-    acceptUrl: invite.acceptUrl || '',
-    stateLabel: String(invite.state || 'PENDING').toUpperCase(),
-    stateClass: ['ACCEPTED'].includes(String(invite.state || '').toUpperCase())
-      ? 'ok'
-      : ['EXPIRED', 'CANCELLED'].includes(String(invite.state || '').toUpperCase())
-        ? 'danger'
-        : 'warn'
-  }))
-)
-
-const staffForm = ref({ id: null, name: '', email: '', role: staffRoles[0], area: staffAreas[0] })
-const residentForm = ref({ id: null, name: '', deviceId: '', status: 'Pending Setup', notes: '' })
-const familyForm = ref({ id: null, residentId: '', name: '', email: '', relationship: '', state: 'Pending', patientName: 'Unassigned', deviceId: '' })
-const familyUserForm = ref({ id: null, residentId: '', name: '', email: '', relationship: '', state: 'Active', patientName: 'Unassigned', deviceId: '', deviceIdOverride: '' })
-
-const query = computed(() => search.value.trim().toLowerCase())
-const canCreateRecords = computed(() => auth.permissions.includes(PERMISSIONS.USER_CREATE_RECORDS))
-const matchesSearch = (values) => !query.value || values.some(value => String(value).toLowerCase().includes(query.value))
-const showSection = (section) => activeTab.value === 'all' || activeTab.value === section
-
-const filteredStaff = computed(() =>
-  staffMembers.value.filter(member => matchesSearch([member.name, member.email, member.role, member.area]))
-)
-
-const filteredResidents = computed(() =>
-  residents.value.filter(resident => matchesSearch([resident.name, resident.deviceId, resident.status, resident.notes]))
-)
-
-const filteredFamilies = computed(() =>
-  familyAccounts.value.filter(relative =>
-    matchesSearch([relative.name, relative.email, relative.patientName, relative.deviceId, relative.relationship])
-  )
-)
-
-const filteredInvitations = computed(() =>
-  invitations.value.filter(invite =>
-    matchesSearch([invite.email, invite.name, invite.patientName, invite.relationship, invite.state, invite.deviceId])
-  )
-)
-
-const filteredDevices = computed(() =>
-  devices.value.filter(device => matchesSearch([device.patientName, device.deviceId, device.status]))
-)
-
-const assignedDeviceIds = computed(() => new Set(residents.value.map(resident => resident.deviceId).filter(Boolean)))
-const activeFamilies = computed(() => familyAccounts.value.length)
-const pendingInvitations = computed(() => invitations.value.filter(invite => invite.state === 'PENDING').length)
-const assignedResidents = computed(() => residents.value.filter(item => item.deviceId).length)
-const availableBeds = computed(() => devices.value.filter(device => !assignedDeviceIds.value.has(device.deviceId)).length)
-
-const summaryCards = computed(() => [
-  { label: 'Staff', value: staffMembers.value.length, meta: 'Registered users' },
-  { label: 'Residents', value: residents.value.length, meta: `${assignedResidents.value} with assigned bed` },
-  { label: 'Families', value: activeFamilies.value, meta: 'Registered family users' },
-  { label: 'Invites', value: pendingInvitations.value, meta: 'Pending invitations' },
-  { label: 'Beds', value: devices.value.length, meta: `${availableBeds.value} available` }
-])
-
-const modalTitle = computed(() => {
-  if (modal.value.type === 'staff') return staffForm.value.id ? 'Edit Staff' : 'Create Staff'
-  if (modal.value.type === 'resident') return residentForm.value.id ? 'Edit Resident' : 'Create Resident'
-  if (modal.value.type === 'family') return familyForm.value.id ? 'Edit Family Access' : 'Invite Family'
-  return 'Edit Family User'
-})
-
-const resetForms = () => {
-  staffForm.value = { id: null, name: '', email: '', role: staffRoles[0], area: staffAreas[0] }
-  residentForm.value = { id: null, name: '', deviceId: '', status: 'Pending Setup', notes: '' }
-  familyForm.value = { id: null, residentId: '', name: '', email: '', relationship: '', state: 'Pending', patientName: 'Unassigned', deviceId: '' }
-  familyUserForm.value = { id: null, residentId: '', name: '', email: '', relationship: '', state: 'Active', patientName: 'Unassigned', deviceId: '', deviceIdOverride: '' }
-}
-
-const openStaffModal = (member = null) => {
-  if (!member && !canCreateRecords.value) return
-  staffForm.value = member ? { ...member } : { id: null, name: '', email: '', role: staffRoles[0], area: staffAreas[0] }
-  modal.value = { type: 'staff' }
-}
-
-const openResidentModal = (resident = null) => {
-  if (!resident && !canCreateRecords.value) return
-  residentForm.value = resident ? { ...resident } : { id: null, name: '', deviceId: '', status: 'Pending Setup', notes: '' }
-  modal.value = { type: 'resident' }
-}
-
-const openFamilyModal = (relative = null) => {
-  if (!relative && !canCreateRecords.value) return
-  familyForm.value = relative
-    ? { ...relative, residentId: relative.residentId || '' }
-    : { id: null, residentId: '', name: '', email: '', relationship: '', state: 'Pending', patientName: 'Unassigned', deviceId: '' }
-  modal.value = { type: 'family' }
-}
-
-const openFamilyModalForResident = (resident) => {
-  openFamilyModal()
-  familyForm.value.residentId = resident.id
-  syncFamilyResidentLink()
-}
-
-const openFamilyUserModal = (relative) => {
-  familyUserForm.value = {
-    id: relative.id,
-    residentId: relative.residentId || '',
-    name: relative.name || '',
-    email: relative.email || '',
-    relationship: relative.relationship || '',
-    state: relative.state || 'Active',
-    patientName: relative.patientName || 'Unassigned',
-    deviceId: relative.deviceId || '',
-    deviceIdOverride: relative.deviceIdOverride || ''
-  }
-  modal.value = { type: 'family-user' }
-}
-
-const closeModal = () => {
-  modal.value = { type: '' }
-  resetForms()
-}
-
-const syncFamilyResidentLink = () => {
-  const resident = findResidentById(familyForm.value.residentId)
-  familyForm.value.patientName = resident?.name || 'Unassigned'
-  familyForm.value.deviceId = resident?.deviceId || ''
-}
-
-const syncFamilyUserResidentLink = () => {
-  const resident = findResidentById(familyUserForm.value.residentId)
-  familyUserForm.value.patientName = resident?.name || 'Unassigned'
-  familyUserForm.value.deviceId = resident?.deviceId || ''
-  familyUserForm.value.deviceIdOverride = ''
-}
-
-const familyCountForResident = (residentName) =>
-  familyAccounts.value.filter(relative => relative.patientName === residentName).length
-
-const isAssignedDevice = (deviceId) => assignedDeviceIds.value.has(deviceId)
-
-const availableDeviceOptions = (currentResidentId = null) => {
-  const currentResident = findResidentById(currentResidentId)
-  return devices.value.filter(device => {
-    if (!isAssignedDevice(device.deviceId)) return true
-    return currentResident?.deviceId === device.deviceId
-  })
-}
-
-const saveStaff = () => {
-  return saveStaffMember()
-}
-
-const saveResident = () => {
-  return saveResidentRecord()
-}
-
-const saveFamily = () => {
-  return saveFamilyInvite()
-}
-
-const saveModal = () => {
-  if (modal.value.type === 'staff') saveStaff()
-  else if (modal.value.type === 'resident') saveResident()
-  else if (modal.value.type === 'family') saveFamily()
-  else saveFamilyUser()
-}
-
-const toggleFamilyState = async (familyId) => {
-  const familyUser = familyAccounts.value.find(relative => sameId(relative.id, familyId))
-  if (!familyUser) return
-
-  try {
-    await $fetch(`${FAMILY_USERS_API_BASE}/${familyUser.id}`, {
-      method: 'PUT',
-      body: {
-        name: familyUser.name,
-        email: familyUser.email,
-        relationship: familyUser.relationship,
-        residentId: familyUser.residentId,
-        patientName: familyUser.patientName,
-        deviceId: familyUser.deviceId,
-        deviceIdOverride: familyUser.deviceIdOverride || '',
-        state: familyUser.state === 'Active' ? 'Inactive' : 'Active'
-      }
-    })
-    await refreshFamilyUsers()
-  } catch (error) {
-    console.error('Error updating family user state:', error)
-    alert('Could not update the family user status.')
-  }
-}
-
-const saveFamilyInvite = async () => {
-  if (!canCreateRecords.value) {
-    alert('You do not have permission to create invitations.')
-    return
-  }
-  if (!familyForm.value.name || !familyForm.value.email) return
-
-  const resident = findResidentById(familyForm.value.residentId)
-  if (!resident) {
-    alert('Selecciona un residente valido antes de crear la invitacion.')
-    return
-  }
-
-  const payload = {
-    ...familyForm.value,
-    residentId: resident.id,
-    patientName: resident.name,
-    deviceId: resident.deviceId || '',
-    state: 'Pending'
-  }
-
-  try {
-    const invitation = await $fetch(INVITES_API_BASE, {
-      method: 'POST',
-      body: payload
-    })
-
-    await refreshInvites()
-    if (invitation?.acceptUrl && navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(invitation.acceptUrl)
-      alert(`Invitation created. Link copied to clipboard:\n${invitation.acceptUrl}`)
-    } else {
-      alert(`Invitation created:\n${invitation?.acceptUrl || 'Link unavailable'}`)
-    }
-    closeModal()
-  } catch (error) {
-    console.error('Error creating invitation:', error)
-    alert('No se pudo crear la invitacion.')
-  }
-}
-
-const saveFamilyUser = async () => {
-  if (!familyUserForm.value.id || !familyUserForm.value.name || !familyUserForm.value.email) return
-
-  const resident = findResidentById(familyUserForm.value.residentId)
-  const payload = {
-    name: familyUserForm.value.name,
-    email: familyUserForm.value.email,
-    relationship: familyUserForm.value.relationship,
-    state: familyUserForm.value.state,
-    residentId: resident?.id || null,
-    patientName: resident?.name || 'Unassigned',
-    deviceId: resident?.deviceId || familyUserForm.value.deviceId || '',
-    deviceIdOverride: familyUserForm.value.deviceIdOverride || ''
-  }
-
-  try {
-    await $fetch(`${FAMILY_USERS_API_BASE}/${familyUserForm.value.id}`, {
-      method: 'PUT',
-      body: payload
-    })
-    await refreshFamilyUsers()
-    closeModal()
-  } catch (error) {
-    console.error('Error saving family user:', error)
-    alert('Could not update the family user.')
-  }
-}
-
-const saveStaffMember = async () => {
-  if (!canCreateRecords.value && !staffForm.value.id) {
-    alert('You do not have permission to create staff users.')
-    return
-  }
-  if (!staffForm.value.name || !staffForm.value.email) return
-  try {
-    await $fetch(STAFF_API_BASE, {
-      method: 'POST',
-      body: { ...staffForm.value }
-    })
-    await refreshStaff()
-    closeModal()
-  } catch (error) {
-    console.error('Error saving staff member:', error)
-    alert('No se pudo guardar el staff.')
-  }
-}
-
-const saveResidentRecord = async () => {
-  if (!canCreateRecords.value && !residentForm.value.id) {
-    alert('You do not have permission to create residents.')
-    return
-  }
-  if (!residentForm.value.name) return
-  try {
-    await $fetch(RESIDENTS_API_BASE, {
-      method: 'POST',
-      body: { ...residentForm.value }
-    })
-    await Promise.all([
-      refreshResidents(),
-      refreshFamilyUsers(),
-      refreshInvites()
-    ])
-    closeModal()
-  } catch (error) {
-    console.error('Error saving resident:', error)
-    alert('No se pudo guardar el residente.')
-  }
-}
-
-const formatDate = (value) => {
-  if (!value) return 'N/A'
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
-}
-
-const copyInviteLink = async (acceptUrl) => {
-  try {
-    if (navigator?.clipboard?.writeText) {
-      await navigator.clipboard.writeText(acceptUrl)
-      alert('Invitation link copied.')
-      return
-    }
-  } catch (error) {
-    console.error('Could not copy invite link:', error)
-  }
-  alert(acceptUrl)
-}
-
-const updateInviteState = async (inviteId, state) => {
-  try {
-    await $fetch(`${INVITES_API_BASE}/${inviteId}/state`, {
-      method: 'PUT',
-      body: { state }
-    })
-    await refreshInvites()
-  } catch (error) {
-    console.error('Error updating invitation state:', error)
-    alert('Could not update invitation state.')
-  }
-}
+const {
+  search,
+  activeTab,
+  modal,
+  tabs,
+  staffRoles,
+  staffAreas,
+  staffMembers,
+  residents,
+  devices,
+  familyAccounts,
+  invitations,
+  resourcesLoading,
+  staffForm,
+  residentForm,
+  familyForm,
+  familyUserForm,
+  canCreateRecords,
+  summaryCards,
+  modalTitle,
+  filteredStaff,
+  filteredResidents,
+  filteredFamilies,
+  filteredInvitations,
+  filteredDevices,
+  showSection,
+  openStaffModal,
+  openResidentModal,
+  openFamilyModal,
+  openFamilyModalForResident,
+  openFamilyUserModal,
+  closeModal,
+  syncFamilyResidentLink,
+  syncFamilyUserResidentLink,
+  familyCountForResident,
+  isAssignedDevice,
+  availableDeviceOptions,
+  saveModal,
+  toggleFamilyState,
+  formatDate,
+  copyInviteLink,
+  updateInviteState
+} = useUsersManagement()
 </script>
 
 <style scoped>
