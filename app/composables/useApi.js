@@ -1,4 +1,4 @@
-export const useApi = () => {
+  export const useApi = () => {
   const auth = useAuthStore()
 
   return $fetch.create({

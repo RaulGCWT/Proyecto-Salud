@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { useRulesStore } from './rules'
 import { useAuthStore } from './auth'
-import { io } from 'socket.io-client'
 import { getScopedOwnerId } from '~/utils/permissions'
+import { normalizeAlertStatus } from '~/utils/healthData'
 
 const EVENTS_API_BASE = 'http://localhost:3001/MonitoringEvents'
 
@@ -34,18 +34,9 @@ export const useHealthStore = defineStore('health', {
     hrHistory: [],
     hrvHistory: [],
     respHistory: [],
-    lastToast: null,
-    socket: null
+    lastToast: null
   }),
   actions: {
-    normalizeAlertStatus(status) {
-      const value = String(status || '').toUpperCase()
-      if (value === 'LEIDA') return 'READ'
-      if (value === 'PENDIENTE') return 'PENDING'
-      if (value === 'READ') return 'READ'
-      return 'PENDING'
-    },
-
     async fetchAlertHistory() {
       try {
         const ownerId = getScopeOwnerId()
@@ -60,7 +51,7 @@ export const useHealthStore = defineStore('health', {
           mac: event.mac || 'N/A',
           message: event.message || `Alert on ${event.parameter}`,
           level: 'Critical',
-          status: this.normalizeAlertStatus(event.status)
+          status: normalizeAlertStatus(event.status)
         }))
       } catch (err) {
         console.error('Error al cargar historial de DB:', err)
@@ -70,7 +61,7 @@ export const useHealthStore = defineStore('health', {
     async setAlertStatus(alertId, status) {
       let previousStatus = 'PENDING'
       try {
-        const normalized = this.normalizeAlertStatus(status)
+        const normalized = normalizeAlertStatus(status)
         const target = this.alertHistory.find(a => a.id === alertId)
         previousStatus = target?.status || 'PENDING'
         const ownerId = getUserOwnerId()
@@ -87,7 +78,7 @@ export const useHealthStore = defineStore('health', {
         })
 
         if (response?.status) {
-          const saved = this.normalizeAlertStatus(response.status)
+          const saved = normalizeAlertStatus(response.status)
           if (target) target.status = saved
         }
 
@@ -112,75 +103,6 @@ export const useHealthStore = defineStore('health', {
       } catch (err) {
         console.error('Error al vaciar historial:', err)
       }
-    },
-
-    connectWebSocket() {
-      if (this.socket) return
-      this.socket = io('http://localhost:5000')
-
-      this.socket.on('sensor_update', (data) => {
-        const lastReading = data.lastReading || {}
-        const readings = Array.isArray(data.readings) ? data.readings : []
-
-        this.heartRate = lastReading.heartRate ?? 0
-        this.respiratoryRate = lastReading.respiratoryRate ?? 0
-        this.hrv = lastReading.hrv ?? 0
-        this.isOccupied = lastReading.isOccupied ?? false
-        this.currentMac = data.mac || 'N/A'
-        this.currentDeviceId = data.deviceId || 'N/A'
-        this.latestReadings = readings
-
-        if (readings.length > 0) {
-          const hrBatch = readings.map(reading => ({
-            ts: reading.ts ?? 0,
-            time: new Date((reading.ts ?? 0) * 1000).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            }),
-            value: reading.heartRate ?? 0
-          }))
-          const hrvBatch = readings.map(reading => ({
-            ts: reading.ts ?? 0,
-            time: new Date((reading.ts ?? 0) * 1000).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            }),
-            value: reading.hrv ?? 0
-          }))
-          const respBatch = readings.map(reading => ({
-            ts: reading.ts ?? 0,
-            time: new Date((reading.ts ?? 0) * 1000).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            }),
-            value: reading.respiratoryRate ?? 0
-          }))
-
-          this.hrHistory = this.mergeHistory(this.hrHistory, hrBatch)
-          this.hrvHistory = this.mergeHistory(this.hrvHistory, hrvBatch)
-          this.respHistory = this.mergeHistory(this.respHistory, respBatch)
-        }
-        this.checkRules()
-      })
-    },
-
-    mergeHistory(existingHistory, incomingBatch) {
-      const merged = [...existingHistory, ...incomingBatch]
-      const deduped = []
-      const seen = new Set()
-
-      for (const item of merged) {
-        const key = `${item.ts}-${item.value}`
-        if (seen.has(key)) continue
-        seen.add(key)
-        deduped.push(item)
-      }
-
-      deduped.sort((a, b) => a.ts - b.ts)
-      return deduped.slice(-200)
     },
 
     checkRules() {

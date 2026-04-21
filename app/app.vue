@@ -12,14 +12,16 @@
 
 <script setup>
 import { useHealthStore } from '~/stores/health'
+import { useHealthSocket } from '~/composables/useHealthSocket'
 const health = useHealthStore()
+const { connect: connectHealthSocket } = useHealthSocket()
 const activeToast = ref(null)
 const route = useRoute()
 const disableLayout = computed(() => route.meta.layout === false)
 const layoutName = computed(() => disableLayout.value ? undefined : route.meta.layout)
 
 onMounted(() => {
-  health.connectWebSocket()
+  connectHealthSocket()
 })
 
 // Vigilamos si llega una nueva alerta al Store
