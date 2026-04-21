@@ -5,33 +5,14 @@
     </header>
 
     <section class="sensor-grid">
-      <DashboardCard 
-        type="hr" 
-        title="Heart Rate" 
-        :main-text="`${health.heartRate} BPM`" 
-        :is-alert="isHRAlert" 
-        :description="isHRAlert ? 'Abnormal HR' : 'Normal'" 
-      />
-      <DashboardCard 
-        type="hrv" 
-        title="HR Variability" 
-        :main-text="`${health.hrv} ms`" 
-        :is-alert="isHRVAlert" 
-        :description="isHRVAlert ? 'High Stress' : 'Normal'" 
-      />
-      <DashboardCard 
-        type="resp" 
-        title="Resp. Rate" 
-        :main-text="`${health.respiratoryRate} RPM`" 
-        :is-alert="isRespAlert" 
-        :description="isRespAlert ? 'Abnormal' : 'Normal'" 
-      />
-      <DashboardCard 
-        type="presence" 
-        title="Bed Status" 
-        :main-text="health.isOccupied ? 'In Use' : 'Empty'" 
-        :is-alert="false" 
-        description="Occupancy" 
+      <DashboardCard
+        v-for="card in dashboardCards"
+        :key="card.key"
+        :type="card.type"
+        :title="card.title"
+        :main-text="card.mainText"
+        :is-alert="card.isAlert"
+        :description="card.description"
       />
     </section>
 
@@ -43,32 +24,74 @@
 </template>
 
 <script setup>
+import { computed, onMounted } from 'vue'
 import { useHealthStore } from '~/stores/health'
 import { useRulesStore } from '~/stores/rules'
-import { computed, onMounted } from 'vue'
 
 const health = useHealthStore()
 const rulesStore = useRulesStore()
 
-// Cargamos las reglas de la base de datos al montar el dashboard
 onMounted(async () => {
   await rulesStore.fetchRules()
 })
 
-// FunciÃ³n auxiliar para comprobar si el valor actual rompe alguna regla
-const checkCurrentValue = (variable, currentVal) => {
-  if (!rulesStore.rules) return false
+const hasRuleAlert = (variable, currentValue) => {
+  const numericValue = Number(currentValue)
+
   return rulesStore.rules.some(rule => {
-    if (rule.variable !== variable) return false
-    const val = Number(currentVal)
+    const ruleVariable = rule.parameter || rule.variable
+    if (ruleVariable !== variable) return false
+
     const threshold = Number(rule.value)
-    return rule.operator === '>' ? val > threshold : val < threshold
+    const condition = rule.condition || rule.operator
+
+    if (condition === '>') return numericValue > threshold
+    if (condition === '<') return numericValue < threshold
+    if (condition === '==' || condition === '=') return numericValue == threshold
+    return false
   })
 }
 
-const isHRAlert = computed(() => checkCurrentValue('hr', health.heartRate))
-const isHRVAlert = computed(() => checkCurrentValue('hrv', health.hrv))
-const isRespAlert = computed(() => checkCurrentValue('resp', health.respiratoryRate))
+const dashboardCards = computed(() => {
+  const heartRateAlert = hasRuleAlert('hr', health.heartRate)
+  const hrvAlert = hasRuleAlert('hrv', health.hrv)
+  const respiratoryAlert = hasRuleAlert('resp', health.respiratoryRate)
+
+  return [
+    {
+      key: 'hr',
+      type: 'hr',
+      title: 'Heart Rate',
+      mainText: `${health.heartRate} BPM`,
+      isAlert: heartRateAlert,
+      description: heartRateAlert ? 'Abnormal HR' : 'Normal'
+    },
+    {
+      key: 'hrv',
+      type: 'hrv',
+      title: 'HR Variability',
+      mainText: `${health.hrv} ms`,
+      isAlert: hrvAlert,
+      description: hrvAlert ? 'High Stress' : 'Normal'
+    },
+    {
+      key: 'resp',
+      type: 'resp',
+      title: 'Resp. Rate',
+      mainText: `${health.respiratoryRate} RPM`,
+      isAlert: respiratoryAlert,
+      description: respiratoryAlert ? 'Abnormal' : 'Normal'
+    },
+    {
+      key: 'presence',
+      type: 'presence',
+      title: 'Bed Status',
+      mainText: health.isOccupied ? 'In Use' : 'Empty',
+      isAlert: false,
+      description: 'Occupancy'
+    }
+  ]
+})
 </script>
 
 <style scoped>
