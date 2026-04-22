@@ -1,63 +1,139 @@
 <template>
   <div class="devices-page">
-    <header class="main-header">
-      <h1 class="page-title">Device Inventory</h1>
-      <h3 class="subtitle">Management and connection status of smart mattresses</h3>
-    </header>
-
     <section class="summary-grid">
-      <div class="summary-card shadow-sm">
-        <span class="icon">🛏️</span>
-        <div class="info">
-          <label>Total Devices</label>
-          <div class="value">{{ accessibleBeds.length }}</div>
+      <article class="summary-card summary-total">
+        <div class="summary-card-top">
+          <span class="summary-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="summary-icon" role="img">
+              <rect x="4" y="5" width="16" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="1.8" />
+              <circle cx="8" cy="11" r="1.1" fill="currentColor" />
+              <circle cx="12" cy="11" r="1.1" fill="currentColor" />
+              <circle cx="16" cy="11" r="1.1" fill="currentColor" />
+              <path d="M7 19h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="summary-chip">Fleet</span>
         </div>
+        <span class="summary-title">Total Devices</span>
+        <strong class="summary-value">{{ deviceStats.total }}</strong>
+        <p class="summary-note">Accessible inventory within your permission scope.</p>
+      </article>
+
+      <article class="summary-card summary-online">
+        <div class="summary-card-top">
+          <span class="summary-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="summary-icon" role="img">
+              <path d="M5 11a9 9 0 0 1 14 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              <path d="M8 14a5 5 0 0 1 8 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              <path d="M11 17a1 1 0 1 1 2 0" fill="currentColor" />
+            </svg>
+          </span>
+          <span class="summary-chip">Connected</span>
+        </div>
+        <span class="summary-title">Online Devices</span>
+        <strong class="summary-value">{{ deviceStats.online }}</strong>
+        <p class="summary-note">Units receiving telemetry in real time.</p>
+      </article>
+
+      <article class="summary-card summary-offline">
+        <div class="summary-card-top">
+          <span class="summary-badge" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="summary-icon" role="img">
+              <path d="M5 11a9 9 0 0 1 8.5-4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              <path d="M8.2 14.2a5 5 0 0 1 3.8-1.7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              <path d="M4.5 4.5 19.5 19.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="summary-chip">Disconnected</span>
+        </div>
+        <span class="summary-title">Offline Devices</span>
+        <strong class="summary-value">{{ deviceStats.offline }}</strong>
+        <p class="summary-note">Devices requiring attention or reconnection.</p>
+      </article>
+    </section>
+
+    <section class="filters-panel">
+      <div class="search-box">
+        <span class="search-chip">Search</span>
+        <input v-model="filters.search" type="text" placeholder="Search by name or MAC..." autocomplete="off" />
       </div>
-      <div class="summary-card shadow-sm">
-        <span class="icon text-success">●</span>
-        <div class="info">
-          <label>Connected</label>
-          <div class="value">{{ accessibleBeds.filter(b => b.isOnline).length }}</div>
+
+      <div class="select-group">
+        <div class="filter-dropdown" :class="{ 'filter-dropdown--open': activeFilterMenu === 'status' }">
+          <button class="filter-trigger" type="button" @click="toggleFilterMenu('status')">
+            <span>Status</span>
+            <strong>{{ filterLabels.status[filters.status] }}</strong>
+            <span class="filter-caret">▾</span>
+          </button>
+          <div v-if="activeFilterMenu === 'status'" class="filter-menu">
+            <button
+              v-for="option in filterOptions.status"
+              :key="option.value"
+              type="button"
+              class="filter-option"
+              :class="{ 'filter-option--active': filters.status === option.value }"
+              @click="selectFilterOption('status', option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </div>
-      </div>
-      <div class="summary-card shadow-sm">
-        <span class="icon text-danger">●</span>
-        <div class="info">
-          <label>Disconnected</label>
-          <div class="value">{{ accessibleBeds.filter(b => !b.isOnline).length }}</div>
+
+        <div class="filter-dropdown" :class="{ 'filter-dropdown--open': activeFilterMenu === 'type' }">
+          <button class="filter-trigger" type="button" @click="toggleFilterMenu('type')">
+            <span>Type</span>
+            <strong>{{ filterLabels.type[filters.type] }}</strong>
+            <span class="filter-caret">▾</span>
+          </button>
+          <div v-if="activeFilterMenu === 'type'" class="filter-menu">
+            <button
+              v-for="option in filterOptions.type"
+              :key="option.value"
+              type="button"
+              class="filter-option"
+              :class="{ 'filter-option--active': filters.type === option.value }"
+              @click="selectFilterOption('type', option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </div>
+
+        <div class="filter-dropdown" :class="{ 'filter-dropdown--open': activeFilterMenu === 'presence' }">
+          <button class="filter-trigger" type="button" @click="toggleFilterMenu('presence')">
+            <span>Presence</span>
+            <strong>{{ filterLabels.presence[filters.presence] }}</strong>
+            <span class="filter-caret">▾</span>
+          </button>
+          <div v-if="activeFilterMenu === 'presence'" class="filter-menu">
+            <button
+              v-for="option in filterOptions.presence"
+              :key="option.value"
+              type="button"
+              class="filter-option"
+              :class="{ 'filter-option--active': filters.presence === option.value }"
+              @click="selectFilterOption('presence', option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
+        <button class="btn-reset" type="button" @click="resetFilters">Reset</button>
       </div>
     </section>
 
-    <div class="filters-bar shadow-sm">
-      <div class="search-box">
-        <span class="search-icon">🔍</span>
-        <input v-model="filters.search" type="text" placeholder="Search by name or MAC..." />
-      </div>
-      <div class="select-group">
-        <select v-model="filters.status">
-          <option value="all">All Status</option>
-          <option value="online">Connected</option>
-          <option value="offline">Disconnected</option>
-        </select>
-        <select v-model="filters.type">
-          <option value="all">All Types</option>
-          <option value="Critical Care">Critical Care</option>
-          <option value="Standard">Standard</option>
-        </select>
-        <select v-model="filters.presence">
-          <option value="all">All Presence</option>
-          <option value="Occupied">Occupied</option>
-          <option value="Empty">Empty</option>
-        </select>
-        <button class="btn-reset" @click="resetFilters" title="Reset Filters">🔄</button>
-      </div>
-    </div>
+    <section class="inventory-panel">
+      <div class="panel-header">
+        <div>
+          <p class="panel-eyebrow">Inventory</p>
+          <h3 class="panel-title">Device list</h3>
+          <p class="panel-subtitle">{{ filteredBeds.length }} units matched</p>
+        </div>
 
-    <div class="styled-container mb-5 shadow-sm">
-      <div class="container-header">
-        <h3 class="container-title">Inventory List ({{ filteredBeds.length }})</h3>
+        <button class="panel-action" type="button" @click="refreshInventory">Refresh</button>
       </div>
+
       <div class="table-wrapper">
         <table class="devices-table">
           <thead>
@@ -67,332 +143,289 @@
               <th>Type</th>
               <th>Connection</th>
               <th>Presence</th>
-              <th v-if="auth.permissions.includes(PERMISSIONS.DEVICES_EDIT)">Actions</th>
+              <th>Last event</th>
+              <th v-if="canEditDevices">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="bed in filteredBeds" :key="bed.mac">
-              <td class="mac-cell"><code class="mac-code-text">{{ bed.mac }}</code></td>
-              <td class="device-name"><strong>{{ bed.name }}</strong></td>
-              <td><span class="type-tag">{{ bed.type }}</span></td>
+              <td><code class="mac-code">{{ bed.mac }}</code></td>
               <td>
-                <span :class="['status-pill', bed.isOnline ? 'connected' : 'disconnected']">
-                  {{ bed.isOnline ? 'Connected' : 'Disconnected' }}
-                </span>
+                <div class="device-name">
+                  <strong>{{ bed.name }}</strong>
+                  <span class="device-subtitle">Assigned owner: {{ bed.ownerId || 'Unassigned' }}</span>
+                </div>
               </td>
-              <td class="presence-cell">
-                <span :class="['presence-tag', bed.presence === 'Occupied' ? 'occupied' : 'empty']">
-                  {{ bed.presence }}
-                </span>
-              </td>
-              <td v-if="auth.permissions.includes(PERMISSIONS.DEVICES_EDIT)">
-                <button class="btn-icon" @click="editDevice(bed)">⚙️</button>
+              <td><span :class="['type-badge', getTypeTone(bed.type)]">{{ bed.type }}</span></td>
+              <td><span :class="['connection-badge', bed.isOnline ? 'badge-online' : 'badge-offline']">{{ bed.isOnline ? 'Connected' : 'Disconnected' }}</span></td>
+              <td><span :class="['presence-badge', getPresenceTone(bed.presence)]">{{ bed.presence }}</span></td>
+              <td><span class="event-value">{{ bed.lastEventDate }}</span></td>
+              <td v-if="canEditDevices">
+                <button class="edit-button" type="button" title="Edit device" aria-label="Edit device" @click="editDevice(bed)">
+                  <span class="edit-icon" aria-hidden="true">⚙</span>
+                </button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
 
-    <h3 class="section-title mb-3">Connection status per device</h3>
-    <div class="device-status-grid">
-      <div v-for="bed in accessibleBeds" :key="'card-' + bed.mac" class="styled-container p-4 shadow-sm">
-        <div class="card-status-header">
-          <div class="dot-title">
-            <span :class="['dot', bed.isOnline ? 'bg-success' : 'bg-danger']"></span>
-            <span class="mac-title">{{ bed.mac }}</span>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="data-row">
-            <span class="label">Connection Status</span>
-            <span :class="['value-text', bed.isOnline ? 'text-success' : 'text-danger', 'status-pill-card']">
-              {{ bed.isOnline ? 'Connected' : 'Disconnected' }}
-            </span>
-          </div>
-          <div class="data-row">
-            <span class="label">Last connection event</span>
-            <span class="value-text muted">{{ bed.isOnline ? 'connected' : 'disconnected' }} • {{ bed.lastEventDate }}</span>
-          </div>
-          <div class="data-row">
-            <span class="label">Last heartbeat received</span>
-            <span class="value-text muted">{{ bed.isOnline ? 'online' : 'offline' }} • {{ bed.lastEventDate }}</span>
-          </div>
-          <div class="data-row">
-            <span class="label">Total events (Session)</span>
-            <span class="value-text">{{ bed.eventCount }}</span>
-          </div>
+    <section class="health-strip">
+      <div class="panel-header health-header">
+        <div>
+          <p class="panel-eyebrow">Connection health</p>
+          <h3 class="panel-title">Heartbeat snapshot</h3>
+          <p class="panel-subtitle">Quick view of the most recent active devices in scope.</p>
         </div>
       </div>
-    </div>
 
-    <div v-if="isEditing" class="modal-overlay" @click.self="isEditing = false">
-      <div class="edit-modal shadow-sm">
-        <h3 class="modal-title">Edit Device</h3>
-        <p class="modal-subtitle">Update information for {{ editingBed.mac }}</p>
-        
-        <div class="form-group">
-          <label>Device Name</label>
-          <input v-model="editForm.name" type="text" />
-        </div>
+      <div class="health-grid">
+        <article v-for="card in healthCards" :key="card.mac" class="health-card" :class="{ 'health-card--online': card.isOnline }">
+          <div class="health-card-top">
+            <div>
+              <p class="health-mac">{{ card.mac }}</p>
+              <h4 class="health-name">{{ card.name }}</h4>
+            </div>
+            <span :class="['health-state', card.isOnline ? 'health-state--online' : 'health-state--offline']">{{ card.isOnline ? 'ON' : 'OFF' }}</span>
+          </div>
 
-        <div class="form-group">
-          <label>Device Type</label>
-          <select v-model="editForm.type">
-            <option value="Critical Care">Critical Care</option>
-            <option value="Standard">Standard</option>
-          </select>
-        </div>
+          <div class="health-visual" aria-hidden="true">
+            <div v-if="card.isOnline" class="sparkline">
+              <span
+                v-for="(bar, index) in card.sparkline"
+                :key="`${card.mac}-${index}`"
+                class="spark-bar"
+                :style="{ height: `${bar}%` }"
+              />
+            </div>
+            <div v-else class="health-visual-empty">
+              <span class="health-visual-text">{{ card.lastSeenLabel }}</span>
+            </div>
+          </div>
 
-        <div class="modal-actions">
-          <button class="btn-cancel" @click="isEditing = false">Cancel</button>
-          <button class="btn-save" @click="saveChanges">Save Changes</button>
-        </div>
+          <div class="health-meta">
+            <div>
+              <span class="health-meta-label">Connection age</span>
+              <strong>{{ card.connectionAge }}</strong>
+            </div>
+            <div>
+              <span class="health-meta-label">Session count</span>
+              <strong>{{ card.sessionCount }}</strong>
+            </div>
+            <div>
+              <span class="health-meta-label">Signal freshness</span>
+              <strong :class="['health-freshness', card.freshnessTone]">{{ card.signalFreshness }}</strong>
+            </div>
+          </div>
+        </article>
       </div>
-    </div>
+    </section>
+
+    <DeviceEditModal :is-open="isEditing" :device="editingBed" :owner-options="ownerOptions" @close="closeModal" @save="saveChanges" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { io } from "socket.io-client"
-// CAMBIO 3: Importar Store y Permisos
-import { useAuthStore } from '~/stores/auth'
-import { PERMISSIONS } from '~/utils/permissions'
-import { filterDevicesByAccessContext } from '~/utils/accessContext'
+import { useDevicesPage } from '~/composables/devices/useDevicesPage'
+import DeviceEditModal from '~/components/DeviceEditModal.vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-const DEVICES_API_BASE = 'http://localhost:3001/MonitoringDevices'
-
-const auth = useAuthStore()
-const beds = ref([])
-const filters = ref({ search: '', status: 'all', type: 'all', presence: 'all' })
-const lastSeen = ref({})
-const accessContext = computed(() => auth.getAccessContext())
-
-const isEditing = ref(false)
-const editingBed = ref(null)
-const editForm = ref({ name: '', type: '' })
-const accessibleBeds = computed(() => filterDevicesByAccessContext(beds.value, accessContext.value))
-
-const devicesHeaders = computed(() => ({
-  ...(auth.user?.role ? { 'X-Role': auth.user.role } : {}),
-  ...(auth.user?.residenceId ? { 'X-Residence-Id': auth.user.residenceId } : {}),
-  ...(auth.user?.area ? { 'X-Area': auth.user.area } : {}),
-  ...(auth.user?.residentId ? { 'X-Resident-Id': auth.user.residentId } : {}),
-  ...(Array.isArray(auth.user?.deviceIds) && auth.user.deviceIds.length
-    ? { 'X-Device-Ids': auth.user.deviceIds.join(',') }
-    : {}),
-  ...(auth.user?.email ? { 'X-Owner-Id': auth.user.email } : {})
-}))
-
-// ... (fetchInventory y Socket.io se mantienen igual) ...
-const fetchInventory = async () => {
-  try {
-    const data = await $fetch(DEVICES_API_BASE, {
-      headers: devicesHeaders.value
-    })
-    const dbDevices = data || []
-
-    dbDevices.forEach(dbDev => {
-      const dbMac = (dbDev.mac || dbDev.id || '').toLowerCase()
-      const existing = beds.value.find(b => b.mac.toLowerCase() === dbMac)
-
-      if (existing) {
-        existing.name = dbDev.name || existing.name
-        existing.type = dbDev.type || existing.type
-        existing.ownerId = dbDev.ownerId || existing.ownerId || ''
-        existing.tenantKey = dbDev.tenantKey || existing.tenantKey || ''
-        existing.residenceId = dbDev.residenceId || existing.residenceId || ''
-        existing.area = dbDev.area || existing.area || ''
-        existing.residentId = dbDev.residentId || existing.residentId || ''
-      } else {
-        beds.value.push({
-          mac: dbDev.mac || dbDev.id,
-          name: dbDev.name || `Bed-${(dbDev.mac || dbDev.id).slice(-5)}`,
-          type: dbDev.type || 'Standard',
-          ownerId: dbDev.ownerId || '',
-          tenantKey: dbDev.tenantKey || '',
-          residenceId: dbDev.residenceId || '',
-          area: dbDev.area || '',
-          residentId: dbDev.residentId || '',
-          isOnline: false,
-          presence: 'Empty',
-          lastEventDate: 'Never',
-          eventCount: '0/0'
-        })
-      }
-    })
-  } catch (err) {
-    console.error("Error fetching inventory from DB:", err)
-  }
-}
-
-const socket = io("http://localhost:5000");
-
-socket.on("sensor_update", (data) => {
-  const lastReading = data.lastReading || {};
-  const incomingMac = (data.mac || '').toLowerCase();
-  lastSeen.value[incomingMac] = Date.now();
-  const existingBed = beds.value.find(b => b.mac.toLowerCase() === incomingMac);
-
-  if (existingBed) {
-    existingBed.isOnline = true;
-    existingBed.presence = lastReading.isOccupied ? 'Occupied' : 'Empty';
-    existingBed.lastEventDate = new Date().toLocaleString();
-    let currentEvents = parseInt((existingBed.eventCount || '0/0').split('/')[0]) || 0;
-    existingBed.eventCount = (currentEvents + 1) + "/" + (currentEvents + 1);
-  } else {
-    const fallbackId = data.deviceId || data.mac || 'Unknown';
-    beds.value.push({
-      mac: data.mac,
-      name: `Bed-${fallbackId.slice(-5)}`,
-      type: 'Standard',
-      isOnline: true,
-      presence: lastReading.isOccupied ? 'Occupied' : 'Empty',
-      lastEventDate: new Date().toLocaleString(),
-      eventCount: '1/1'
-    });
-    fetchInventory();
-  }
-});
-
-const checkConnections = () => {
-  const now = Date.now();
-  const TIMEOUT = 4000;
-  beds.value.forEach(bed => {
-    if (bed.presence === 'Occupied') {
-      bed.isOnline = true;
-      return;
-    }
-
-    const bedMac = bed.mac.toLowerCase();
-    const lastTimestamp = lastSeen.value[bedMac];
-    if (lastTimestamp && (now - lastTimestamp > TIMEOUT)) {
-      bed.isOnline = false;
-    }
-  });
-};
-
-// --- CAMBIO 4: Protección de lógica de edición ---
-const editDevice = (bed) => {
-  // Verificación de seguridad antes de abrir el modal
-  if (!auth.permissions.includes(PERMISSIONS.DEVICES_EDIT)) {
-    console.error("Unauthorized: You don't have permission to edit devices.")
-    return
-  }
-  editingBed.value = bed
-  editForm.value = { name: bed.name, type: bed.type }
-  isEditing.value = true
-}
-
-const saveChanges = async () => {
-  // Verificación de seguridad antes de enviar a la base de datos
-  if (!auth.permissions.includes(PERMISSIONS.DEVICES_EDIT)) {
-    alert("Unauthorized action.")
-    return
-  }
-
-  if (editingBed.value) {
-    try {
-      await $fetch(`${DEVICES_API_BASE}/${editingBed.value.mac}`, {
-        method: 'PUT',
-        headers: devicesHeaders.value,
-        body: {
-          name: editForm.value.name,
-          type: editForm.value.type,
-          ownerId: auth.user?.email || '',
-          tenantKey: auth.user?.tenantKey || '',
-          residenceId: auth.user?.residenceId || '',
-          area: auth.user?.area || '',
-          residentId: auth.user?.residentId || ''
-        }
-      });
-      editingBed.value.name = editForm.value.name
-      editingBed.value.type = editForm.value.type
-      isEditing.value = false
-    } catch (err) {
-      console.error("Error saving changes to DB:", err)
-    }
-  }
-}
-
-const filteredBeds = computed(() => {
-  return accessibleBeds.value.filter(bed => {
-    const matchesSearch = bed.name.toLowerCase().includes(filters.value.search.toLowerCase()) || 
-                          bed.mac.toLowerCase().includes(filters.value.search.toLowerCase());
-    const matchesStatus = filters.value.status === 'all' || (filters.value.status === 'online' ? bed.isOnline : !bed.isOnline);
-    const matchesType = filters.value.type === 'all' || bed.type === filters.value.type;
-    const matchesPresence = filters.value.presence === 'all' || bed.presence === filters.value.presence;
-    return matchesSearch && matchesStatus && matchesType && matchesPresence;
-  });
+useHead({
+  title: 'Clinical Sentinel | Devices'
 })
 
-const resetFilters = () => { filters.value = { search: '', status: 'all', type: 'all', presence: 'all' }; }
+const {
+  accessibleBeds,
+  deviceStats,
+  filteredBeds,
+  healthCards,
+  ownerOptions,
+  filters,
+  lastInventorySync,
+  canEditDevices,
+  isEditing,
+  editingBed,
+  refreshInventory,
+  checkConnections,
+  editDevice,
+  closeModal,
+  saveChanges,
+  resetFilters,
+  getTypeTone,
+  getPresenceTone
+} = useDevicesPage()
+
+const activeFilterMenu = ref('')
+
+const filterOptions = {
+  status: [
+    { label: 'All Statuses', value: 'all' },
+    { label: 'Connected', value: 'online' },
+    { label: 'Disconnected', value: 'offline' }
+  ],
+  type: [
+    { label: 'All Types', value: 'all' },
+    { label: 'Critical Care', value: 'Critical Care' },
+    { label: 'Standard', value: 'Standard' }
+  ],
+  presence: [
+    { label: 'All Presence', value: 'all' },
+    { label: 'Occupied', value: 'Occupied' },
+    { label: 'Empty', value: 'Empty' }
+  ]
+}
+
+const filterLabels = {
+  status: {
+    all: 'All Statuses',
+    online: 'Connected',
+    offline: 'Disconnected'
+  },
+  type: {
+    all: 'All Types',
+    'Critical Care': 'Critical Care',
+    Standard: 'Standard'
+  },
+  presence: {
+    all: 'All Presence',
+    Occupied: 'Occupied',
+    Empty: 'Empty'
+  }
+}
+
+const toggleFilterMenu = (menuName) => {
+  activeFilterMenu.value = activeFilterMenu.value === menuName ? '' : menuName
+}
+
+const selectFilterOption = (field, value) => {
+  filters.value[field] = value
+  activeFilterMenu.value = ''
+}
+
+const closeFilterMenu = (event) => {
+  const target = event.target
+  if (target?.closest?.('.filter-dropdown')) return
+  activeFilterMenu.value = ''
+}
 
 onMounted(() => {
-  fetchInventory();
-  setInterval(fetchInventory, 5000);
-  setInterval(checkConnections, 1000);
+  document.addEventListener('click', closeFilterMenu)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeFilterMenu)
 })
 </script>
 
 <style scoped>
-/* Estilos se mantienen igual */
-.devices-page { max-width: 1280px; margin: 0 auto; }
-.main-header { margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
-.page-title { margin: 0; font-size: 1.9rem; font-weight: 800; color: var(--text-main); }
-.subtitle { margin: 4px 0 0; color: var(--text-muted); }
-.shadow-sm { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; }
-.summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 35px; }
-.summary-card { background: var(--bg-card); padding: 22px; border-radius: 12px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 18px; }
-.summary-card .value { font-size: 1.6rem; font-weight: 700; }
-.styled-container { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
-.container-header { padding: 16px 20px; border-bottom: 1px solid var(--border-color); background: var(--bg-main); }
-.devices-table { width: 100%; border-collapse: collapse; }
-.devices-table th { padding: 14px 20px; text-align: left; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); background: var(--bg-main); }
-.devices-table td { padding: 16px 20px; border-bottom: 1px solid var(--border-color); color: var(--text-main); }
-.device-status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; }
-.filters-bar { display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; background: var(--bg-card); padding: 12px 20px; border-radius: 10px; border: 1px solid var(--border-color); margin-bottom: 25px; }
-.search-box { flex: 1 1 320px; min-width: 260px; max-width: 520px; position: relative; }
-.search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); opacity: 0.5; pointer-events: none; }
-.search-box input { width: 100%; padding: 10px 12px 10px 38px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); outline: none; box-sizing: border-box; }
-.select-group { display: flex; gap: 8px; align-items: center; flex: 1 1 420px; justify-content: flex-end; flex-wrap: wrap; }
-.select-group select { min-width: 140px; padding: 10px 12px; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); }
-.btn-reset { background: var(--bg-main); border: 1px solid var(--border-color); padding: 5px 8px; border-radius: 6px; cursor: pointer; color: var(--text-main); }
-.mac-title { font-weight: bold; color: #60a5fa; font-size: 1.1rem; }
-.data-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin-bottom: 18px; }
-.status-pill { padding: 4px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
-.status-pill.connected { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-.status-pill.disconnected { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-.presence-tag.occupied { color: #3b82f6; font-weight: 600; }
-.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-.text-success { color: #10b981 !important; }
-.text-danger { color: #ef4444 !important; }
-.bg-success { background-color: #10b981; }
-.bg-danger { background-color: #ef4444; }
-.p-4 { padding: 1.5rem; }
-.mb-5 { margin-bottom: 3rem; }
-.mb-3 { margin-bottom: 1rem; }
-.card-status-header { margin-bottom: 20px; }
-.status-pill-card { padding: 4px 10px; border-radius: 6px; font-weight: bold; line-height: 1; }
-.card-body .text-success.status-pill-card { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); }
-.card-body .text-danger.status-pill-card { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); }
-.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
-.edit-modal { background: var(--bg-card); padding: 25px; border-radius: 12px; width: 400px; color: var(--text-main); border: 1px solid var(--border-color); }
-.modal-title { margin-bottom: 5px; font-size: 1.25rem; color: var(--text-main); }
-.modal-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; }
-.form-group { margin-bottom: 15px; }
-.form-group label { display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; color: var(--text-muted); }
-.form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-main); color: var(--text-main); box-sizing: border-box; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
-.btn-cancel { background: var(--bg-main); border: 1px solid var(--border-color); padding: 8px 15px; border-radius: 6px; cursor: pointer; color: var(--text-main); }
-.btn-save { background: #60a5fa; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-.dark-mode .value, .dark-mode .device-name strong, .dark-mode .value-text, .dark-mode .container-title, .dark-mode .type-tag { color: #ffffff !important; }
-.dark-mode .label, .dark-mode .summary-card label, .dark-mode .value-text.muted { color: #94a3b8 !important; }
-.dark-mode .mac-code-text { color: #ffffff !important; }
-.dark-mode .presence-tag.empty { color: #ffffff !important; }
-.dark-mode .search-box input::placeholder { color: #94a3b8; }
-.dark-mode .search-icon { color: #94a3b8; opacity: 0.9; }
-.dark-mode .select-group select option { background: #0f172a; color: #f8fafc; }
-@media (max-width: 900px) { .summary-grid, .device-status-grid { grid-template-columns: 1fr; } .filters-bar { align-items: stretch; } .search-box, .select-group { flex: 1 1 100%; max-width: none; } .select-group { justify-content: stretch; } .select-group select, .btn-reset { flex: 1 1 160px; } }
+.devices-page { display: flex; flex-direction: column; gap: 24px; max-width: 1440px; margin: 0 auto; padding-bottom: 12px; font-family: 'Inter', sans-serif; color: var(--text-main); }
+.devices-page *, .devices-page *::before, .devices-page *::after { font-family: inherit; }
+.devices-page h1, .devices-page h2, .devices-page h3, .devices-page h4, .devices-page h5, .devices-page h6 { margin: 0; font-weight: 900; letter-spacing: -0.04em; line-height: 1.05; }
+.devices-page p, .devices-page span, .devices-page button, .devices-page input, .devices-page select, .devices-page td, .devices-page th, .devices-page label { font-family: inherit; }
+.summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.summary-card { position: relative; overflow: hidden; padding: 22px; border-radius: 24px; border: 1px solid rgba(148, 163, 184, 0.16); background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95)); box-shadow: 0 14px 34px rgba(15, 23, 42, 0.04); }
+.summary-card::after { content: ''; position: absolute; inset: auto -18% -38% auto; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, rgba(37, 89, 189, 0.08), transparent 70%); pointer-events: none; }
+.summary-card-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
+.summary-badge { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; font-size: 0.82rem; font-weight: 900; letter-spacing: 0.08em; color: #ffffff; }
+.summary-icon { width: 24px; height: 24px; display: block; }
+.summary-chip { padding: 7px 10px; border-radius: 999px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.14em; }
+.summary-total .summary-badge { background: linear-gradient(135deg, #0f172a, #2559bd); }
+.summary-online .summary-badge { background: linear-gradient(135deg, #10b981, #14b8a6); }
+.summary-offline .summary-badge { background: linear-gradient(135deg, #ef4444, #f97316); }
+.summary-total .summary-chip { color: #2559bd; background: rgba(37, 89, 189, 0.08); }
+.summary-online .summary-chip { color: #047857; background: rgba(16, 185, 129, 0.08); }
+.summary-offline .summary-chip { color: #b91c1c; background: rgba(239, 68, 68, 0.08); }
+.summary-title { display: block; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.18em; text-transform: uppercase; color: #5b6b84; }
+.summary-value { display: block; margin: 10px 0 14px; font-size: clamp(1.9rem, 2.6vw, 2.4rem); font-weight: 900; line-height: 1; letter-spacing: -0.04em; color: var(--text-main); }
+.summary-note { margin: 0; color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; }
+.filters-panel { display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; padding: 14px 16px; border-radius: 20px; border: 1px solid var(--border-color); background: rgba(255, 255, 255, 0.82); box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04); }
+.search-box { position: relative; flex: 1 1 320px; min-width: 260px; }
+.search-chip { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); padding: 5px 9px; border-radius: 999px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: #2559bd; background: rgba(37, 89, 189, 0.08); }
+.search-box input { width: 100%; padding: 11px 14px 11px 90px; border-radius: 14px; border: 1px solid rgba(148, 163, 184, 0.2); background: var(--bg-main); color: var(--text-main); outline: none; box-sizing: border-box; }
+.search-box input::placeholder { color: var(--text-muted); }
+.select-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; flex: 1 1 440px; justify-content: flex-end; }
+.filter-dropdown { position: relative; min-width: 190px; }
+.filter-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.22); background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)); color: var(--text-main); font-weight: 700; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03); cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
+.filter-trigger:hover { border-color: rgba(37, 89, 189, 0.28); box-shadow: 0 12px 24px rgba(37, 89, 189, 0.08); transform: translateY(-1px); }
+.filter-trigger span { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b; }
+.filter-trigger strong { flex: 1; text-align: left; font-size: 0.92rem; font-weight: 800; color: var(--text-main); }
+.filter-caret { color: #2559bd; font-size: 0.72rem; }
+.filter-menu { position: absolute; top: calc(100% + 10px); left: 0; width: 100%; padding: 8px; border-radius: 18px; border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(255, 255, 255, 0.98); box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12); z-index: 20; }
+.filter-option { width: 100%; display: flex; align-items: center; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-main); font-weight: 700; text-align: left; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }
+.filter-option:hover { background: rgba(37, 89, 189, 0.08); color: #2559bd; }
+.filter-option--active { background: rgba(37, 89, 189, 0.12); color: #2559bd; }
+.btn-reset { padding: 11px 14px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.2); background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92)); color: var(--text-main); font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03); transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
+.btn-reset:hover { border-color: rgba(37, 89, 189, 0.24); box-shadow: 0 12px 24px rgba(37, 89, 189, 0.08); transform: translateY(-1px); }
+.btn-reset:focus { outline: none; box-shadow: 0 0 0 4px rgba(37, 89, 189, 0.12); }
+.inventory-panel { border-radius: 24px; border: 1px solid var(--border-color); background: var(--bg-card); box-shadow: 0 18px 40px rgba(15, 23, 42, 0.04); overflow: hidden; }
+.panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 22px 0; }
+.panel-eyebrow { margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.68rem; font-weight: 900; color: #2559bd; }
+.panel-title { margin: 0; font-size: 1.18rem; font-weight: 900; color: var(--text-main); }
+.panel-subtitle { margin: 6px 0 0; color: var(--text-muted); font-size: 0.92rem; }
+.panel-action { padding: 10px 14px; border-radius: 14px; border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(248, 250, 252, 0.92); color: var(--text-main); font-weight: 800; cursor: pointer; }
+.table-wrapper { overflow-x: auto; padding: 18px 22px 22px; }
+.devices-table { width: 100%; min-width: 980px; border-collapse: separate; border-spacing: 0; }
+.devices-table th { padding: 14px 16px; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; color: #64748b; background: rgba(248, 250, 252, 0.8); border-bottom: 1px solid rgba(148, 163, 184, 0.18); }
+.devices-table th:last-child { width: 88px; text-align: center; }
+.devices-table th:first-child { border-top-left-radius: 16px; }
+.devices-table th:last-child { border-top-right-radius: 16px; }
+.devices-table td { padding: 16px; border-bottom: 1px solid rgba(148, 163, 184, 0.12); color: var(--text-main); vertical-align: middle; }
+.devices-table td:last-child { width: 88px; text-align: center; }
+.devices-table tbody tr { transition: background 0.2s ease; }
+.devices-table tbody tr:hover { background: rgba(248, 250, 252, 0.75); }
+.mac-code { font-size: 0.8rem; font-weight: 800; letter-spacing: 0.06em; color: #64748b; }
+.device-name { display: flex; flex-direction: column; gap: 4px; }
+.device-name strong { font-size: 0.98rem; font-weight: 800; color: var(--text-main); }
+.device-subtitle { font-size: 0.8rem; color: var(--text-muted); }
+.type-badge, .connection-badge, .presence-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px; border-radius: 999px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+.type-standard { color: #2559bd; background: rgba(37, 89, 189, 0.08); }
+.type-critical { color: #b91c1c; background: rgba(239, 68, 68, 0.12); }
+.type-pump { color: #7c3aed; background: rgba(139, 92, 246, 0.12); }
+.type-life { color: #047857; background: rgba(16, 185, 129, 0.12); }
+.badge-online { color: #047857; background: rgba(16, 185, 129, 0.12); }
+.badge-offline { color: #b91c1c; background: rgba(239, 68, 68, 0.12); }
+.presence-occupied { color: #2559bd; background: rgba(37, 89, 189, 0.1); }
+.presence-empty { color: #64748b; background: rgba(100, 116, 139, 0.1); }
+.event-value { font-size: 0.84rem; color: var(--text-muted); }
+.edit-button { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(255, 255, 255, 0.88); color: #4b5563; cursor: pointer; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03); transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, color 0.2s ease; }
+.edit-button:hover { border-color: rgba(37, 89, 189, 0.24); box-shadow: 0 12px 24px rgba(37, 89, 189, 0.08); color: #2559bd; transform: translateY(-1px); }
+.edit-button:focus { outline: none; box-shadow: 0 0 0 4px rgba(37, 89, 189, 0.12); }
+.edit-icon { font-size: 1rem; line-height: 1; }
+.health-strip { display: flex; flex-direction: column; gap: 18px; }
+.health-header { padding: 0; }
+.health-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.health-card { display: flex; flex-direction: column; gap: 16px; min-height: 220px; padding: 18px; border-radius: 22px; border: 1px solid rgba(148, 163, 184, 0.16); background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 250, 252, 0.92)); box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04); }
+.health-card--online { border-color: rgba(16, 185, 129, 0.22); }
+.health-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.health-mac { margin: 0 0 4px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b; }
+.health-name { margin: 0; font-size: 0.98rem; font-weight: 900; color: var(--text-main); }
+.health-state { padding: 7px 10px; border-radius: 999px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+.health-state--online { color: #047857; background: rgba(16, 185, 129, 0.12); }
+.health-state--offline { color: #b91c1c; background: rgba(239, 68, 68, 0.12); }
+.health-visual { display: flex; align-items: center; justify-content: center; min-height: 72px; }
+.sparkline { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); align-items: end; gap: 5px; width: 100%; min-height: 58px; padding: 8px 0 0; }
+.spark-bar { display: block; width: 100%; border-radius: 999px; background: linear-gradient(180deg, #ff9b9b, #ef4444); box-shadow: 0 6px 16px rgba(239, 68, 68, 0.16); opacity: 0.88; }
+.health-visual-empty { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 58px; }
+.health-visual-text { font-size: 0.7rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8; text-align: center; }
+.health-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: auto; }
+.health-meta div { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.14); }
+.health-meta-label { font-size: 0.66rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: #64748b; }
+.health-meta strong { font-size: 0.82rem; font-weight: 800; color: var(--text-main); }
+.health-freshness { display: inline-flex; }
+.health-freshness { padding: 5px 10px; border-radius: 999px; width: fit-content; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.search-chip, .filter-trigger span, .filter-option, .btn-reset, .edit-button { font-family: inherit; }
+.search-chip { font-size: 0.66rem; letter-spacing: 0.16em; font-weight: 900; }
+.filter-trigger span { font-size: 0.66rem; letter-spacing: 0.16em; font-weight: 900; }
+.filter-trigger strong { font-size: 0.9rem; font-weight: 900; letter-spacing: -0.01em; }
+.filter-option { font-size: 0.92rem; font-weight: 800; }
+.btn-reset { font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; }
+.edit-button { font-size: 0.95rem; font-weight: 900; }
+.freshness-fresh { color: #047857; }
+.freshness-warm { color: #2559bd; }
+.freshness-stale { color: #b45309; }
+.freshness-silent { color: #b91c1c; }
+@media (max-width: 900px) { .summary-grid { grid-template-columns: 1fr; } .panel-header { flex-direction: column; align-items: flex-start; } }
+@media (max-width: 900px) { .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 768px) { .filters-panel { align-items: stretch; } .search-box, .select-group { flex: 1 1 100%; max-width: none; } .select-group { justify-content: stretch; } .filter-dropdown, .btn-reset { flex: 1 1 160px; min-width: 0; } .health-grid { grid-template-columns: 1fr; } .health-meta { grid-template-columns: 1fr; } .health-card { min-height: unset; } }
 </style>
