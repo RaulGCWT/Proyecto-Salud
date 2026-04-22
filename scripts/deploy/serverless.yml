@@ -76,6 +76,13 @@ functions:
           path: /MonitoringEvents/{event_id}/status
           method: put
 
+  deleteEvent:
+    handler: handler.delete_event
+    events:
+      - httpApi:
+          path: /MonitoringEvents/{event_id}
+          method: delete
+
   clearEvents:
     handler: handler.clear_events
     events:

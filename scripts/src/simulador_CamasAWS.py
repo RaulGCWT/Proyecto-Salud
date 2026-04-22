@@ -16,7 +16,7 @@ PATH_TO_KEY = str(CERTS_DIR / "cama01-private.pem.key")
 PATH_TO_ROOT = str(CERTS_DIR / "cama01-AmazonRootCA1.pem")
 TOPIC = "residencia/camas/01/datos"
 DEVICE_ID = "Bed-01"
-DEVICE_MAC = "52:54:00:ab:cd:ab"
+DEVICE_MAC = "52:54:00:ab:cd:ok"
 SAMPLING_SECONDS = 10
 
 

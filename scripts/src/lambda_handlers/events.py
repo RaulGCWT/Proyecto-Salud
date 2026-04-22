@@ -44,6 +44,22 @@ def update_event_status(event, context):
     return response(200, response_data.get("Attributes", {"id": event_id, "status": new_status}))
 
 
+def delete_event(event, context):
+    event_id = (event.get("pathParameters") or {}).get("event_id")
+    if not event_id:
+        return response(400, {"error": "event_id is required"})
+
+    owner_id = get_owner_id(event)
+    current_item = table_events.get_item(Key={"id": event_id}).get("Item")
+    if not current_item:
+        return response(404, {"error": "Event not found"})
+    if owner_id and str(current_item.get("ownerId") or "") != str(owner_id):
+        return response(403, {"error": "Event does not belong to this user"})
+
+    table_events.delete_item(Key={"id": event_id})
+    return response(200, {"id": event_id, "status": "deleted"})
+
+
 def clear_events(event, context):
     items = table_events.scan().get("Items", [])
     owner_id = get_owner_id(event)

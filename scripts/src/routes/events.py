@@ -46,6 +46,22 @@ def update_event_status(event_id):
         return jsonify({"error": str(error)}), 500
 
 
+@events_bp.route('/events/<event_id>', methods=['DELETE'])
+def delete_event(event_id):
+    try:
+        owner_id = request.headers.get('X-Owner-Id') or request.headers.get('x-owner-id') or request.args.get('ownerId')
+        current_item = table_events.get_item(Key={'id': event_id}).get('Item')
+        if not current_item:
+            return jsonify({"error": "Event not found"}), 404
+        if owner_id and str(current_item.get('ownerId') or '') != str(owner_id):
+            return jsonify({"error": "Event does not belong to this user"}), 403
+
+        table_events.delete_item(Key={'id': event_id})
+        return jsonify({"id": event_id, "status": "deleted"}), 200
+    except Exception as error:
+        return jsonify({"error": str(error)}), 500
+
+
 @events_bp.route('/events/clear', methods=['DELETE'])
 def clear_all_events():
     try:

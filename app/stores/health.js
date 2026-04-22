@@ -5,6 +5,7 @@ import { getScopedOwnerId } from '~/utils/accessContext'
 import { normalizeAlertStatus } from '~/utils/healthData'
 
 const EVENTS_API_BASE = 'http://localhost:3001/MonitoringEvents'
+const LEGACY_EVENTS_API_BASE = 'http://localhost:5000/events'
 
 const getUserOwnerId = () => {
   const auth = useAuthStore()
@@ -44,15 +45,29 @@ export const useHealthStore = defineStore('health', {
           params: ownerId ? { ownerId } : {},
           headers: scopedHeaders()
         })
-        this.alertHistory = data.map(event => ({
-          id: event.id,
-          time: new Date(parseFloat(event.timestamp) * 1000).toLocaleTimeString(),
-          sensor: (event.parameter || 'UNTITLED').toUpperCase(),
-          mac: event.mac || 'N/A',
-          message: event.message || `Alert on ${event.parameter}`,
-          level: 'Critical',
-          status: normalizeAlertStatus(event.status)
-        }))
+        const events = Array.isArray(data) ? data : []
+
+        this.alertHistory = events.map(event => {
+          const eventDate = new Date(parseFloat(event.timestamp) * 1000)
+
+          return {
+            id: event.id,
+            time: eventDate.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            dateLabel: eventDate.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric'
+            }),
+            sensor: (event.parameter || 'UNTITLED').toUpperCase(),
+            mac: event.mac || 'N/A',
+            message: event.message || `Alert on ${event.parameter}`,
+            level: 'Critical',
+            status: normalizeAlertStatus(event.status)
+          }
+        })
       } catch (err) {
         console.error('Error al cargar historial de DB:', err)
       }
@@ -64,17 +79,14 @@ export const useHealthStore = defineStore('health', {
         const normalized = normalizeAlertStatus(status)
         const target = this.alertHistory.find(a => a.id === alertId)
         previousStatus = target?.status || 'PENDING'
-        const ownerId = getUserOwnerId()
+        const ownerId = getScopeOwnerId()
 
         if (target) target.status = normalized
 
         const response = await $fetch(`${EVENTS_API_BASE}/${alertId}/status`, {
           method: 'PUT',
           headers: scopedHeaders(),
-          body: {
-            status: normalized,
-            ownerId
-          }
+          body: ownerId ? { status: normalized, ownerId } : { status: normalized }
         })
 
         if (response?.status) {
@@ -87,6 +99,32 @@ export const useHealthStore = defineStore('health', {
         const target = this.alertHistory.find(a => a.id === alertId)
         if (target) target.status = previousStatus || 'PENDING'
         console.error('Error actualizando estado de alerta:', err)
+      }
+    },
+
+    async deleteAlert(alertId) {
+      if (!alertId) return
+
+      const currentHistory = [...this.alertHistory]
+      this.alertHistory = this.alertHistory.filter(alert => alert.id !== alertId)
+
+      try {
+        const ownerId = getScopeOwnerId()
+        const requestOptions = {
+          method: 'DELETE',
+          headers: scopedHeaders(),
+          params: ownerId ? { ownerId } : {}
+        }
+
+        try {
+          await $fetch(`${EVENTS_API_BASE}/${alertId}`, requestOptions)
+        } catch (primaryError) {
+          await $fetch(`${LEGACY_EVENTS_API_BASE}/${encodeURIComponent(String(alertId))}`, requestOptions)
+        }
+      } catch (err) {
+        console.error('Error borrando alerta:', err)
+        this.alertHistory = currentHistory
+        await this.fetchAlertHistory()
       }
     },
 
