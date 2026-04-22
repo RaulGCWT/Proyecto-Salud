@@ -57,7 +57,11 @@ def save_device(event, context):
     if not device_id:
         return response(400, {"error": "Device id is required"})
 
-    owner_id = body.get("ownerId") or headers.get("x-owner-id") or headers.get("X-Owner-Id") or ""
+    owner_id = (
+        body["ownerId"]
+        if "ownerId" in body
+        else headers.get("x-owner-id") or headers.get("X-Owner-Id") or ""
+    )
     tenant_key = body.get("tenantKey") or headers.get("x-tenant-key") or headers.get("X-Tenant-Key") or ""
     residence_id = body.get("residenceId") or headers.get("x-residence-id") or headers.get("X-Residence-Id") or ""
     area = body.get("area") or headers.get("x-area") or headers.get("X-Area") or ""
@@ -91,7 +95,11 @@ def update_device(event, context):
     if not name:
         return response(400, {"error": "Device name is required"})
 
-    owner_id = body.get("ownerId") or headers.get("x-owner-id") or headers.get("X-Owner-Id") or ""
+    owner_id = (
+        body["ownerId"]
+        if "ownerId" in body
+        else headers.get("x-owner-id") or headers.get("X-Owner-Id") or ""
+    )
     tenant_key = body.get("tenantKey") or headers.get("x-tenant-key") or headers.get("X-Tenant-Key") or ""
     residence_id = body.get("residenceId") or headers.get("x-residence-id") or headers.get("X-Residence-Id") or ""
     area = body.get("area") or headers.get("x-area") or headers.get("X-Area") or ""

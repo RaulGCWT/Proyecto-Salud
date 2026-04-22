@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
-import { getScopedOwnerId } from '~/utils/accessContext'
+import { getPreferredRuleAssignmentRole, getScopedOwnerId } from '~/utils/accessContext'
 
 const RULES_API_BASE = 'http://localhost:3001/MonitoringRules'
 
@@ -12,6 +12,11 @@ const getUserOwnerId = () => {
 const getScopeOwnerId = () => {
   const auth = useAuthStore()
   return getScopedOwnerId(auth.user || {})
+}
+
+const getUserRole = () => {
+  const auth = useAuthStore()
+  return getPreferredRuleAssignmentRole(auth.user || {}) || auth.user?.role || auth.user?.primaryGroup || ''
 }
 
 const scopedHeaders = () => {
@@ -41,13 +46,18 @@ export const useRulesStore = defineStore('rules', {
         const ownerId = getUserOwnerId()
         await $fetch(RULES_API_BASE, {
           method: 'POST',
-          headers: { ...(getScopeOwnerId() ? { 'X-Owner-Id': getScopeOwnerId() } : {}) },
+          headers: {
+            ...(getScopeOwnerId() ? { 'X-Owner-Id': getScopeOwnerId() } : {}),
+            ...(getUserRole() ? { 'X-Role': getUserRole() } : {})
+          },
           body: {
             ownerId,
             name: rule.name,
             variable: rule.variable,
             operator: rule.operator,
-            value: Number(rule.value)
+            value: Number(rule.value),
+            assignedToType: rule.assignedToType || 'none',
+            assignedToId: rule.assignedToId || ''
           }
         })
         await this.fetchRules()
@@ -60,13 +70,18 @@ export const useRulesStore = defineStore('rules', {
         const ownerId = getUserOwnerId()
         await $fetch(`${RULES_API_BASE}/${id}`, {
           method: 'PUT',
-          headers: { ...(getScopeOwnerId() ? { 'X-Owner-Id': getScopeOwnerId() } : {}) },
+          headers: {
+            ...(getScopeOwnerId() ? { 'X-Owner-Id': getScopeOwnerId() } : {}),
+            ...(getUserRole() ? { 'X-Role': getUserRole() } : {})
+          },
           body: {
             ownerId,
             name: rule.name,
             variable: rule.variable,
             operator: rule.operator,
-            value: Number(rule.value)
+            value: Number(rule.value),
+            assignedToType: rule.assignedToType || 'none',
+            assignedToId: rule.assignedToId || ''
           }
         })
         await this.fetchRules()

@@ -43,6 +43,18 @@ def get_owner_id(event, body=None):
     )
 
 
+def get_role(event, body=None):
+    body = body or {}
+    headers = event.get("headers") or {}
+    return (
+        body.get("role")
+        or (event.get("queryStringParameters") or {}).get("role")
+        or headers.get("x-role")
+        or headers.get("X-Role")
+        or ""
+    )
+
+
 def normalize_alert_status(value):
     raw = str(value or "").strip().upper()
     mapping = {

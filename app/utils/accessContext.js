@@ -2,6 +2,7 @@ import { getPrimaryGroup, normalizeGroupName } from '~/utils/permissions'
 
 const OWNER_SCOPED_ROLES = new Set(['family', 'resident'])
 const STAFF_ROLES = new Set(['admin', 'technician', 'clinician', 'members'])
+const RULE_ASSIGNMENT_ROLES = new Set(['admin', 'technician', 'members'])
 
 export function buildAccessContext(user = {}) {
   return {
@@ -22,6 +23,22 @@ export function getScopedOwnerId(user = {}) {
   const context = buildAccessContext(user)
   if (!isOwnerScopedRole(context.role)) return ''
   return String(user.email || user.tenantKey || '')
+}
+
+export function getPreferredRuleAssignmentRole(user = {}) {
+  const groups = Array.isArray(user.groups) ? user.groups : []
+  const normalizedGroup = groups
+    .map(group => normalizeGroupName(group))
+    .find(role => RULE_ASSIGNMENT_ROLES.has(role))
+
+  if (normalizedGroup) return normalizedGroup
+
+  const fallbackRole = normalizeGroupName(user.role || user.primaryGroup)
+  return RULE_ASSIGNMENT_ROLES.has(fallbackRole) ? fallbackRole : ''
+}
+
+export function canAssignRules(user = {}) {
+  return !!getPreferredRuleAssignmentRole(user)
 }
 
 export function filterDevicesByAccessContext(devices = [], context = {}) {
