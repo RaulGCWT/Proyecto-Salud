@@ -27,17 +27,30 @@ export const buildHealthChartOption = ({ activeMetric, metrics, currentData, rul
   const pieces = buildVisualMapPieces(filteredRules, metricConfig.color)
 
   return {
-    tooltip: { trigger: 'axis' },
-    grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(15, 23, 42, 0.96)',
+      borderColor: 'rgba(37, 89, 189, 0.18)',
+      textStyle: { color: '#ffffff' },
+      axisPointer: {
+        type: 'line',
+        lineStyle: { color: metricConfig.color, width: 2, type: 'dashed' }
+      }
+    },
+    grid: { left: '2%', right: '3%', bottom: '4%', top: '12%', containLabel: true },
     xAxis: {
       type: 'category',
       boundaryGap: false,
       data: currentData.map(item => item.time),
-      axisLine: { lineStyle: { color: '#cbd5e1' } }
+      axisLine: { lineStyle: { color: '#cbd5e1' } },
+      axisTick: { show: false },
+      axisLabel: { color: '#64748b', fontWeight: 600 }
     },
     yAxis: {
       type: 'value',
-      splitLine: { lineStyle: { type: 'dashed', color: '#f1f5f9' } }
+      axisLabel: { color: '#64748b', fontWeight: 600 },
+      splitLine: { lineStyle: { type: 'dashed', color: '#e2e8f0' } }
     },
     visualMap: {
       show: false,
@@ -51,7 +64,8 @@ export const buildHealthChartOption = ({ activeMetric, metrics, currentData, rul
       smooth: true,
       showSymbol: isCurrentValueAlert,
       symbolSize: 10,
-      lineStyle: { width: 4 },
+      lineStyle: { width: 4, color: metricConfig.color },
+      itemStyle: { color: metricConfig.color },
       areaStyle: {
         color: {
           type: 'linear',
@@ -64,6 +78,10 @@ export const buildHealthChartOption = ({ activeMetric, metrics, currentData, rul
             { offset: 1, color: `${metricConfig.color}00` }
           ]
         }
+      },
+      emphasis: {
+        focus: 'series',
+        itemStyle: { borderWidth: 2, borderColor: '#ffffff' }
       }
     }]
   }

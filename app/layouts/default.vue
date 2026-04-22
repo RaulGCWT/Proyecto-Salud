@@ -2,32 +2,33 @@
   <div class="dashboard-wrapper" :class="{ 'dark-mode': isDark }">
     <aside class="sidebar">
       <div class="sidebar-header">
-        <div class="logo-img">
+        <div class="logo-block">
           <img src="../images/logo.png" alt="Welltech Logo">
           <span class="brand-subtitle">IoT Health</span>
         </div>
       </div>
-      
+
       <nav class="sidebar-nav">
-        <NuxtLink 
-          v-for="item in menuItems" 
-          :key="item.to" 
-          :to="item.to" 
-          class="nav-item" 
+        <NuxtLink
+          v-for="item in menuItems"
+          :key="item.to"
+          :to="item.to"
+          class="nav-item"
           active-class="active"
         >
-          {{ item.icon }} {{ item.label }}
+          <span class="nav-icon">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
         </NuxtLink>
       </nav>
 
       <div class="sidebar-footer">
         <div class="user-row">
           <p class="user-display"><strong>{{ displayUserName }}</strong></p>
-          <button @click="toggleDark" class="mini-mode-toggle" :title="isDark ? 'Modo Claro' : 'Modo Oscuro'">
+          <button @click="toggleDark" class="mini-mode-toggle" :title="isDark ? 'Light mode' : 'Dark mode'">
             {{ isDark ? '☀️' : '🌙' }}
           </button>
         </div>
-        <button @click="handleLogout" class="btn-logout">Cerrar Sesión</button>
+        <button @click="handleLogout" class="btn-logout">Cerrar sesión</button>
       </div>
     </aside>
 
@@ -40,18 +41,14 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '~/stores/auth'
-// 1. Importamos la lista global de items de navegación con sus permisos
 import { APP_NAV_ITEMS } from '~/utils/navigation'
 
 const auth = useAuthStore()
 const isDark = ref(false)
 
-// 2. Filtramos los items del menú según los permisos del usuario en Pinia
 const menuItems = computed(() => {
   return APP_NAV_ITEMS.filter(item => {
-    // Si el item no requiere permiso, se muestra (opcional)
     if (!item.permission) return true
-    // Verificamos si el permiso del item está en el array de permisos del usuario
     return auth.permissions.includes(item.permission)
   })
 })
@@ -74,10 +71,10 @@ onMounted(() => {
 </script>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
 
 :root {
-  --bg-main: #f8fafc;
+  --bg-main: #f7f9fb;
   --bg-card: #ffffff;
   --text-main: #1e293b;
   --text-muted: #64748b;
@@ -86,64 +83,120 @@ onMounted(() => {
 
 .dark-mode {
   --bg-main: #020617;
-  --bg-card: #0f172a;  
-  --text-main: #f1f5f9; 
+  --bg-card: #0f172a;
+  --text-main: #f1f5f9;
   --text-muted: #94a3b8;
   --border-color: #1e293b;
 }
 
-body { 
-  margin: 0; font-family: 'Inter', sans-serif; 
-  background-color: var(--bg-main) !important; color: var(--text-main);
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-main) !important;
+  color: var(--text-main);
   transition: background-color 0.3s ease;
 }
 
-.dashboard-wrapper { display: flex; min-height: 100vh; }
-
-.sidebar { 
-  width: 260px; background-color: #0f172a; color: white; 
-  height: 100vh; position: fixed; left: 0; top: 0; 
-  display: flex; flex-direction: column; z-index: 100; 
+.dashboard-wrapper {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-main);
 }
 
-.sidebar-header { 
-  padding: 20px; 
-  background-color: #020617; 
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+  color: white;
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.logo-img { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.logo-img img { 
-  max-width: 180px; height: auto; max-height: 60px;
-  object-fit: contain; filter: brightness(1.1);
+.sidebar-header {
+  padding: 22px;
+  background: rgba(2, 6, 23, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.logo-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-block img {
+  max-width: 180px;
+  height: auto;
+  max-height: 60px;
+  object-fit: contain;
+  filter: brightness(1.1);
 }
 
 .brand-subtitle {
-  font-size: 0.75rem; color: #3b82f6;
-  text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600;
+  font-size: 0.75rem;
+  color: #3b82f6;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-weight: 700;
 }
 
-.sidebar-nav { flex: 1; padding: 20px 0; }
-.nav-item { display: block; padding: 12px 24px; color: #94a3b8; text-decoration: none; transition: 0.2s; }
-.nav-item:hover, .nav-item.active { color: white; background-color: rgba(59, 130, 246, 0.1); border-right: 4px solid #3b82f6; }
-
-.content-area { 
-  margin-left: 260px; padding: 40px; width: calc(100% - 260px); 
-  min-height: 100vh; background-color: var(--bg-main); 
+.sidebar-nav {
+  flex: 1;
+  padding: 20px 0;
 }
 
-/* ESTILOS DEL FOOTER Y BOTÓN */
-.sidebar-footer { padding: 24px; border-top: 1px solid rgba(255,255,255,0.1); }
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  color: #94a3b8;
+  text-decoration: none;
+  transition: 0.2s ease;
+  border-right: 4px solid transparent;
+}
+
+.nav-icon {
+  width: 24px;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.nav-item:hover,
+.nav-item.active {
+  color: white;
+  background: rgba(59, 130, 246, 0.1);
+  border-right-color: #3b82f6;
+}
+
+.content-area {
+  margin-left: 260px;
+  padding: 40px;
+  width: calc(100% - 260px);
+  min-height: 100vh;
+  background: var(--bg-main);
+}
+
+.sidebar-footer {
+  padding: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
 
 .user-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
 .user-display {
-  font-family: 'JetBrains Mono', monospace;
   font-size: 0.85rem;
   color: #3b82f6;
   margin: 0;
@@ -153,33 +206,52 @@ body {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: 0.2s;
+  transition: 0.2s ease;
 }
 
-.btn-logout { 
-  width: 100%; padding: 8px; background: #ef4444; color: white; 
-  border: none; border-radius: 6px; cursor: pointer; 
+.mini-mode-toggle:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
 }
 
-/* --- MODO OSCURO (SIN CAMBIOS) --- */
-.dark-mode h1, .dark-mode h2, .dark-mode h3, .dark-mode h4, .dark-mode .page-title {
-  color: #ffffff !important;
+.btn-logout {
+  width: 100%;
+  padding: 10px;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+  box-shadow: 0 12px 24px rgba(239, 68, 68, 0.18);
 }
 
-.dark-mode .card, .dark-mode .chart-container, .dark-mode .table-container {
+.dark-mode .card,
+.dark-mode .chart-shell,
+.dark-mode .table-container {
   background-color: var(--bg-card) !important;
   border: 1px solid var(--border-color) !important;
   color: var(--text-main) !important;
 }
 
-.dark-mode .value-box {
-  color: #f1f5f9 !important;
+@media (max-width: 900px) {
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+  }
+
+  .content-area {
+    margin-left: 0;
+    width: 100%;
+    padding: 24px 18px 28px;
+  }
 }
 </style>
