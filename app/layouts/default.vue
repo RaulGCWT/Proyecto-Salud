@@ -134,13 +134,15 @@ body {
   background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
   color: white;
   height: 100vh;
-  position: fixed;
-  left: 0;
+  position: sticky;
   top: 0;
   display: flex;
   flex-direction: column;
   z-index: 100;
   border-right: 1px solid rgba(255, 255, 255, 0.05);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -203,9 +205,9 @@ body {
 }
 
 .content-area {
-  margin-left: 260px;
   padding: 40px;
-  width: calc(100% - 260px);
+  flex: 1;
+  width: auto;
   min-height: 100vh;
   background: var(--bg-main);
 }
@@ -388,7 +390,7 @@ body {
   }
 
   .content-area {
-    margin-left: 0;
+    flex: initial;
     width: 100%;
     padding: 24px 18px 28px;
   }

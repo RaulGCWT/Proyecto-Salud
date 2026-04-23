@@ -528,15 +528,15 @@ onBeforeUnmount(() => {
 }
 
 .action-button--secondary {
-  background: rgba(37, 89, 189, 0.08);
+  background: var(--surface-panel-strong);
   color: #2559bd;
-  border-color: rgba(37, 89, 189, 0.14);
+  border-color: var(--surface-border);
 }
 
 .action-button--soft {
-  background: rgba(16, 185, 129, 0.08);
+  background: var(--surface-panel-strong);
   color: #047857;
-  border-color: rgba(16, 185, 129, 0.14);
+  border-color: var(--surface-border);
 }
 
 .summary-grid {
@@ -548,9 +548,9 @@ onBeforeUnmount(() => {
 .summary-card {
   padding: 20px;
   border-radius: 24px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  box-shadow: 0 14px 34px var(--surface-shadow);
 }
 
 .summary-label {
@@ -587,9 +587,9 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 14px;
   border-radius: 22px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: rgba(255, 255, 255, 0.84);
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-panel);
+  box-shadow: 0 14px 30px var(--surface-shadow);
 }
 
 .tabs {
@@ -601,9 +601,9 @@ onBeforeUnmount(() => {
 .tab {
   padding: 10px 14px;
   border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(248, 250, 252, 0.92);
-  color: #475569;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-panel-strong);
+  color: var(--text-main);
   font-size: 0.76rem;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -617,9 +617,9 @@ onBeforeUnmount(() => {
 }
 
 .tab.active {
-  color: #2559bd;
-  background: rgba(37, 89, 189, 0.1);
-  border-color: rgba(37, 89, 189, 0.18);
+  color: #93c5fd;
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(59, 130, 246, 0.24);
 }
 
 .search-field {
@@ -641,8 +641,8 @@ onBeforeUnmount(() => {
   width: 100%;
   padding: 13px 16px 13px 46px;
   border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: var(--bg-main);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-panel-strong);
   color: var(--text-main);
   font-weight: 700;
   box-sizing: border-box;
@@ -662,9 +662,9 @@ onBeforeUnmount(() => {
 .section-card {
   padding: 18px;
   border-radius: 24px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
-  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  box-shadow: 0 14px 34px var(--surface-shadow);
 }
 
 .section-card:nth-child(1),
@@ -702,8 +702,8 @@ onBeforeUnmount(() => {
 .section-action {
   padding: 10px 14px;
   border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(248, 250, 252, 0.92);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-panel-strong);
   color: var(--text-main);
   font-weight: 800;
   cursor: pointer;
@@ -718,8 +718,8 @@ onBeforeUnmount(() => {
 .section-count {
   padding: 8px 12px;
   border-radius: 999px;
-  background: rgba(37, 89, 189, 0.08);
-  color: #2559bd;
+  background: rgba(37, 99, 235, 0.16);
+  color: #93c5fd;
   font-size: 0.72rem;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -736,8 +736,8 @@ onBeforeUnmount(() => {
 .table-row {
   padding: 12px 14px;
   border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  background: #f8fafc;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-panel-strong);
 }
 
 .entry-row {
@@ -748,7 +748,7 @@ onBeforeUnmount(() => {
 }
 
 .entry-row--staff {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
+  background: var(--surface-panel-strong);
 }
 
 .entry-avatar {
@@ -835,9 +835,9 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 5px 10px;
   border-radius: 999px;
-  background: rgba(37, 89, 189, 0.08);
-  color: #2559bd;
-  border: 1px solid rgba(37, 89, 189, 0.14);
+  background: rgba(37, 99, 235, 0.16);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.24);
   font-size: 0.76rem;
   font-weight: 800;
 }
@@ -863,20 +863,20 @@ onBeforeUnmount(() => {
 }
 
 .pill--success {
-  background: rgba(16, 185, 129, 0.14);
-  color: #047857;
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
 }
 
 .pill--warning {
-  background: rgba(249, 115, 22, 0.14);
-  color: #ea580c;
+  background: rgba(249, 115, 22, 0.18);
+  color: #fdba74;
 }
 
 .table-card {
   display: grid;
   border-radius: 18px;
   overflow: hidden;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  border: 1px solid var(--surface-border);
 }
 
 .table-head,
@@ -889,8 +889,8 @@ onBeforeUnmount(() => {
 
 .table-head {
   padding: 12px 14px;
-  background: rgba(248, 250, 252, 0.95);
-  color: #64748b;
+  background: var(--surface-panel-strong);
+  color: var(--text-muted);
   font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.14em;

@@ -178,9 +178,9 @@ const handleLogout = () => {
   width: 100%;
   padding: 18px;
   border-radius: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.04);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  box-shadow: 0 18px 40px var(--surface-shadow);
 }
 
 .profile-grid {
@@ -193,8 +193,8 @@ const handleLogout = () => {
 .identity-panel,
 .details-panel {
   border-radius: 24px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-panel);
   padding: 18px;
 }
 
@@ -248,8 +248,8 @@ const handleLogout = () => {
 .detail-box {
   padding: 10px 12px;
   border-radius: 13px;
-  background: #f8fafc;
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: var(--surface-panel-strong);
+  border: 1px solid var(--surface-border);
 }
 
 .meta-row {
@@ -316,9 +316,9 @@ const handleLogout = () => {
   align-items: center;
   padding: 6px 10px;
   border-radius: 999px;
-  background: rgba(37, 89, 189, 0.08);
-  color: #2559bd;
-  border: 1px solid rgba(37, 89, 189, 0.14);
+  background: rgba(37, 99, 235, 0.16);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.24);
   font-size: 0.78rem;
   font-weight: 800;
 }
@@ -357,6 +357,51 @@ const handleLogout = () => {
   color: #b91c1c;
   border-color: rgba(239, 68, 68, 0.14);
   box-shadow: 0 10px 22px rgba(239, 68, 68, 0.05);
+}
+
+:global(.dark-mode) .profile-card {
+  background: var(--surface-card);
+  border-color: var(--surface-border);
+  box-shadow: 0 18px 40px var(--surface-shadow);
+}
+
+:global(.dark-mode) .identity-panel,
+:global(.dark-mode) .details-panel {
+  background: var(--surface-panel);
+  border-color: var(--surface-border);
+}
+
+:global(.dark-mode) .meta-row,
+:global(.dark-mode) .detail-box {
+  background: var(--surface-panel-strong);
+  border-color: var(--surface-border);
+}
+
+:global(.dark-mode) .group-tag {
+  background: rgba(37, 99, 235, 0.18);
+  color: #bfdbfe;
+  border-color: rgba(59, 130, 246, 0.24);
+}
+
+:global(.dark-mode) .action-button--danger {
+  background: rgba(127, 29, 29, 0.18);
+  color: #fca5a5;
+  border-color: rgba(248, 113, 113, 0.24);
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.18);
+}
+
+:global(.dark-mode) .identity-copy h2,
+:global(.dark-mode) .details-header h3,
+:global(.dark-mode) .meta-row strong,
+:global(.dark-mode) .detail-box strong {
+  color: var(--text-main);
+}
+
+:global(.dark-mode) .identity-copy p,
+:global(.dark-mode) .meta-row span,
+:global(.dark-mode) .detail-label,
+:global(.dark-mode) .no-data {
+  color: var(--text-muted);
 }
 
 .material-symbols-outlined {
