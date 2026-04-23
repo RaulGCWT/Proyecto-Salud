@@ -227,6 +227,86 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
 
 <style scoped>
 .dashboard-page { display: flex; flex-direction: column; gap: 24px; }
+.dashboard-page :deep(*) {
+  box-sizing: border-box;
+}
+
+:global(.dark-mode) .dashboard-page {
+  color: var(--text-main);
+}
+
+:global(.dark-mode) .hero-panel,
+:global(.dark-mode) .panel,
+:global(.dark-mode) .summary-box,
+:global(.dark-mode) .status-card,
+:global(.dark-mode) .info-row,
+:global(.dark-mode) .alert-item,
+:global(.dark-mode) .chart-frame {
+  background: var(--surface-card-soft) !important;
+  border-color: var(--surface-border) !important;
+  box-shadow: 0 18px 40px var(--surface-shadow) !important;
+  background-image: none !important;
+}
+
+:global(.dark-mode) .hero-panel {
+  background: linear-gradient(135deg, rgba(2, 6, 23, 0.99), rgba(15, 23, 42, 0.97)) !important;
+  background-image: none !important;
+}
+
+:global(.dark-mode) .hero-copy h1,
+:global(.dark-mode) .panel-title,
+:global(.dark-mode) .summary-box strong,
+:global(.dark-mode) .status-card strong,
+:global(.dark-mode) .alert-item p,
+:global(.dark-mode) .chart-title {
+  color: #f8fafc !important;
+}
+
+:global(.dark-mode) .hero-description,
+:global(.dark-mode) .summary-label,
+:global(.dark-mode) .panel-eyebrow,
+:global(.dark-mode) .panel-subtitle,
+:global(.dark-mode) .info-row span,
+:global(.dark-mode) .alert-meta,
+:global(.dark-mode) .empty-state,
+:global(.dark-mode) .chart-subtitle,
+:global(.dark-mode) .summary-label,
+:global(.dark-mode) .card-label {
+  color: #94a3b8 !important;
+}
+
+:global(.dark-mode) .status-pill-live {
+  background: rgba(16, 185, 129, 0.14) !important;
+  color: #a7f3d0 !important;
+  border-color: rgba(52, 211, 153, 0.2) !important;
+}
+
+:global(.dark-mode) .status-pill-soft {
+  background: var(--surface-card-tinted) !important;
+  color: #dbeafe !important;
+  border-color: rgba(96, 165, 250, 0.18) !important;
+}
+
+:global(.dark-mode) .panel-eyebrow,
+:global(.dark-mode) .eyebrow {
+  color: #60a5fa !important;
+}
+
+:global(.dark-mode) .control-btn {
+  background: rgba(2, 6, 23, 0.9) !important;
+  border-color: rgba(51, 65, 85, 0.78) !important;
+  color: #cbd5e1 !important;
+}
+
+:global(.dark-mode) .control-btn.active {
+  background: linear-gradient(135deg, #0f172a, #1d4ed8) !important;
+  color: #f8fafc !important;
+}
+
+:global(.dark-mode) .legend-item {
+  color: #94a3b8 !important;
+}
+
 .hero-panel {
   display: flex;
   justify-content: space-between;
@@ -234,8 +314,8 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
   padding: 28px;
   border: 1px solid var(--border-color);
   border-radius: 24px;
-  background: linear-gradient(135deg, rgba(37, 89, 189, 0.08), rgba(255, 255, 255, 0.96));
-  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.06);
+  background: var(--surface-hero);
+  box-shadow: 0 18px 50px var(--surface-shadow);
 }
 .hero-copy { flex: 1 1 560px; }
 .eyebrow { margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.2em; font-size: 0.72rem; font-weight: 800; color: #2559bd; }
@@ -270,8 +350,19 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
   padding: 16px 18px;
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(255, 255, 255, 0.75);
+  background: var(--surface-panel);
   backdrop-filter: blur(10px);
+}
+
+:global(.dark-mode) .summary-box {
+  background: var(--surface-card) !important;
+  border-color: var(--surface-border) !important;
+}
+
+:global(.dark-mode) .hero-summary .summary-box {
+  background: rgba(2, 6, 23, 0.98) !important;
+  border-color: var(--surface-border) !important;
+  background-image: none !important;
 }
 .summary-label {
   display: block;
@@ -296,10 +387,33 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
 }
 .main-column, .side-column { display: flex; flex-direction: column; gap: 18px; }
 .panel {
-  background: var(--bg-card);
+  background: var(--surface-panel-strong);
   border: 1px solid var(--border-color);
   border-radius: 24px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 18px 40px var(--surface-shadow);
+}
+
+:global(.dark-mode) .chart-panel {
+  background: transparent;
+}
+
+:global(.dark-mode) .side-panel {
+  background: var(--surface-card-soft) !important;
+}
+
+:global(.dark-mode) .side-panel .panel-title,
+:global(.dark-mode) .side-panel .panel-eyebrow,
+:global(.dark-mode) .side-panel .info-row span,
+:global(.dark-mode) .side-panel .alert-meta,
+:global(.dark-mode) .side-panel .empty-state,
+:global(.dark-mode) .side-panel .alert-item p {
+  color: #e2e8f0 !important;
+}
+
+:global(.dark-mode) .side-panel .info-row strong,
+:global(.dark-mode) .side-panel .status-card strong,
+:global(.dark-mode) .side-panel .alert-item strong {
+  color: #f8fafc !important;
 }
 .chart-panel {
   padding: 0;
@@ -344,8 +458,23 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
 .info-row, .status-card, .alert-item {
   padding: 14px 16px;
   border-radius: 18px;
-  background: #f8fafc;
+  background: var(--surface-panel-strong);
   border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+:global(.dark-mode) .info-row,
+:global(.dark-mode) .status-card,
+:global(.dark-mode) .alert-item {
+  background: var(--surface-card) !important;
+  border-color: var(--surface-border) !important;
+}
+
+:global(.dark-mode) .side-panel .info-row,
+:global(.dark-mode) .side-panel .status-card,
+:global(.dark-mode) .side-panel .alert-item {
+  background: rgba(2, 6, 23, 0.98) !important;
+  border-color: var(--surface-border) !important;
+  background-image: none !important;
 }
 .info-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .info-row span { color: var(--text-muted); font-size: 0.82rem; font-weight: 700; }
@@ -372,6 +501,16 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
 .empty-state { margin: 0; color: var(--text-muted); font-size: 0.92rem; }
 .status-grid { display: grid; gap: 12px; }
 .status-card strong { display: block; margin-top: 4px; }
+
+:global(.dark-mode) .chart-frame {
+  background: var(--surface-plot) !important;
+  border-color: rgba(51, 65, 85, 0.76) !important;
+}
+
+:global(.dark-mode) .chart-frame :deep(canvas),
+:global(.dark-mode) .chart-frame :deep(svg) {
+  filter: brightness(0.98) contrast(1.02);
+}
 
 @media (max-width: 1100px) {
   .hero-panel, .dashboard-grid { grid-template-columns: 1fr; }

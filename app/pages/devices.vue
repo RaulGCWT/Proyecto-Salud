@@ -363,7 +363,21 @@ onBeforeUnmount(() => {
 .panel-eyebrow { margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.68rem; font-weight: 900; color: #2559bd; }
 .panel-title { margin: 0; font-size: 1.18rem; font-weight: 900; color: var(--text-main); }
 .panel-subtitle { margin: 6px 0 0; color: var(--text-muted); font-size: 0.92rem; }
-.panel-action { padding: 10px 14px; border-radius: 14px; border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(248, 250, 252, 0.92); color: var(--text-main); font-weight: 800; cursor: pointer; }
+.panel-action { padding: 10px 14px; border-radius: 14px; border: 1px solid var(--surface-border); background: var(--surface-panel-strong); color: var(--text-main); font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px var(--surface-shadow); }
+.panel-action:hover { border-color: rgba(37, 89, 189, 0.24); box-shadow: 0 12px 24px rgba(37, 89, 189, 0.08); transform: translateY(-1px); }
+.panel-action:focus { outline: none; box-shadow: 0 0 0 4px rgba(37, 89, 189, 0.12); }
+
+:global(.dark-mode) .devices-page .panel-action {
+  background: var(--surface-panel-strong) !important;
+  border-color: rgba(51, 65, 85, 0.78) !important;
+  color: #f8fafc !important;
+  box-shadow: 0 10px 22px rgba(2, 6, 23, 0.28) !important;
+}
+
+:global(.dark-mode) .devices-page .panel-action:hover {
+  border-color: rgba(96, 165, 250, 0.34) !important;
+  box-shadow: 0 14px 26px rgba(2, 6, 23, 0.36) !important;
+}
 .table-wrapper { overflow-x: auto; padding: 18px 22px 22px; }
 .devices-table { width: 100%; min-width: 980px; border-collapse: separate; border-spacing: 0; }
 .devices-table th { padding: 14px 16px; text-align: left; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.14em; color: #64748b; background: rgba(248, 250, 252, 0.8); border-bottom: 1px solid rgba(148, 163, 184, 0.18); }

@@ -139,10 +139,16 @@ const chartOption = computed(() => buildHealthChartOption({
   position: relative;
   padding: 26px;
   border-radius: 24px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.96));
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.04);
+  background: var(--surface-panel-strong);
+  border: 1px solid var(--surface-border);
+  box-shadow: 0 18px 40px var(--surface-shadow);
   overflow: hidden;
+}
+
+:global(.dark-mode) .chart-shell {
+  background: var(--surface-card-strong) !important;
+  border-color: var(--surface-border) !important;
+  box-shadow: 0 18px 40px var(--surface-shadow) !important;
 }
 .chart-shell::after {
   content: '';
@@ -153,6 +159,10 @@ const chartOption = computed(() => buildHealthChartOption({
   border-radius: 50%;
   background: radial-gradient(circle, rgba(37, 89, 189, 0.08), transparent 68%);
   pointer-events: none;
+}
+
+:global(.dark-mode) .chart-shell::after {
+  background: radial-gradient(circle, rgba(37, 89, 189, 0.12), transparent 68%);
 }
 .chart-alert { border-color: rgba(239, 68, 68, 0.28); }
 .chart-header {
@@ -175,8 +185,20 @@ const chartOption = computed(() => buildHealthChartOption({
   font-weight: 800;
   color: #2559bd;
 }
+
+:global(.dark-mode) .chart-eyebrow {
+  color: #60a5fa !important;
+}
 .chart-title { margin: 0; font-size: 1.18rem; font-weight: 900; color: var(--text-main); }
 .chart-subtitle { margin: 6px 0 0; color: var(--text-muted); font-size: 0.92rem; }
+
+:global(.dark-mode) .chart-title {
+  color: #f8fafc !important;
+}
+
+:global(.dark-mode) .chart-subtitle {
+  color: #94a3b8 !important;
+}
 .chart-live {
   display: inline-flex;
   align-items: center;
@@ -202,7 +224,12 @@ const chartOption = computed(() => buildHealthChartOption({
   padding: 12px 14px;
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.12);
-  background: rgba(248, 250, 252, 0.92);
+  background: var(--surface-panel);
+}
+
+:global(.dark-mode) .summary-item {
+  background: var(--surface-card-soft) !important;
+  border-color: var(--surface-border) !important;
 }
 .summary-label {
   font-size: 0.68rem;
@@ -211,10 +238,18 @@ const chartOption = computed(() => buildHealthChartOption({
   color: var(--text-muted);
   font-weight: 800;
 }
+
+:global(.dark-mode) .summary-label {
+  color: #94a3b8 !important;
+}
 .summary-item strong {
   color: var(--text-main);
   font-size: 1rem;
   font-weight: 900;
+}
+
+:global(.dark-mode) .summary-item strong {
+  color: #f8fafc !important;
 }
 .live-dot {
   width: 10px;
@@ -241,11 +276,17 @@ const chartOption = computed(() => buildHealthChartOption({
   padding: 10px 14px;
   border-radius: 999px;
   border: 1px solid rgba(148, 163, 184, 0.22);
-  background: #ffffff;
+  background: var(--surface-panel-strong);
   color: #64748b;
   font-weight: 800;
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+:global(.dark-mode) .control-btn {
+  background: var(--surface-card) !important;
+  border-color: var(--surface-border) !important;
+  color: #cbd5e1 !important;
 }
 .control-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06); }
 .control-btn.active {
@@ -253,6 +294,11 @@ const chartOption = computed(() => buildHealthChartOption({
   border-color: transparent;
   background: linear-gradient(135deg, #0f172a, #2559bd);
   box-shadow: 0 12px 24px rgba(37, 89, 189, 0.18);
+}
+
+:global(.dark-mode) .control-btn.active {
+  background: linear-gradient(135deg, #0f172a, #1d4ed8) !important;
+  color: #f8fafc !important;
 }
 .alert-dot {
   position: absolute;
@@ -269,10 +315,15 @@ const chartOption = computed(() => buildHealthChartOption({
   min-height: 300px;
   border-radius: 22px;
   border: 1px solid rgba(148, 163, 184, 0.12);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.95)),
-    radial-gradient(circle at top left, rgba(37, 89, 189, 0.08), transparent 40%);
+  background: var(--surface-plot);
   overflow: hidden;
+}
+
+:global(.dark-mode) .chart-frame {
+  background:
+    linear-gradient(180deg, rgba(2, 6, 23, 0.92), rgba(15, 23, 42, 0.96)),
+    radial-gradient(circle at top left, rgba(37, 89, 189, 0.12), transparent 40%);
+  border-color: rgba(51, 65, 85, 0.76) !important;
 }
 .chart {
   height: 100%;
