@@ -1,58 +1,399 @@
 <template>
   <div class="profile-page">
-    <h1 class="page-title">User System Info</h1>
-    
-    <div class="card profile-card">
-      <div class="profile-header">
-        <div class="user-avatar">{{ auth.user?.name?.charAt(0) }}</div>
-        <div class="info-item">
-          <label class="tech-font">Full Name</label>
-          <div class="value-box tech-font">{{ auth.user?.name || 'Unknown User' }}</div>
+    <section class="profile-shell">
+      <header class="page-header">
+        <div class="page-heading">
+          <p class="page-eyebrow">Authenticated session</p>
+          <h1 class="page-title">My Profile</h1>
+          <p class="page-subtitle">
+            Profile information is read directly from the current authenticated session and its access context.
+          </p>
         </div>
-        
-        <div class="info-item">
-          <label class="tech-font">Service Email</label>
-          <div class="value-box tech-font">{{ auth.user?.email || 'N/A' }}</div>
-        </div>
-      </div>
+      </header>
 
-      <div class="info-grid">
-        <div class="info-item">
-          <label class="tech-font">Your company</label>
-          <div class="value-box tech-font">{{ auth.user?.tenantKey || 'N/A' }}</div>
-        </div>
+      <section class="profile-card">
+        <div class="profile-grid">
+          <aside class="identity-panel">
+            <div class="identity-head">
+              <div class="avatar" aria-hidden="true">
+                {{ userInitials }}
+              </div>
 
-        <div class="info-item">
-          <label class="tech-font">Your role</label>
-          <div class="groups-list">
-            <span v-for="group in auth.user?.groups" :key="group" class="group-tag tech-font">
-              {{ group }}
-            </span>
-            <span v-if="!auth.user?.groups?.length" class="tech-font no-data">no_groups_found</span>
+              <div class="identity-copy">
+                <h2>{{ userName }}</h2>
+              </div>
+            </div>
+
+            <div class="identity-meta">
+              <div class="meta-row">
+                <span>Tenant</span>
+                <strong>{{ tenantLabel }}</strong>
+              </div>
+
+              <div class="meta-row">
+                <span>Role</span>
+                <strong>{{ roleLabel }}</strong>
+              </div>
+            </div>
+          </aside>
+
+          <div class="details-panel">
+            <div class="details-header">
+              <p class="section-eyebrow">Account data</p>
+              <h3>Session details</h3>
+            </div>
+
+            <div class="details-grid">
+              <div class="detail-box">
+                <span class="detail-label">Full name</span>
+                <strong>{{ userName }}</strong>
+              </div>
+
+              <div class="detail-box">
+                <span class="detail-label">Email</span>
+                <strong>{{ userEmailLabel }}</strong>
+              </div>
+
+              <div class="detail-box">
+                <span class="detail-label">Residence</span>
+                <strong>{{ residenceLabel }}</strong>
+              </div>
+
+              <div class="detail-box">
+                <span class="detail-label">Resident ID</span>
+                <strong>{{ residentIdLabel }}</strong>
+              </div>
+
+              <div class="detail-box detail-box--wide">
+                <span class="detail-label">Groups</span>
+                <div class="groups-list">
+                  <span v-for="group in userGroups" :key="group" class="group-tag">
+                    {{ group }}
+                  </span>
+                  <span v-if="!userGroups.length" class="no-data">No groups assigned</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="panel-actions">
+              <button class="action-button action-button--danger" type="button" @click="handleLogout">
+                <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+                <span>Log out</span>
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </section>
   </div>
 </template>
 
 <script setup>
-// AsegÃºrate de tener jwt-decode instalado para que auth.js no de error
+import { computed } from 'vue'
+import { useAuthStore } from '~/stores/auth'
+import { buildAccessContext } from '~/utils/accessContext'
+
+useHead({
+  title: 'Clinical Sentinel | Profile'
+})
+
 const auth = useAuthStore()
+
+const user = computed(() => auth.user || {})
+const accessContext = computed(() => buildAccessContext(user.value))
+
+const userName = computed(() => user.value?.name || 'Unknown user')
+const userEmailLabel = computed(() => user.value?.email || 'No email available')
+const tenantLabel = computed(() => user.value?.tenantKey || 'Not assigned')
+const roleLabel = computed(() => user.value?.role || accessContext.value.role || user.value?.groups?.[0] || 'Not assigned')
+const residenceLabel = computed(() => accessContext.value.residenceId || 'Not assigned')
+const residentIdLabel = computed(() => accessContext.value.residentId || 'Not assigned')
+const userGroups = computed(() => Array.isArray(user.value?.groups) ? user.value.groups : [])
+
+const userInitials = computed(() => {
+  const name = String(userName.value || '').trim()
+  if (!name) return '?'
+
+  const parts = name.split(/\s+/).filter(Boolean)
+  if (!parts.length) return '?'
+
+  return parts.slice(0, 2).map(part => part.charAt(0).toUpperCase()).join('')
+})
+
+const handleLogout = () => {
+  auth.logout()
+}
 </script>
 
 <style scoped>
-.tech-font { font-family: inherit; }
-.profile-page { max-width: 900px; margin: 0 auto; }
-.page-title { margin: 0 0 1.5rem; color: var(--text-main); font-size: 1.9rem; font-weight: 800; padding-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
-.profile-card { background: var(--bg-card); padding: 2.5rem; border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-.profile-header { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid var(--border-color); }
-.user-avatar { width: 70px; height: 70px; background: #3b82f6; color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 1.5rem; }
-.info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
-.info-item { margin-top: 1.5rem; text-align: left; }
-.info-item label { display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.6rem; font-weight: bold; }
-.value-box { background: var(--bg-main); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); color: var(--text-main); font-size: 0.85rem; word-break: break-all; }
-.group-tag { display: inline-block; background: rgba(59,130,246,.12); color: #2563eb; padding: 5px 12px; border-radius: 4px; font-size: 0.75rem; margin: 0 8px 8px 0; border: 1px solid rgba(59,130,246,.18); }
-.no-data { color: var(--text-muted); font-size: 0.8rem; font-style: italic; }
-@media (max-width: 768px) { .info-grid { grid-template-columns: 1fr; } }
+.profile-page {
+  display: grid;
+}
+
+.profile-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+  padding-bottom: 12px;
+}
+
+.page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.page-eyebrow,
+.section-eyebrow {
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.68rem;
+  font-weight: 900;
+  color: #2559bd;
+}
+
+.page-title {
+  margin: 0;
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  color: var(--text-main);
+}
+
+.page-subtitle {
+  margin: 8px 0 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-muted);
+  max-width: 720px;
+}
+
+.profile-card {
+  width: 100%;
+  padding: 18px;
+  border-radius: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.04);
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.identity-panel,
+.details-panel {
+  border-radius: 24px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 18px;
+}
+
+.identity-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.identity-head {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.avatar {
+  width: 84px;
+  height: 84px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #00327d, #0047ab);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.85rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  box-shadow: 0 20px 40px rgba(0, 50, 125, 0.18);
+}
+
+.identity-copy h2 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+.identity-copy p {
+  margin: 4px 0 0;
+  color: var(--text-muted);
+  word-break: break-word;
+}
+
+.identity-meta {
+  display: grid;
+  gap: 7px;
+}
+
+.meta-row,
+.detail-box {
+  padding: 10px 12px;
+  border-radius: 13px;
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.meta-row span,
+.detail-label {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.meta-row strong,
+.detail-box strong {
+  color: var(--text-main);
+  font-weight: 800;
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.details-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.details-header h3 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.detail-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-box--wide {
+  grid-column: 1 / -1;
+}
+
+.groups-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.group-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(37, 89, 189, 0.08);
+  color: #2559bd;
+  border: 1px solid rgba(37, 89, 189, 0.14);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.no-data {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 2px;
+}
+
+.action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+}
+
+.action-button:hover {
+  transform: translateY(-1px);
+}
+
+.action-button--danger {
+  background: rgba(239, 68, 68, 0.08);
+  color: #b91c1c;
+  border-color: rgba(239, 68, 68, 0.14);
+  box-shadow: 0 10px 22px rgba(239, 68, 68, 0.05);
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+@media (max-width: 1100px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 820px) {
+  .profile-card {
+    padding: 14px;
+  }
+
+  .identity-panel,
+  .details-panel {
+    padding: 16px;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-box--wide {
+    grid-column: auto;
+  }
+
+  .meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+}
 </style>
