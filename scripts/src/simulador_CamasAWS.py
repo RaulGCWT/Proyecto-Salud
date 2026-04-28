@@ -26,6 +26,9 @@ MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "false").strip().lower() == "true"
 DEVICE_ID = os.getenv("DEVICE_ID", "Bed-01")
 DEVICE_MAC = os.getenv("DEVICE_MAC", "52:54:00:ab:cd:ju")
 SAMPLING_SECONDS = int(os.getenv("SAMPLING_SECONDS", "10"))
+SIMULATION_TIMESTAMP_MODE = os.getenv("SIMULATION_TIMESTAMP_MODE", "burst").strip().lower()
+SIMULATION_BURST_SIZE = int(os.getenv("SIMULATION_BURST_SIZE", "10"))
+SIMULATION_GAP_SECONDS = int(os.getenv("SIMULATION_GAP_SECONDS", "180"))
 
 
 def _is_local_broker_transport():
@@ -59,13 +62,37 @@ def generar_lectura(ts):
     }
 
 
+def _build_lot_timestamps(cantidad):
+    ahora = int(time.time())
+
+    # El modo "exact" sirve para reproducir el instante real de envío.
+    # El modo "spread" reparte el lote para que la gráfica se vea de forma más clara en demo.
+    if SIMULATION_TIMESTAMP_MODE in {"exact", "same"}:
+        return [ahora] * cantidad
+
+    if SIMULATION_TIMESTAMP_MODE == "exact":
+        timestamps = []
+        burst_size = max(1, SIMULATION_BURST_SIZE)
+        gap_seconds = max(1, SIMULATION_GAP_SECONDS)
+        burst_count = max(1, (cantidad + burst_size - 1) // burst_size)
+        current_ts = ahora - ((burst_count - 1) * gap_seconds)
+
+        for index in range(cantidad):
+            timestamps.append(current_ts)
+
+            if (index + 1) % burst_size == 0:
+                current_ts += gap_seconds
+
+        return timestamps
+
+    return [ahora - ((cantidad - 1 - i) * SAMPLING_SECONDS) for i in range(cantidad)]
+
+
 def generar_lote(cantidad=40):
     lecturas = []
-    ahora = int(time.time())
-    inicio_lote = ahora - ((cantidad - 1) * SAMPLING_SECONDS)
+    timestamps = _build_lot_timestamps(cantidad)
 
-    for i in range(cantidad):
-        ts = inicio_lote + (i * SAMPLING_SECONDS)
+    for ts in timestamps:
         lecturas.append(generar_lectura(ts))
 
     return {

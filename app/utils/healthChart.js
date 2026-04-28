@@ -1,5 +1,63 @@
 const resolveMetricConfig = (activeMetric, metrics) => metrics.find(metric => metric.id === activeMetric) || metrics[0]
 
+const escapeHtml = (value) => String(value ?? '')
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;')
+  .replaceAll("'", '&#39;')
+
+const formatTimestampLabel = (timestamp) => {
+  if (!timestamp && timestamp !== 0) return ''
+
+  return new Date(Number(timestamp) * 1000).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+const groupReadingsByTimestamp = (readings) => {
+  const buckets = new Map()
+
+  for (const reading of readings) {
+    const timestamp = Number(reading?.ts ?? reading?.timestamp ?? 0)
+    if (!Number.isFinite(timestamp) || timestamp <= 0) continue
+
+    const numericValue = Number(reading?.value ?? 0)
+    const safeValue = Number.isFinite(numericValue) ? numericValue : 0
+    const currentBucket = buckets.get(timestamp) || {
+      ts: timestamp,
+      values: [],
+      count: 0
+    }
+
+    currentBucket.count += 1
+    currentBucket.values.push(safeValue)
+    buckets.set(timestamp, currentBucket)
+  }
+
+  return Array.from(buckets.values())
+    .sort((left, right) => left.ts - right.ts)
+    .map(bucket => {
+      const total = bucket.values.reduce((accumulator, value) => accumulator + value, 0)
+      const average = bucket.values.length ? total / bucket.values.length : 0
+      const latestValue = bucket.values.at(-1) ?? 0
+      const minValue = bucket.values.length ? Math.min(...bucket.values) : 0
+      const maxValue = bucket.values.length ? Math.max(...bucket.values) : 0
+
+      return {
+        ts: bucket.ts,
+        time: formatTimestampLabel(bucket.ts),
+        value: latestValue,
+        average,
+        min: minValue,
+        max: maxValue,
+        count: bucket.count
+      }
+    })
+}
+
 const buildVisualMapPieces = (rules, metricColor) => {
   const pieces = []
   const maxRule = rules.find(rule => rule.operator === '>')
@@ -21,10 +79,28 @@ const buildVisualMapPieces = (rules, metricColor) => {
   return pieces
 }
 
-export const buildHealthChartOption = ({ activeMetric, metrics, currentData, rules, isCurrentValueAlert }) => {
+export const buildHealthChartOption = ({
+  activeMetric,
+  metrics,
+  currentData,
+  rules,
+  isCurrentValueAlert,
+  xAxisMin,
+  xAxisMax
+}) => {
   const metricConfig = resolveMetricConfig(activeMetric, metrics)
   const filteredRules = rules.filter(rule => rule.variable === activeMetric)
   const pieces = buildVisualMapPieces(filteredRules, metricConfig.color)
+  const groupedData = groupReadingsByTimestamp(currentData)
+  const seriesData = groupedData.map(point => ({
+    value: [point.ts * 1000, point.value],
+    count: point.count,
+    average: point.average,
+    min: point.min,
+    max: point.max,
+    time: point.time,
+    ts: point.ts
+  }))
 
   return {
     backgroundColor: 'transparent',
@@ -36,16 +112,35 @@ export const buildHealthChartOption = ({ activeMetric, metrics, currentData, rul
       axisPointer: {
         type: 'line',
         lineStyle: { color: metricConfig.color, width: 2, type: 'dashed' }
+      },
+      formatter: (params) => {
+        const point = Array.isArray(params) ? params[0] : params
+        const payload = point?.data || {}
+        const timeLabel = payload.time || formatTimestampLabel((Number(point?.axisValue) || 0) / 1000)
+        const valueLabel = Array.isArray(point?.value) ? point.value[1] : point?.value
+        const hasBatch = Number(payload.count || 0) > 1
+
+        return [
+          `<div style="font-weight:800;margin-bottom:6px;">${escapeHtml(timeLabel || 'N/A')}</div>`,
+          `<div style="margin-bottom:4px;">Valor: <strong>${escapeHtml(valueLabel)}</strong></div>`,
+          hasBatch ? `<div style="margin-bottom:4px;">Lecturas en el mismo instante: <strong>${escapeHtml(payload.count)}</strong></div>` : '',
+          hasBatch ? `<div style="opacity:.85;">Promedio: <strong>${escapeHtml(Number(payload.average || 0).toFixed(1))}</strong></div>` : ''
+        ].filter(Boolean).join('')
       }
     },
     grid: { left: '2%', right: '3%', bottom: '4%', top: '12%', containLabel: true },
     xAxis: {
-      type: 'category',
+      type: 'time',
       boundaryGap: false,
-      data: currentData.map(item => item.time),
+      min: xAxisMin,
+      max: xAxisMax,
       axisLine: { lineStyle: { color: '#cbd5e1' } },
       axisTick: { show: false },
-      axisLabel: { color: '#64748b', fontWeight: 600 }
+      axisLabel: {
+        color: '#64748b',
+        fontWeight: 600,
+        formatter: (value) => formatTimestampLabel((Number(value) || 0) / 1000)
+      }
     },
     yAxis: {
       type: 'value',
@@ -54,13 +149,14 @@ export const buildHealthChartOption = ({ activeMetric, metrics, currentData, rul
     },
     visualMap: {
       show: false,
+      dimension: 1,
       pieces,
       outOfRange: { color: metricConfig.color }
     },
     series: [{
       name: metricConfig.name,
       type: 'line',
-      data: currentData.map(item => item.value),
+      data: seriesData,
       smooth: true,
       showSymbol: isCurrentValueAlert,
       symbolSize: 10,

@@ -21,8 +21,9 @@ const route = useRoute()
 const disableLayout = computed(() => route.meta.layout === false)
 const layoutName = computed(() => disableLayout.value ? undefined : route.meta.layout)
 
-onMounted(() => {
-  health.fetchLatestTelemetry()
+onMounted(async () => {
+  await health.fetchTelemetryHistory()
+  await health.fetchLatestTelemetry()
   connectHealthSocket()
   telemetryRefreshInterval.value = window.setInterval(() => {
     health.fetchLatestTelemetry()

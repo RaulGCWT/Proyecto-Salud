@@ -102,37 +102,22 @@ const visibleData = computed(() => {
   if (!latestTimestamp || !currentData.value.length) return currentData.value
 
   const minimumTimestamp = latestTimestamp - rangeConfig.seconds
-  const filteredData = currentData.value.filter(item => item.ts >= minimumTimestamp)
+  return currentData.value.filter(item => item.ts >= minimumTimestamp)
+})
 
-  const baseData = filteredData.length ? filteredData : currentData.value.slice(-12)
+const selectedRangeConfig = computed(() => {
+  return timeRanges.find(range => range.id === selectedRange.value) || timeRanges[0]
+})
 
-  if (baseData.length < 2) return baseData
+const chartWindow = computed(() => {
+  const latestTimestamp = currentData.value.at(-1)?.ts
+  if (!latestTimestamp || !currentData.value.length) return { min: undefined, max: undefined }
 
-  const firstTimestamp = baseData[0].ts
-  const lastTimestamp = baseData[baseData.length - 1].ts
-  const actualSpan = Math.max(lastTimestamp - firstTimestamp, 1)
-
-  // Si todavía no hay suficiente histórico para cubrir el rango seleccionado,
-  // reescalamos los puntos existentes para que el selector siga teniendo efecto visual.
-  if (actualSpan >= rangeConfig.seconds * 0.8) {
-    return baseData
+  const rangeSeconds = selectedRangeConfig.value.seconds
+  return {
+    min: (latestTimestamp - rangeSeconds) * 1000,
+    max: latestTimestamp * 1000
   }
-
-  const startTimestamp = latestTimestamp - rangeConfig.seconds
-
-  return baseData.map((item, index) => {
-    const progress = baseData.length === 1 ? 1 : index / (baseData.length - 1)
-    const nextTimestamp = Math.round(startTimestamp + (rangeConfig.seconds * progress))
-
-    return {
-      ...item,
-      ts: nextTimestamp,
-      time: new Date(nextTimestamp * 1000).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
-    }
-  })
 })
 
 const activeMetricLabel = computed(() => {
@@ -158,7 +143,9 @@ const chartOption = computed(() => buildHealthChartOption({
   metrics,
   currentData: visibleData.value,
   rules: rulesStore.rules,
-  isCurrentValueAlert: isCurrentValueAlert.value
+  isCurrentValueAlert: isCurrentValueAlert.value,
+  xAxisMin: chartWindow.value.min,
+  xAxisMax: chartWindow.value.max
 }))
 </script>
 
@@ -389,3 +376,4 @@ const chartOption = computed(() => buildHealthChartOption({
   .chart-frame, .chart { min-height: 300px; }
 }
 </style>
+

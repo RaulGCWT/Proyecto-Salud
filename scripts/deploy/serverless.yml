@@ -25,6 +25,7 @@ provider:
     DEVICES_TABLE_NAME: ${env:DEVICES_TABLE_NAME, 'Devices'}
     STAFF_TABLE_NAME: ${env:STAFF_TABLE_NAME, 'StaffMembers'}
     RESIDENTS_TABLE_NAME: ${env:RESIDENTS_TABLE_NAME, 'Residents'}
+    TELEMETRY_TABLE_NAME: ${env:TELEMETRY_TABLE_NAME, 'MonitoringTelemetry'}
     INVITES_TABLE_NAME: ${env:INVITES_TABLE_NAME, 'FamilyInvites'}
     FAMILY_USERS_TABLE_NAME: ${env:FAMILY_USERS_TABLE_NAME, 'FamilyUsers'}
 

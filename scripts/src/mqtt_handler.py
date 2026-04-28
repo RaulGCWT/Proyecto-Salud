@@ -1,11 +1,13 @@
 import json
 import os
+import time
+import uuid
 from pathlib import Path
 
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 import paho.mqtt.client as paho_mqtt
 
-from src.database import table_devices
+from src.database import table_devices, table_telemetry
 from src.rules_engine import check_rules_and_save
 
 
@@ -66,6 +68,64 @@ def registrar_dispositivo_si_no_existe(data):
         print(f"No se pudo registrar el dispositivo {mac}: {error}")
 
 
+def _parse_reading_timestamp(reading):
+    raw_timestamp = reading.get("ts")
+    try:
+        timestamp = int(float(raw_timestamp))
+        if timestamp > 0:
+            return timestamp
+    except (TypeError, ValueError):
+        pass
+
+    return int(time.time())
+
+
+def guardar_lectura_historial(normalized, reading, index):
+    mac = _normalizar_mac(normalized.get("mac"))
+    device_id = str(normalized.get("deviceId") or mac or "unknown").strip()
+    timestamp = _parse_reading_timestamp(reading)
+
+    metadata = {
+        "ownerId": "",
+        "tenantKey": "",
+        "residenceId": "",
+        "area": "",
+        "residentId": "",
+    }
+
+    try:
+        if mac:
+            device_item = table_devices.get_item(Key={"id": mac}).get("Item") or {}
+            metadata.update({
+                "ownerId": str(device_item.get("ownerId") or "").strip(),
+                "tenantKey": str(device_item.get("tenantKey") or "").strip(),
+                "residenceId": str(device_item.get("residenceId") or "").strip(),
+                "area": str(device_item.get("area") or "").strip(),
+                "residentId": str(device_item.get("residentId") or "").strip(),
+            })
+    except Exception as error:
+        print(f"No se pudo leer la metadata del dispositivo {mac}: {error}")
+
+    try:
+        table_telemetry.put_item(
+            Item={
+                "id": str(uuid.uuid4()),
+                "mac": mac or "unknown",
+                "deviceId": device_id,
+                "timestamp": timestamp,
+                "heartRate": reading.get("heartRate"),
+                "respiratoryRate": reading.get("respiratoryRate"),
+                "hrv": reading.get("hrv"),
+                "isOccupied": reading.get("isOccupied"),
+                "batchIndex": int(index),
+                **metadata,
+            }
+        )
+    except Exception as error:
+        # El histórico no debe bloquear la actualización en vivo ni las alertas.
+        print(f"No se pudo guardar la lectura histórica para {mac}: {error}")
+
+
 def normalizar_payload(payload):
     readings = payload.get("data", [])
     if not isinstance(readings, list) or not readings:
@@ -106,6 +166,10 @@ def on_message(client, userdata, message, socketio):
 
         # Emitimos primero para no perder la actualizacion en la UI si falla DynamoDB.
         registrar_dispositivo_si_no_existe(normalized)
+
+        # Guardamos cada lectura para que luego la gráfica y el histórico tengan base real.
+        for index, reading in enumerate(normalized["readings"]):
+            guardar_lectura_historial(normalized, reading, index)
 
         # Evaluamos reglas con cada lectura del lote para no perder alertas.
         for reading in normalized["readings"]:

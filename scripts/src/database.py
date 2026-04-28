@@ -39,6 +39,7 @@ INVITES_TABLE_NAME = _read_str_env("INVITES_TABLE_NAME", "FamilyInvites")
 FAMILY_USERS_TABLE_NAME = _read_str_env("FAMILY_USERS_TABLE_NAME", "FamilyUsers")
 RESIDENTS_TABLE_NAME = _read_str_env("RESIDENTS_TABLE_NAME", "Residents")
 STAFF_TABLE_NAME = _read_str_env("STAFF_TABLE_NAME", "StaffMembers")
+TELEMETRY_TABLE_NAME = _read_str_env("TELEMETRY_TABLE_NAME", "MonitoringTelemetry")
 
 TABLE_NAMES = {
     "rules": RULES_TABLE_NAME,
@@ -48,6 +49,7 @@ TABLE_NAMES = {
     "family_users": FAMILY_USERS_TABLE_NAME,
     "residents": RESIDENTS_TABLE_NAME,
     "staff_members": STAFF_TABLE_NAME,
+    "telemetry": TELEMETRY_TABLE_NAME,
 }
 
 
@@ -91,6 +93,7 @@ def _resolve_table_sources():
             "family_users": _resolve_table_resource(TABLE_NAMES["family_users"], use_aws=True),
             "residents": _resolve_table_resource(TABLE_NAMES["residents"], use_aws=True),
             "staff_members": _resolve_table_resource(TABLE_NAMES["staff_members"], use_aws=True),
+            "telemetry": _resolve_table_resource(TABLE_NAMES["telemetry"], use_aws=True),
         }
 
     # Hybrid mode: only alerts live in AWS, the rest stays local.
@@ -103,6 +106,7 @@ def _resolve_table_sources():
             "family_users": _resolve_table_resource(TABLE_NAMES["family_users"]),
             "residents": _resolve_table_resource(TABLE_NAMES["residents"]),
             "staff_members": _resolve_table_resource(TABLE_NAMES["staff_members"]),
+            "telemetry": _resolve_table_resource(TABLE_NAMES["telemetry"]),
         }
 
     # Local mode: everything uses the local DynamoDB instance.
@@ -114,6 +118,7 @@ def _resolve_table_sources():
         "family_users": _resolve_table_resource(TABLE_NAMES["family_users"]),
         "residents": _resolve_table_resource(TABLE_NAMES["residents"]),
         "staff_members": _resolve_table_resource(TABLE_NAMES["staff_members"]),
+        "telemetry": _resolve_table_resource(TABLE_NAMES["telemetry"]),
     }
 
 
@@ -126,6 +131,7 @@ table_invites = _resolved_tables["invites"]
 table_family_users = _resolved_tables["family_users"]
 table_residents = _resolved_tables["residents"]
 table_staff_members = _resolved_tables["staff_members"]
+table_telemetry = _resolved_tables["telemetry"]
 
 
 def _create_table_if_missing(table_name):
@@ -161,6 +167,7 @@ def init_db():
         TABLE_NAMES["family_users"],
         TABLE_NAMES["residents"],
         TABLE_NAMES["staff_members"],
+        TABLE_NAMES["telemetry"],
     }
     if not USE_AWS_ALERTS_TABLE:
         local_tables_to_create.add(TABLE_NAMES["events"])

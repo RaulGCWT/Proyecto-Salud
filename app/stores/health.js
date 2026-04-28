@@ -5,6 +5,7 @@ import { getScopedOwnerId } from '~/utils/accessContext'
 import { buildMetricBatch, mergeHistory, normalizeAlertStatus } from '~/utils/healthData'
 
 const EVENTS_API_BASE = 'http://localhost:3001/events'
+const TELEMETRY_HISTORY_API_BASE = 'http://localhost:5000/telemetry/history'
 const TELEMETRY_API_BASE = 'http://localhost:5000/telemetry/latest'
 
 const getUserOwnerId = () => {
@@ -70,6 +71,58 @@ export const useHealthStore = defineStore('health', {
         })
       } catch (err) {
         console.error('Error al cargar historial de DB:', err)
+      }
+    },
+
+    async fetchTelemetryHistory(limit = 200) {
+      try {
+        const ownerId = getScopeOwnerId()
+        const data = await $fetch(TELEMETRY_HISTORY_API_BASE, {
+          params: {
+            limit,
+            ...(ownerId ? { ownerId } : {})
+          },
+          headers: scopedHeaders()
+        })
+
+        const items = Array.isArray(data) ? [...data] : []
+        if (!items.length) {
+          this.hrHistory = []
+          this.hrvHistory = []
+          this.respHistory = []
+          return
+        }
+
+        const orderedItems = items
+          .map(item => ({
+            ...item,
+            timestamp: Number(item.timestamp || item.ts || 0)
+          }))
+          .sort((left, right) => left.timestamp - right.timestamp)
+
+        const normalizedReadings = orderedItems.map(item => ({
+          ts: item.timestamp,
+          heartRate: item.heartRate,
+          respiratoryRate: item.respiratoryRate,
+          hrv: item.hrv,
+          isOccupied: item.isOccupied
+        }))
+
+        this.hrHistory = mergeHistory([], buildMetricBatch(normalizedReadings, 'heartRate'))
+        this.hrvHistory = mergeHistory([], buildMetricBatch(normalizedReadings, 'hrv'))
+        this.respHistory = mergeHistory([], buildMetricBatch(normalizedReadings, 'respiratoryRate'))
+
+        const latestItem = orderedItems.at(-1)
+        if (latestItem) {
+          this.currentMac = latestItem.mac || this.currentMac
+          this.currentDeviceId = latestItem.deviceId || this.currentDeviceId
+          this.heartRate = latestItem.heartRate ?? this.heartRate
+          this.respiratoryRate = latestItem.respiratoryRate ?? this.respiratoryRate
+          this.hrv = latestItem.hrv ?? this.hrv
+          this.isOccupied = latestItem.isOccupied ?? this.isOccupied
+        }
+      } catch (err) {
+        console.error('Error al cargar historial de telemetría:', err)
       }
     },
 
