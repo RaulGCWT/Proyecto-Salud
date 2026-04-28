@@ -4,9 +4,8 @@ import { useAuthStore } from './auth'
 import { getScopedOwnerId } from '~/utils/accessContext'
 import { buildMetricBatch, mergeHistory, normalizeAlertStatus } from '~/utils/healthData'
 
-const EVENTS_API_BASE = 'http://localhost:5000/events'
+const EVENTS_API_BASE = 'http://localhost:3001/events'
 const TELEMETRY_API_BASE = 'http://localhost:5000/telemetry/latest'
-const LEGACY_EVENTS_API_BASE = 'http://localhost:5000/events'
 
 const getUserOwnerId = () => {
   const auth = useAuthStore()
@@ -142,11 +141,7 @@ export const useHealthStore = defineStore('health', {
           params: ownerId ? { ownerId } : {}
         }
 
-        try {
-          await $fetch(`${EVENTS_API_BASE}/${alertId}`, requestOptions)
-        } catch (primaryError) {
-          await $fetch(`${LEGACY_EVENTS_API_BASE}/${encodeURIComponent(String(alertId))}`, requestOptions)
-        }
+        await $fetch(`${EVENTS_API_BASE}/${alertId}`, requestOptions)
       } catch (err) {
         console.error('Error borrando alerta:', err)
         this.alertHistory = currentHistory

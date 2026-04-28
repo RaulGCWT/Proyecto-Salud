@@ -16,6 +16,8 @@ provider:
   stage: ${opt:stage, 'local'}
   environment:
     AWS_REGION: ${env:AWS_REGION, 'eu-west-1'}
+    AWS_EMULATOR_URL: ${env:AWS_EMULATOR_URL, 'http://localhost:4566'}
+    DYNAMODB_URL: ${env:DYNAMODB_URL, 'http://localhost:4566'}
     USE_AWS_DYNAMODB: ${env:USE_AWS_DYNAMODB, 'false'}
     USE_AWS_ALERTS_TABLE: ${env:USE_AWS_ALERTS_TABLE, 'false'}
     RULES_TABLE_NAME: ${env:RULES_TABLE_NAME, 'MonitoringRules'}
@@ -38,159 +40,159 @@ functions:
     handler: handler.get_rules
     events:
       - httpApi:
-          path: /MonitoringRules
+          path: /rules
           method: get
 
   createRule:
     handler: handler.create_rule
     events:
       - httpApi:
-          path: /MonitoringRules
+          path: /rules
           method: post
 
   updateRule:
     handler: handler.update_rule
     events:
       - httpApi:
-          path: /MonitoringRules/{rule_id}
+          path: /rules/{rule_id}
           method: put
 
   deleteRule:
     handler: handler.delete_rule
     events:
       - httpApi:
-          path: /MonitoringRules/{rule_id}
+          path: /rules/{rule_id}
           method: delete
 
   getEvents:
     handler: handler.get_events
     events:
       - httpApi:
-          path: /MonitoringEvents
+          path: /events
           method: get
 
   updateEventStatus:
     handler: handler.update_event_status
     events:
       - httpApi:
-          path: /MonitoringEvents/{event_id}/status
+          path: /events/{event_id}/status
           method: put
 
   deleteEvent:
     handler: handler.delete_event
     events:
       - httpApi:
-          path: /MonitoringEvents/{event_id}
+          path: /events/{event_id}
           method: delete
 
   clearEvents:
     handler: handler.clear_events
     events:
       - httpApi:
-          path: /MonitoringEvents/clear
+          path: /events/clear
           method: delete
 
   getDevices:
     handler: handler.get_devices
     events:
       - httpApi:
-          path: /MonitoringDevices
+          path: /devices
           method: get
 
   saveDevice:
     handler: handler.save_device
     events:
       - httpApi:
-          path: /MonitoringDevices
+          path: /devices
           method: post
 
   updateDevice:
     handler: handler.update_device
     events:
       - httpApi:
-          path: /MonitoringDevices/{device_id}
+          path: /devices/{device_id}
           method: put
 
   getStaffMembers:
     handler: handler.get_staff_members
     events:
       - httpApi:
-          path: /MonitoringStaffMembers
+          path: /staff-members
           method: get
 
   saveStaffMember:
     handler: handler.save_staff_member
     events:
       - httpApi:
-          path: /MonitoringStaffMembers
+          path: /staff-members
           method: post
 
   getResidents:
     handler: handler.get_residents
     events:
       - httpApi:
-          path: /MonitoringResidents
+          path: /residents
           method: get
 
   saveResident:
     handler: handler.save_resident
     events:
       - httpApi:
-          path: /MonitoringResidents
+          path: /residents
           method: post
 
   getFamilyUsers:
     handler: handler.get_family_users
     events:
       - httpApi:
-          path: /MonitoringFamilyUsers
+          path: /family-users
           method: get
 
   updateFamilyUser:
     handler: handler.update_family_user
     events:
       - httpApi:
-          path: /MonitoringFamilyUsers/{family_user_id}
+          path: /family-users/{family_user_id}
           method: put
 
   getInvites:
     handler: handler.get_invites
     events:
       - httpApi:
-          path: /MonitoringInvites
+          path: /invites
           method: get
 
   createInvite:
     handler: handler.create_invite
     events:
       - httpApi:
-          path: /MonitoringInvites
+          path: /invites
           method: post
 
   updateInviteState:
     handler: handler.update_invite_state
     events:
       - httpApi:
-          path: /MonitoringInvites/{invite_id}/state
+          path: /invites/{invite_id}/state
           method: put
 
   verifyInvite:
     handler: handler.verify_invite
     events:
       - httpApi:
-          path: /MonitoringInvites/verify
+          path: /invites/verify
           method: get
 
   acceptInvite:
     handler: handler.accept_invite
     events:
       - httpApi:
-          path: /MonitoringInvites/accept
+          path: /invites/accept
           method: post
 
   registerInvite:
     handler: handler.register_invite
     events:
       - httpApi:
-          path: /MonitoringInvites/register
+          path: /invites/register
           method: post

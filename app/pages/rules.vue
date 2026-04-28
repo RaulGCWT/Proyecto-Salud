@@ -312,10 +312,10 @@ useHead({
 const rulesStore = useRulesStore()
 const auth = useAuthStore()
 
-const STAFF_API_BASE = 'http://localhost:5000/staff-members'
-const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
-const DEVICES_API_BASE = 'http://localhost:5000/devices'
-const FAMILY_USERS_API_BASE = 'http://localhost:5000/family-users'
+const STAFF_API_BASE = 'http://localhost:3001/staff-members'
+const RESIDENTS_API_BASE = 'http://localhost:3001/residents'
+const DEVICES_API_BASE = 'http://localhost:3001/devices'
+const FAMILY_USERS_API_BASE = 'http://localhost:3001/family-users'
 
 const searchQuery = ref('')
 const assignmentFilter = ref('all')

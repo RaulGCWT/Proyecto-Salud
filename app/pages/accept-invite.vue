@@ -80,7 +80,7 @@ const submitting = ref(false)
 const errorMessage = ref('')
 const form = ref({ name: '', email: '', password: '' })
 
-const INVITES_API_BASE = 'http://localhost:5000/invites'
+const INVITES_API_BASE = 'http://localhost:3001/invites'
 
 onMounted(async () => {
   if (!token) {

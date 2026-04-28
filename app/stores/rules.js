@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
 import { getPreferredRuleAssignmentRole, getScopedOwnerId } from '~/utils/accessContext'
 
-const RULES_API_BASE = 'http://localhost:5000/rules'
+const RULES_API_BASE = 'http://localhost:3001/rules'
 
 const getUserOwnerId = () => {
   const auth = useAuthStore()
