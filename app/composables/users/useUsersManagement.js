@@ -17,11 +17,11 @@ import {
   sameId
 } from '~/utils/users/usersMappers'
 
-const STAFF_API_BASE = 'http://localhost:3001/MonitoringStaffMembers'
-const RESIDENTS_API_BASE = 'http://localhost:3001/MonitoringResidents'
-const DEVICES_API_BASE = 'http://localhost:3001/MonitoringDevices'
-const FAMILY_USERS_API_BASE = 'http://localhost:3001/MonitoringFamilyUsers'
-const INVITES_API_BASE = 'http://localhost:3001/MonitoringInvites'
+const STAFF_API_BASE = 'http://localhost:5000/staff-members'
+const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
+const DEVICES_API_BASE = 'http://localhost:5000/devices'
+const FAMILY_USERS_API_BASE = 'http://localhost:5000/family-users'
+const INVITES_API_BASE = 'http://localhost:5000/invites'
 
 const tabs = [
   { id: 'all', label: 'All' },

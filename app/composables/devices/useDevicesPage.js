@@ -4,7 +4,7 @@ import { useAuthStore } from '~/stores/auth'
 import { PERMISSIONS } from '~/utils/permissions'
 import { filterDevicesByAccessContext } from '~/utils/accessContext'
 
-const DEVICES_API_BASE = 'http://localhost:3001/MonitoringDevices'
+const DEVICES_API_BASE = 'http://localhost:5000/devices'
 const SOCKET_URL = 'http://localhost:5000'
 const INVENTORY_REFRESH_INTERVAL = 5000
 const CONNECTION_TIMEOUT_MS = 4000

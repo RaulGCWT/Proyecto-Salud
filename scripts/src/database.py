@@ -26,6 +26,7 @@ def _read_str_env(name, default):
 # Environment configuration
 # ---------------------------------------------------------------------------
 
+AWS_EMULATOR_URL = _read_str_env("AWS_EMULATOR_URL", "")
 DYNAMODB_URL = _read_str_env("DYNAMODB_URL", "http://localhost:8000")
 AWS_REGION = _read_str_env("AWS_REGION", "eu-west-1")
 USE_AWS_DYNAMODB = _read_bool_env("USE_AWS_DYNAMODB", False)
@@ -55,8 +56,8 @@ TABLE_NAMES = {
 # ---------------------------------------------------------------------------
 
 def _build_local_dynamodb_resource():
-    # Local mode uses a deterministic endpoint so the rest of the code can stay simple.
-    endpoint = DYNAMODB_URL or "http://localhost:8000"
+    # Si estamos en un emulador AWS, priorizamos LocalStack; si no, seguimos usando DynamoDB Local.
+    endpoint = AWS_EMULATOR_URL or DYNAMODB_URL or "http://localhost:8000"
     return boto3.resource(
         "dynamodb",
         endpoint_url=endpoint,

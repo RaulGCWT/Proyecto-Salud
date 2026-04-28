@@ -16,12 +16,23 @@ import { useHealthSocket } from '~/composables/useHealthSocket'
 const health = useHealthStore()
 const { connect: connectHealthSocket } = useHealthSocket()
 const activeToast = ref(null)
+const telemetryRefreshInterval = ref(null)
 const route = useRoute()
 const disableLayout = computed(() => route.meta.layout === false)
 const layoutName = computed(() => disableLayout.value ? undefined : route.meta.layout)
 
 onMounted(() => {
+  health.fetchLatestTelemetry()
   connectHealthSocket()
+  telemetryRefreshInterval.value = window.setInterval(() => {
+    health.fetchLatestTelemetry()
+  }, 5000)
+})
+
+onBeforeUnmount(() => {
+  if (telemetryRefreshInterval.value) {
+    window.clearInterval(telemetryRefreshInterval.value)
+  }
 })
 
 // Vigilamos si llega una nueva alerta al Store

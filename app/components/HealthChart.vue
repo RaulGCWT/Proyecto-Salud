@@ -104,7 +104,35 @@ const visibleData = computed(() => {
   const minimumTimestamp = latestTimestamp - rangeConfig.seconds
   const filteredData = currentData.value.filter(item => item.ts >= minimumTimestamp)
 
-  return filteredData.length ? filteredData : currentData.value.slice(-12)
+  const baseData = filteredData.length ? filteredData : currentData.value.slice(-12)
+
+  if (baseData.length < 2) return baseData
+
+  const firstTimestamp = baseData[0].ts
+  const lastTimestamp = baseData[baseData.length - 1].ts
+  const actualSpan = Math.max(lastTimestamp - firstTimestamp, 1)
+
+  // Si todavía no hay suficiente histórico para cubrir el rango seleccionado,
+  // reescalamos los puntos existentes para que el selector siga teniendo efecto visual.
+  if (actualSpan >= rangeConfig.seconds * 0.8) {
+    return baseData
+  }
+
+  const startTimestamp = latestTimestamp - rangeConfig.seconds
+
+  return baseData.map((item, index) => {
+    const progress = baseData.length === 1 ? 1 : index / (baseData.length - 1)
+    const nextTimestamp = Math.round(startTimestamp + (rangeConfig.seconds * progress))
+
+    return {
+      ...item,
+      ts: nextTimestamp,
+      time: new Date(nextTimestamp * 1000).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    }
+  })
 })
 
 const activeMetricLabel = computed(() => {

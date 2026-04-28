@@ -2,9 +2,10 @@ import { defineStore } from 'pinia'
 import { useRulesStore } from './rules'
 import { useAuthStore } from './auth'
 import { getScopedOwnerId } from '~/utils/accessContext'
-import { normalizeAlertStatus } from '~/utils/healthData'
+import { buildMetricBatch, mergeHistory, normalizeAlertStatus } from '~/utils/healthData'
 
-const EVENTS_API_BASE = 'http://localhost:3001/MonitoringEvents'
+const EVENTS_API_BASE = 'http://localhost:5000/events'
+const TELEMETRY_API_BASE = 'http://localhost:5000/telemetry/latest'
 const LEGACY_EVENTS_API_BASE = 'http://localhost:5000/events'
 
 const getUserOwnerId = () => {
@@ -70,6 +71,31 @@ export const useHealthStore = defineStore('health', {
         })
       } catch (err) {
         console.error('Error al cargar historial de DB:', err)
+      }
+    },
+
+    async fetchLatestTelemetry() {
+      try {
+        const data = await $fetch(TELEMETRY_API_BASE)
+        if (!data || !data.lastReading) return
+
+        const lastReading = data.lastReading || {}
+        const readings = Array.isArray(data.readings) ? data.readings : [lastReading].filter(Boolean)
+
+        this.currentMac = data.mac || 'N/A'
+        this.currentDeviceId = data.deviceId || 'N/A'
+        this.heartRate = lastReading.heartRate ?? 0
+        this.respiratoryRate = lastReading.respiratoryRate ?? 0
+        this.hrv = lastReading.hrv ?? 0
+        this.isOccupied = lastReading.isOccupied ?? false
+        this.latestReadings = readings
+        if (readings.length > 0) {
+          this.hrHistory = mergeHistory(this.hrHistory, buildMetricBatch(readings, 'heartRate'))
+          this.hrvHistory = mergeHistory(this.hrvHistory, buildMetricBatch(readings, 'hrv'))
+          this.respHistory = mergeHistory(this.respHistory, buildMetricBatch(readings, 'respiratoryRate'))
+        }
+      } catch (err) {
+        console.error('Error al cargar telemetría inicial:', err)
       }
     },
 

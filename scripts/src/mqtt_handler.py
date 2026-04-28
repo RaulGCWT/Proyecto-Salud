@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+import paho.mqtt.client as paho_mqtt
 
 from src.database import table_devices
 from src.rules_engine import check_rules_and_save
@@ -12,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 CERTS_DIR = BASE_DIR / "config" / "certs"
 
 
+MQTT_TRANSPORT = os.getenv("MQTT_TRANSPORT", "aws_iot").strip().lower()
 AWS_IOT_ENDPOINT = os.getenv("AWS_IOT_ENDPOINT", "a3hfcqvqmb234v-ats.iot.eu-west-1.amazonaws.com")
 AWS_IOT_PORT = int(os.getenv("AWS_IOT_PORT", "8883"))
 AWS_IOT_CLIENT_ID = os.getenv("AWS_IOT_CLIENT_ID", "backend_listener_welltech")
@@ -20,6 +22,17 @@ AWS_IOT_ROOT_CA = os.getenv("AWS_IOT_ROOT_CA", str(CERTS_DIR / "cama01-AmazonRoo
 AWS_IOT_CERT = os.getenv("AWS_IOT_CERT", str(CERTS_DIR / "cama01-certificado.pem.crt"))
 AWS_IOT_PRIVATE_KEY = os.getenv("AWS_IOT_PRIVATE_KEY", str(CERTS_DIR / "cama01-private.pem.key"))
 AWS_IOT_QOS = int(os.getenv("AWS_IOT_QOS", "1"))
+MQTT_TOPIC = os.getenv("MQTT_TOPIC", AWS_IOT_TOPIC)
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
+MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
+MQTT_BROKER_CLIENT_ID = os.getenv("MQTT_BROKER_CLIENT_ID", "backend_listener_welltech_local")
+MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "false").strip().lower() == "true"
+
+latest_telemetry = None
+
+
+def _is_local_broker_transport():
+    return MQTT_TRANSPORT in {"broker", "local", "mosquitto", "paho"}
 
 
 def _normalizar_mac(mac):
@@ -77,6 +90,8 @@ def normalizar_payload(payload):
 
 
 def on_message(client, userdata, message, socketio):
+    global latest_telemetry
+
     try:
         raw_payload = message.payload.decode() if isinstance(message.payload, bytes) else message.payload
         payload = json.loads(raw_payload)
@@ -86,6 +101,7 @@ def on_message(client, userdata, message, socketio):
             print("Payload recibido sin lecturas validas. Se ignora el mensaje.")
             return
 
+        latest_telemetry = normalized
         socketio.emit("sensor_update", normalized)
 
         # Emitimos primero para no perder la actualizacion en la UI si falla DynamoDB.
@@ -108,7 +124,47 @@ def on_message(client, userdata, message, socketio):
         print(f"Error procesando mensaje MQTT desde AWS IoT Core: {error}")
 
 
-def start_mqtt(socketio):
+def get_latest_telemetry():
+    return latest_telemetry or {}
+
+
+def _on_paho_connect(client, userdata, flags, rc):
+    if rc == 0:
+        print(f"Conectado al broker MQTT local en {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
+        client.subscribe(MQTT_TOPIC, AWS_IOT_QOS)
+        print(f"Suscrito al topic MQTT: {MQTT_TOPIC}")
+        return
+
+    print(f"No se pudo conectar al broker MQTT local. Código: {rc}")
+
+
+def _on_paho_message(socketio):
+    def handle_message(client, userdata, message):
+        on_message(client, userdata, message, socketio)
+
+    return handle_message
+
+
+def _start_local_broker(socketio):
+    client = paho_mqtt.Client(client_id=MQTT_BROKER_CLIENT_ID)
+
+    if MQTT_USE_TLS:
+        # Solo activamos TLS si se pide explícitamente; el broker local del compose usa TCP plano.
+        client.tls_set()
+
+    client.on_connect = _on_paho_connect
+    client.on_message = _on_paho_message(socketio)
+
+    try:
+        client.connect(MQTT_BROKER_HOST, MQTT_BROKER_PORT, keepalive=60)
+        client.loop_start()
+        return client
+    except Exception as error:
+        print(f"No se pudo conectar al broker MQTT local: {error}")
+        return None
+
+
+def _start_aws_iot(socketio):
     client = AWSIoTMQTTClient(AWS_IOT_CLIENT_ID)
     client.configureEndpoint(AWS_IOT_ENDPOINT, AWS_IOT_PORT)
     client.configureCredentials(AWS_IOT_ROOT_CA, AWS_IOT_PRIVATE_KEY, AWS_IOT_CERT)
@@ -124,3 +180,12 @@ def start_mqtt(socketio):
     except Exception as error:
         print(f"No se pudo conectar a AWS IoT Core: {error}")
         return None
+
+
+def start_mqtt(socketio):
+    if _is_local_broker_transport():
+        print("Arrancando telemetría con broker MQTT local.")
+        return _start_local_broker(socketio)
+
+    print("Arrancando telemetría con AWS IoT Core.")
+    return _start_aws_iot(socketio)

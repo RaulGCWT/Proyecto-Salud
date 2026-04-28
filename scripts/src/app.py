@@ -1,8 +1,8 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_socketio import SocketIO
 from flask_cors import CORS
 from src.database import init_db, decimal_default
-from src.mqtt_handler import start_mqtt
+from src.mqtt_handler import start_mqtt, get_latest_telemetry
 from src.routes.devices import devices_bp
 from src.routes.events import events_bp
 from src.routes.family_users import family_users_bp
@@ -33,6 +33,11 @@ def main():
     init_db()
     mqtt_client = start_mqtt(socketio)
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
+
+
+@app.route('/telemetry/latest', methods=['GET'])
+def get_latest_telemetry_route():
+    return jsonify(get_latest_telemetry()), 200
 
 
 if __name__ == '__main__':

@@ -1,28 +1,52 @@
 import json
+import os
 import random
 import time
 from pathlib import Path
 
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+import paho.mqtt.client as paho_mqtt
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CERTS_DIR = BASE_DIR / "config" / "certs"
 
-# --- Configuracion de AWS (ajusta estos valores si cambias de entorno) ---
-ENDPOINT = "a3hfcqvqmb234v-ats.iot.eu-west-1.amazonaws.com"
-CLIENT_ID = "Prueba_Raul_Cama01"
-PATH_TO_CERT = str(CERTS_DIR / "cama01-certificado.pem.crt")
-PATH_TO_KEY = str(CERTS_DIR / "cama01-private.pem.key")
-PATH_TO_ROOT = str(CERTS_DIR / "cama01-AmazonRootCA1.pem")
-TOPIC = "residencia/camas/01/datos"
-DEVICE_ID = "Bed-01"
-DEVICE_MAC = "52:54:00:ab:cd:ju"
-SAMPLING_SECONDS = 10
+# --- Configuracion MQTT. Por defecto usa AWS IoT y, si lo activas, puede apuntar a un broker local. ---
+MQTT_TRANSPORT = os.getenv("MQTT_TRANSPORT", "broker").strip().lower()
+AWS_IOT_ENDPOINT = os.getenv("AWS_IOT_ENDPOINT", "a3hfcqvqmb234v-ats.iot.eu-west-1.amazonaws.com")
+AWS_IOT_PORT = int(os.getenv("AWS_IOT_PORT", "8883"))
+AWS_IOT_CLIENT_ID = os.getenv("AWS_IOT_CLIENT_ID", "Prueba_Raul_Cama01")
+PATH_TO_CERT = os.getenv("AWS_IOT_CERT", str(CERTS_DIR / "cama01-certificado.pem.crt"))
+PATH_TO_KEY = os.getenv("AWS_IOT_PRIVATE_KEY", str(CERTS_DIR / "cama01-private.pem.key"))
+PATH_TO_ROOT = os.getenv("AWS_IOT_ROOT_CA", str(CERTS_DIR / "cama01-AmazonRootCA1.pem"))
+TOPIC = os.getenv("MQTT_TOPIC", "residencia/camas/01/datos")
+MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
+MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
+MQTT_BROKER_CLIENT_ID = os.getenv("MQTT_BROKER_CLIENT_ID", "cama_simulator_local")
+MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "false").strip().lower() == "true"
+DEVICE_ID = os.getenv("DEVICE_ID", "Bed-01")
+DEVICE_MAC = os.getenv("DEVICE_MAC", "52:54:00:ab:cd:ju")
+SAMPLING_SECONDS = int(os.getenv("SAMPLING_SECONDS", "10"))
 
 
-myMQTTClient = AWSIoTMQTTClient(CLIENT_ID)
-myMQTTClient.configureEndpoint(ENDPOINT, 8883)
-myMQTTClient.configureCredentials(PATH_TO_ROOT, PATH_TO_KEY, PATH_TO_CERT)
+def _is_local_broker_transport():
+    return MQTT_TRANSPORT in {"broker", "local", "mosquitto", "paho"}
+
+
+def _build_local_client():
+    client = paho_mqtt.Client(client_id=MQTT_BROKER_CLIENT_ID)
+
+    if MQTT_USE_TLS:
+        # El broker local del compose usa TCP plano; TLS solo se activa si lo pedimos explícitamente.
+        client.tls_set()
+
+    return client
+
+
+def _build_aws_client():
+    client = AWSIoTMQTTClient(AWS_IOT_CLIENT_ID)
+    client.configureEndpoint(AWS_IOT_ENDPOINT, AWS_IOT_PORT)
+    client.configureCredentials(PATH_TO_ROOT, PATH_TO_KEY, PATH_TO_CERT)
+    return client
 
 
 def generar_lectura(ts):
@@ -57,15 +81,32 @@ def enviar_lote(cantidad=40):
     payload = generar_lote(cantidad)
 
     try:
+        if _is_local_broker_transport():
+            print(f"Conectando al broker MQTT local en {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}...")
+            client = _build_local_client()
+            client.connect(MQTT_BROKER_HOST, MQTT_BROKER_PORT, keepalive=60)
+            client.loop_start()
+
+            print(f"Enviando lote de {cantidad} lecturas a {TOPIC}...")
+            client.publish(TOPIC, json.dumps(payload), 1)
+
+            time.sleep(1)
+
+            client.loop_stop()
+            client.disconnect()
+            print("Envio completado con exito. Desconectado del broker local.")
+            return
+
         print("Conectando a AWS IoT Core...")
-        myMQTTClient.connect()
+        client = _build_aws_client()
+        client.connect()
 
         print(f"Enviando lote de {cantidad} lecturas a {TOPIC}...")
-        myMQTTClient.publish(TOPIC, json.dumps(payload), 1)
+        client.publish(TOPIC, json.dumps(payload), 1)
 
         time.sleep(1)
 
-        myMQTTClient.disconnect()
+        client.disconnect()
         print("Envio completado con exito. Desconectado.")
 
     except Exception as e:
