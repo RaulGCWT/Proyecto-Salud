@@ -57,12 +57,12 @@ TABLE_NAMES = {
 # ---------------------------------------------------------------------------
 
 def _build_local_dynamodb_resource():
-    # En local usamos un endpoint fijo para que el resto del código sea sencillo.
+    # En local usamos un endpoint fijo y la misma región del proyecto para evitar desajustes.
     endpoint = DYNAMODB_URL or "http://localhost:8000"
     return boto3.resource(
         "dynamodb",
         endpoint_url=endpoint,
-        region_name="us-east-1",
+        region_name=AWS_REGION,
         aws_access_key_id="local",
         aws_secret_access_key="local",
     )

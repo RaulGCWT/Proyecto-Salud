@@ -1,12 +1,24 @@
 version: '3.8'
 
 services:
-  dynamodb-local:
-    image: amazon/dynamodb-local:latest
-    container_name: dynamodb_welltech
+  localstack:
+    image: localstack/localstack-pro:latest
+    container_name: localstack_welltech
     ports:
-      - "8000:8000"
-    command: "-jar DynamoDBLocal.jar -sharedDb"
+      - "4566:4566"
+      - "4510-4559:4510-4559"
+    environment:
+      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN:?Please set LOCALSTACK_AUTH_TOKEN before starting LocalStack}
+      - SERVICES=dynamodb,s3
+      - DEBUG=0
+      - LOG_LICENSE_ISSUES=0
+      - PERSISTENCE=0
+      - AWS_DEFAULT_REGION=${AWS_REGION:-eu-west-1}
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_EC2_METADATA_DISABLED=true
+    volumes:
+      - localstack_data:/var/lib/localstack
 
   dynamodb-admin:
     image: aaronshaf/dynamodb-admin
@@ -14,9 +26,13 @@ services:
     ports:
       - "8001:8001"
     environment:
-      - DYNAMO_ENDPOINT=http://dynamodb-local:8000
+      - DYNAMO_ENDPOINT=http://localstack:4566
+      - AWS_REGION=${AWS_REGION:-eu-west-1}
+      - AWS_DEFAULT_REGION=${AWS_REGION:-eu-west-1}
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
     depends_on:
-      - dynamodb-local
+      - localstack
 
   mqtt-broker:
     image: eclipse-mosquitto:latest
@@ -36,7 +52,7 @@ services:
     volumes:
       - ..:/app
     environment:
-      - DYNAMODB_URL=http://dynamodb-local:8000
+      - DYNAMODB_URL=http://localstack:4566
       - MQTT_TRANSPORT=broker
       - MQTT_BROKER_HOST=mqtt-broker
       - MQTT_BROKER_PORT=1883
@@ -51,4 +67,7 @@ services:
     command: python -m src.app
     depends_on:
       - mqtt-broker
-      - dynamodb-local
+      - localstack
+
+volumes:
+  localstack_data:

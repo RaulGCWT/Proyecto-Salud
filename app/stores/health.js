@@ -4,7 +4,7 @@ import { useAuthStore } from './auth'
 import { getScopedOwnerId } from '~/utils/accessContext'
 import { buildMetricBatch, mergeHistory, normalizeAlertStatus } from '~/utils/healthData'
 
-const EVENTS_API_BASE = 'http://localhost:3001/events'
+const EVENTS_API_BASE = 'http://localhost:5000/events'
 const TELEMETRY_HISTORY_API_BASE = 'http://localhost:5000/telemetry/history'
 const TELEMETRY_API_BASE = 'http://localhost:5000/telemetry/latest'
 
