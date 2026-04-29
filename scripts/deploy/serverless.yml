@@ -16,8 +16,6 @@ provider:
   stage: ${opt:stage, 'local'}
   environment:
     AWS_REGION: ${env:AWS_REGION, 'eu-west-1'}
-    AWS_EMULATOR_URL: ${env:AWS_EMULATOR_URL, 'http://localhost:4566'}
-    DYNAMODB_URL: ${env:DYNAMODB_URL, 'http://localhost:4566'}
     USE_AWS_DYNAMODB: ${env:USE_AWS_DYNAMODB, 'false'}
     USE_AWS_ALERTS_TABLE: ${env:USE_AWS_ALERTS_TABLE, 'false'}
     RULES_TABLE_NAME: ${env:RULES_TABLE_NAME, 'MonitoringRules'}
@@ -25,7 +23,6 @@ provider:
     DEVICES_TABLE_NAME: ${env:DEVICES_TABLE_NAME, 'Devices'}
     STAFF_TABLE_NAME: ${env:STAFF_TABLE_NAME, 'StaffMembers'}
     RESIDENTS_TABLE_NAME: ${env:RESIDENTS_TABLE_NAME, 'Residents'}
-    TELEMETRY_TABLE_NAME: ${env:TELEMETRY_TABLE_NAME, 'MonitoringTelemetry'}
     INVITES_TABLE_NAME: ${env:INVITES_TABLE_NAME, 'FamilyInvites'}
     FAMILY_USERS_TABLE_NAME: ${env:FAMILY_USERS_TABLE_NAME, 'FamilyUsers'}
 
