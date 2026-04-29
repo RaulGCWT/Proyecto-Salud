@@ -267,7 +267,8 @@ const filterOptions = {
   type: [
     { label: 'All Types', value: 'all' },
     { label: 'Critical Care', value: 'Critical Care' },
-    { label: 'Standard', value: 'Standard' }
+    { label: 'Standard', value: 'Standard' },
+    { label: 'Double Bed', value: 'Double Bed' }
   ],
   presence: [
     { label: 'All Presence', value: 'all' },
@@ -285,7 +286,8 @@ const filterLabels = {
   type: {
     all: 'All Types',
     'Critical Care': 'Critical Care',
-    Standard: 'Standard'
+    Standard: 'Standard',
+    'Double Bed': 'Double Bed'
   },
   presence: {
     all: 'All Presence',
@@ -394,6 +396,7 @@ onBeforeUnmount(() => {
 .device-subtitle { font-size: 0.8rem; color: var(--text-muted); }
 .type-badge, .connection-badge, .presence-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 12px; border-radius: 999px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
 .type-standard { color: #2559bd; background: rgba(37, 89, 189, 0.08); }
+.type-double { color: #0f766e; background: rgba(20, 184, 166, 0.12); }
 .type-critical { color: #b91c1c; background: rgba(239, 68, 68, 0.12); }
 .type-pump { color: #7c3aed; background: rgba(139, 92, 246, 0.12); }
 .type-life { color: #047857; background: rgba(16, 185, 129, 0.12); }

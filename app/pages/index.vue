@@ -1,11 +1,35 @@
 <template>
   <div class="dashboard-page">
+    <section class="device-tabs-shell">
+      <div class="device-tabs-header">
+        <p class="panel-eyebrow">Device switching</p>
+        <h2 class="device-tabs-title">Choose active MAC</h2>
+      </div>
+
+      <div class="device-tabs" role="tablist" aria-label="Device selector">
+        <button
+          v-for="option in deviceOptions"
+          :key="option.value || option.label"
+          type="button"
+          class="device-tab"
+          :class="{ 'device-tab--active': selectedMacModel === option.value }"
+          :disabled="!option.value"
+          role="tab"
+          :aria-selected="selectedMacModel === option.value ? 'true' : 'false'"
+          @click="selectedMacModel = option.value"
+        >
+          <span class="device-tab__label">MAC</span>
+          <span class="device-tab__value">{{ option.label }}</span>
+        </button>
+      </div>
+    </section>
+
     <section class="hero-panel">
       <div class="hero-copy">
         <p class="eyebrow">Clinical Sentinel</p>
-        <h1>Live Monitoring Overview</h1>
+        <h1>Monitoring Overview</h1>
         <p class="hero-description">
-          Real-time biometrics from <strong>{{ currentDeviceLabel }}</strong> with synchronized telemetry, alert handling and occupancy state.
+          Real biometrics from <strong>{{ currentDeviceLabel }}</strong> with synchronized telemetry, alert handling and occupancy state.
         </p>
 
         <div class="hero-pills">
@@ -17,7 +41,7 @@
             {{ health.latestReadings.length }} samples buffered
           </span>
           <span class="status-pill status-pill-soft">
-            {{ rulesStore.rules.length }} active rules
+            {{ scopedRules.length }} active rules
           </span>
         </div>
       </div>
@@ -44,6 +68,7 @@
         :key="card.key"
         :type="card.type"
         :title="card.title"
+        :subtitle="card.subtitle"
         :main-text="card.mainText"
         :is-alert="card.isAlert"
         :description="card.description"
@@ -75,6 +100,10 @@
               <span>MAC Address</span>
               <strong>{{ health.currentMac }}</strong>
             </div>
+            <div class="info-row" v-if="isDoubleBedDevice">
+              <span>Side view</span>
+              <strong>{{ selectedSideLabel }}</strong>
+            </div>
             <div class="info-row">
               <span>Bed state</span>
               <strong :class="health.isOccupied ? 'state-on' : 'state-off'">
@@ -105,7 +134,7 @@
                 </span>
               </div>
               <p>{{ alert.message }}</p>
-              <span class="alert-meta">{{ alert.time }} · {{ alert.mac }}</span>
+              <span class="alert-meta">{{ alert.time }} · {{ alert.mac }}{{ alert.side && alert.side !== 'all' ? ` · ${alert.side}` : '' }}</span>
             </article>
           </div>
           <p v-else class="empty-state">No alerts available right now.</p>
@@ -126,7 +155,7 @@
             </div>
             <div class="status-card">
               <span class="summary-label">Rules loaded</span>
-              <strong>{{ rulesStore.rules.length }}</strong>
+              <strong>{{ scopedRules.length }}</strong>
             </div>
             <div class="status-card">
               <span class="summary-label">Telemetry state</span>
@@ -145,9 +174,94 @@
 import { computed, onMounted } from 'vue'
 import { useHealthStore } from '~/stores/health'
 import { useRulesStore } from '~/stores/rules'
+import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
 
 const health = useHealthStore()
 const rulesStore = useRulesStore()
+
+const selectedMacModel = computed({
+  get: () => health.selectedMac,
+  set: value => health.setSelectedMac(value)
+})
+
+const deviceOptions = computed(() => {
+  const latestByMac = new Map()
+
+  for (const record of health.telemetryRecords) {
+    const mac = normalizeScopeValue(record.mac)
+    if (!mac) continue
+
+    const current = latestByMac.get(mac)
+    if (!current || Number(record.ts || 0) >= Number(current.ts || 0)) {
+      latestByMac.set(mac, record)
+    }
+  }
+
+  const options = Array.from(latestByMac.values())
+    .sort((left, right) => Number(right.ts || 0) - Number(left.ts || 0))
+    .map((record) => {
+      const mac = normalizeScopeValue(record.mac)
+      const deviceId = String(record.deviceId || '').trim()
+      const label = deviceId && deviceId !== mac ? `${deviceId} · ${mac}` : mac
+
+      return {
+        value: mac,
+        label: label || mac
+      }
+    })
+
+  if (!options.length) {
+    return [{ value: '', label: 'No devices available' }]
+  }
+
+  return options
+})
+
+const selectedDeviceRecord = computed(() => {
+  const scopeMac = normalizeScopeValue(health.selectedMac || health.currentMac)
+  const scopeDeviceId = normalizeScopeValue(health.currentDeviceId)
+
+  return health.deviceInventory.find((device) => {
+    const deviceMac = normalizeScopeValue(device.mac || device.id)
+    const deviceId = normalizeScopeValue(device.deviceId || device.id || device.mac)
+
+    if (scopeMac && (deviceMac === scopeMac || deviceId === scopeMac)) return true
+    if (scopeDeviceId && (deviceMac === scopeDeviceId || deviceId === scopeDeviceId)) return true
+    return false
+  }) || null
+})
+
+const isDoubleBedDevice = computed(() =>
+  String(selectedDeviceRecord.value?.type || '').trim().toLowerCase().includes('double')
+)
+
+const selectedSideLabel = computed(() => {
+  const side = normalizeScopeValue(health.selectedSide)
+  if (side === 'left') return 'Left'
+  if (side === 'right') return 'Right'
+  return isDoubleBedDevice.value ? 'All sides' : 'Single side'
+})
+
+const getAverageFromHistory = (history = [], limit = 10) => {
+  const recentValues = [...history]
+    .slice(-Math.max(1, limit))
+    .map(point => Number(point.value))
+    .filter(value => Number.isFinite(value))
+
+  if (!recentValues.length) return 0
+
+  const total = recentValues.reduce((sum, value) => sum + value, 0)
+  return Math.round(total / recentValues.length)
+}
+
+const scopedRules = computed(() => {
+  const telemetryScope = {
+    mac: normalizeScopeValue(health.selectedMac || health.currentMac),
+    deviceId: normalizeScopeValue(health.currentDeviceId)
+  }
+
+  return rulesStore.rules.filter(rule => matchesDeviceRuleScope(rule, telemetryScope, selectedDeviceRecord.value || {}))
+})
 
 useHead({
   title: 'Clinical Sentinel | Dashboard'
@@ -156,6 +270,7 @@ useHead({
 onMounted(async () => {
   await Promise.all([
     rulesStore.fetchRules(),
+    health.fetchDeviceInventory(),
     health.fetchAlertHistory()
   ])
 })
@@ -163,7 +278,7 @@ onMounted(async () => {
 const hasRuleAlert = (variable, currentValue) => {
   const numericValue = Number(currentValue)
 
-  return rulesStore.rules.some((rule) => {
+  return scopedRules.value.some((rule) => {
     const ruleVariable = rule.parameter || rule.variable
     if (ruleVariable !== variable) return false
 
@@ -178,39 +293,47 @@ const hasRuleAlert = (variable, currentValue) => {
 }
 
 const dashboardCards = computed(() => {
-  const heartRateAlert = hasRuleAlert('hr', health.heartRate)
-  const hrvAlert = hasRuleAlert('hrv', health.hrv)
-  const respiratoryAlert = hasRuleAlert('resp', health.respiratoryRate)
+  const averageHeartRate = getAverageFromHistory(health.hrHistory) || health.heartRate
+  const averageHrv = getAverageFromHistory(health.hrvHistory) || health.hrv
+  const averageRespiratoryRate = getAverageFromHistory(health.respHistory) || health.respiratoryRate
+
+  const heartRateAlert = hasRuleAlert('hr', averageHeartRate)
+  const hrvAlert = hasRuleAlert('hrv', averageHrv)
+  const respiratoryAlert = hasRuleAlert('resp', averageRespiratoryRate)
 
   return [
     {
       key: 'hr',
       type: 'hr',
-      title: 'Heart Rate',
-      mainText: `${health.heartRate} BPM`,
+      title: 'Heart rate',
+      subtitle: 'Average Heart rate',
+      mainText: `${averageHeartRate} BPM`,
       isAlert: heartRateAlert,
-      description: heartRateAlert ? 'Abnormal HR' : 'Normal range'
+      description: heartRateAlert ? 'Average out of range' : 'Average of recent samples'
     },
     {
       key: 'hrv',
       type: 'hrv',
-      title: 'HR Variability',
-      mainText: `${health.hrv} ms`,
+      title: 'HR variability',
+      subtitle: 'Average HRV',
+      mainText: `${averageHrv} ms`,
       isAlert: hrvAlert,
-      description: hrvAlert ? 'High stress pattern' : 'Stable trend'
+      description: hrvAlert ? 'Average out of range' : 'Average of recent samples'
     },
     {
       key: 'resp',
       type: 'resp',
-      title: 'Resp. Rate',
-      mainText: `${health.respiratoryRate} RPM`,
+      title: 'Resp. rate',
+      subtitle: 'Average respiratory rate',
+      mainText: `${averageRespiratoryRate} RPM`,
       isAlert: respiratoryAlert,
-      description: respiratoryAlert ? 'Abnormal breathing' : 'Normal range'
+      description: respiratoryAlert ? 'Average out of range' : 'Average of recent samples'
     },
     {
       key: 'presence',
       type: 'presence',
       title: 'Bed Status',
+      subtitle: 'Occupancy status',
       mainText: health.isOccupied ? 'In Use' : 'Empty',
       isAlert: false,
       description: 'Occupancy'
@@ -218,9 +341,24 @@ const dashboardCards = computed(() => {
   ]
 })
 
-const recentAlerts = computed(() => health.alertHistory.slice(0, 4))
+const scopedAlertHistory = computed(() => {
+  const selectedMac = normalizeScopeValue(health.selectedMac || health.currentMac)
+  const selectedSide = normalizeScopeValue(health.selectedSide)
+  if (!selectedMac) return health.alertHistory
+
+  return health.alertHistory.filter(alert => {
+    const alertMac = normalizeScopeValue(alert.mac)
+    const alertDeviceId = normalizeScopeValue(alert.deviceId)
+    const alertSide = normalizeScopeValue(alert.side)
+    const matchesDevice = alertMac === selectedMac || alertDeviceId === selectedMac
+    const matchesSide = selectedSide === 'all' || !alertSide || alertSide === selectedSide
+    return matchesDevice && matchesSide
+  })
+})
+
+const recentAlerts = computed(() => scopedAlertHistory.value.slice(0, 4))
 const openAlerts = computed(() => recentAlerts.value.filter(alert => alert.status !== 'READ'))
-const latestAlert = computed(() => health.alertHistory[0] || null)
+const latestAlert = computed(() => scopedAlertHistory.value[0] || null)
 const currentDeviceLabel = computed(() => health.currentDeviceId !== 'N/A' ? health.currentDeviceId : health.currentMac)
 const hasLiveData = computed(() => health.latestReadings.length > 0 || health.heartRate > 0 || health.hrv > 0 || health.respiratoryRate > 0)
 </script>
@@ -379,6 +517,112 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 18px;
 }
+.device-tabs-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px 16px;
+  border-radius: 24px;
+  border: 1px solid var(--border-color);
+  background: var(--surface-panel-strong);
+  box-shadow: 0 18px 40px var(--surface-shadow);
+}
+.device-tabs-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.device-tabs-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+}
+.device-tabs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  scrollbar-width: thin;
+}
+.device-tabs::-webkit-scrollbar {
+  height: 8px;
+}
+.device-tabs::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.36);
+}
+.device-tab {
+  position: relative;
+  flex: 0 0 auto;
+  min-width: 180px;
+  max-width: 280px;
+  padding: 12px 16px 11px;
+  border-radius: 18px 18px 10px 10px;
+  border: 1px solid var(--surface-border);
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text-muted);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+.device-tab:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.08);
+}
+.device-tab--active {
+  color: #0f172a;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 1), rgba(239, 246, 255, 0.96));
+  border-color: rgba(37, 89, 189, 0.24);
+  box-shadow: 0 16px 32px rgba(37, 89, 189, 0.12);
+}
+.device-tab--active::after {
+  content: '';
+  position: absolute;
+  inset: auto 14px -1px 14px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2559bd, #60a5fa);
+}
+.device-tab__label {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  opacity: 0.88;
+}
+.device-tab__value {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+:global(.dark-mode) .device-tabs-shell {
+  background: var(--surface-card-soft) !important;
+  border-color: var(--surface-border) !important;
+}
+
+:global(.dark-mode) .device-tabs-title {
+  color: #f8fafc !important;
+}
+
+:global(.dark-mode) .device-tab {
+  background: rgba(2, 6, 23, 0.96) !important;
+  color: #cbd5e1 !important;
+  border-color: var(--surface-border) !important;
+}
+
+:global(.dark-mode) .device-tab--active {
+  color: #f8fafc !important;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 1), rgba(30, 41, 59, 0.94)) !important;
+  border-color: rgba(59, 130, 246, 0.3) !important;
+}
 .dashboard-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.8fr) minmax(320px, 0.9fr);
@@ -522,5 +766,7 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
   .hero-panel, .chart-panel, .side-panel { padding: 18px; }
   .hero-summary { grid-template-columns: 1fr; }
   .panel-header { flex-direction: column; }
+  .device-tabs-shell { padding: 16px; }
+  .device-tab { min-width: 160px; }
 }
 </style>

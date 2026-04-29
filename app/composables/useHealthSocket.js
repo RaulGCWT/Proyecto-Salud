@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client'
 import { useHealthStore } from '~/stores/health'
-import { buildMetricBatch, mergeHistory, normalizeSensorPayload } from '~/utils/healthData'
+import { normalizeSensorPayload } from '~/utils/healthData'
+import { normalizeScopeValue } from '~/utils/telemetryScope'
 
 let socket = null
 
@@ -16,23 +17,14 @@ export const useHealthSocket = () => {
       const normalized = normalizeSensorPayload(payload)
       if (!normalized) return
 
-      const { lastReading, readings } = normalized
+      const selectedMac = normalizeScopeValue(health.selectedMac)
+      const incomingMac = normalizeScopeValue(normalized.mac)
 
-      health.heartRate = lastReading.heartRate ?? 0
-      health.respiratoryRate = lastReading.respiratoryRate ?? 0
-      health.hrv = lastReading.hrv ?? 0
-      health.isOccupied = lastReading.isOccupied ?? false
-      health.currentMac = normalized.mac || 'N/A'
-      health.currentDeviceId = normalized.deviceId || 'N/A'
-      health.latestReadings = readings
+      health.ingestTelemetryPayload(normalized)
 
-      if (readings.length > 0) {
-        health.hrHistory = mergeHistory(health.hrHistory, buildMetricBatch(readings, 'heartRate'))
-        health.hrvHistory = mergeHistory(health.hrvHistory, buildMetricBatch(readings, 'hrv'))
-        health.respHistory = mergeHistory(health.respHistory, buildMetricBatch(readings, 'respiratoryRate'))
+      if (!selectedMac || selectedMac === incomingMac) {
+        health.checkRules(normalized.readings || [])
       }
-
-      health.checkRules()
     })
 
     return socket

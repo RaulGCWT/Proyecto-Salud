@@ -24,7 +24,8 @@ MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
 MQTT_BROKER_CLIENT_ID = os.getenv("MQTT_BROKER_CLIENT_ID", "cama_simulator_local")
 MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "false").strip().lower() == "true"
 DEVICE_ID = os.getenv("DEVICE_ID", "Bed-01")
-DEVICE_MAC = os.getenv("DEVICE_MAC", "52:54:00:ab:cd:ju")
+DEVICE_MAC = os.getenv("DEVICE_MAC", "52:54:00:ab:cd:ra")
+DEVICE_TYPE = os.getenv("DEVICE_TYPE", "Double Bed")#Double Bed #Standard
 SAMPLING_SECONDS = int(os.getenv("SAMPLING_SECONDS", "10"))
 SIMULATION_TIMESTAMP_MODE = os.getenv("SIMULATION_TIMESTAMP_MODE", "burst").strip().lower()
 SIMULATION_BURST_SIZE = int(os.getenv("SIMULATION_BURST_SIZE", "10"))
@@ -33,6 +34,14 @@ SIMULATION_GAP_SECONDS = int(os.getenv("SIMULATION_GAP_SECONDS", "180"))
 
 def _is_local_broker_transport():
     return MQTT_TRANSPORT in {"broker", "local", "mosquitto", "paho"}
+
+
+def _is_double_bed():
+    return "double" in str(DEVICE_TYPE).strip().lower()
+
+
+def _get_device_type_label():
+    return "Double Bed" if _is_double_bed() else str(DEVICE_TYPE).strip() or "Standard"
 
 
 def _build_local_client():
@@ -52,12 +61,21 @@ def _build_aws_client():
     return client
 
 
-def generar_lectura(ts):
+def generar_lectura(ts, side="center"):
+    side_key = str(side or "center").strip().lower()
+    base_offset = 0
+
+    if side_key == "left":
+        base_offset = -2
+    elif side_key == "right":
+        base_offset = 2
+
     return {
-        "heartRate": random.randint(65, 120),
-        "respiratoryRate": random.randint(12, 35),
-        "hrv": random.randint(25, 75),
+        "heartRate": max(40, random.randint(65, 120) + base_offset),
+        "respiratoryRate": max(8, random.randint(12, 35) + (base_offset // 2)),
+        "hrv": max(10, random.randint(25, 75) - abs(base_offset)),
         "isOccupied": random.choice([True, False]),
+        "side": side_key,
         "ts": ts
     }
 
@@ -93,12 +111,19 @@ def generar_lote(cantidad=40):
     timestamps = _build_lot_timestamps(cantidad)
 
     for ts in timestamps:
+        if _is_double_bed():
+            lecturas.append(generar_lectura(ts, "left"))
+            lecturas.append(generar_lectura(ts, "right"))
+            continue
+
         lecturas.append(generar_lectura(ts))
 
     return {
         "mac": DEVICE_MAC,
         "deviceId": DEVICE_ID,
-        "samplingCount": cantidad,
+        "deviceType": _get_device_type_label(),
+        "layout": "double" if _is_double_bed() else "single",
+        "samplingCount": len(lecturas),
         "samplingSeconds": SAMPLING_SECONDS,
         "data": lecturas
     }

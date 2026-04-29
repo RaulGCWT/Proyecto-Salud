@@ -22,6 +22,7 @@ const disableLayout = computed(() => route.meta.layout === false)
 const layoutName = computed(() => disableLayout.value ? undefined : route.meta.layout)
 
 onMounted(async () => {
+  await health.fetchDeviceInventory()
   await health.fetchTelemetryHistory()
   await health.fetchLatestTelemetry()
   connectHealthSocket()

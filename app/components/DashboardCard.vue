@@ -1,18 +1,15 @@
 <template>
   <article class="metric-card" :class="[metricToneClass, { 'card-alert': isAlert, 'is-empty': type === 'presence' && mainText === 'Empty' }]">
     <div class="metric-card-top">
-      <div class="metric-icon">{{ metricMeta.code }}</div>
+      <div class="metric-title-group">
+        <div class="metric-icon">{{ metricMeta.code }}</div>
+        <span class="metric-title">{{ title }}</span>
+      </div>
       <span class="metric-chip">{{ metricMeta.unit }}</span>
     </div>
 
-    <span class="card-label">{{ title }}</span>
+    <p v-if="subtitle" class="card-subtitle">{{ subtitle }}</p>
     <div class="card-value" :class="valueClass">{{ mainText }}</div>
-
-    <div class="metric-footer">
-      <span class="card-indicator" :class="isAlert ? 'status-error' : 'status-ok'">
-        {{ description }}
-      </span>
-    </div>
   </article>
 </template>
 
@@ -21,6 +18,7 @@ import { computed } from 'vue'
 
 const props = defineProps({
   title: { type: String, default: '' },
+  subtitle: { type: String, default: '' },
   mainText: { type: String, default: '' },
   description: { type: String, default: '' },
   isAlert: { type: Boolean, default: false },
@@ -93,10 +91,16 @@ const valueClass = computed(() => {
 }
 .metric-card-top {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 18px;
+}
+.metric-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
 }
 .metric-icon {
   width: 44px;
@@ -110,6 +114,13 @@ const valueClass = computed(() => {
   color: #ffffff;
   background: #2559bd;
   box-shadow: 0 10px 20px rgba(37, 89, 189, 0.2);
+}
+.metric-title {
+  font-size: 1.06rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
 }
 .metric-chip {
   padding: 7px 10px;
@@ -128,20 +139,27 @@ const valueClass = computed(() => {
 .type-hrv .metric-chip { color: #0891b2; background: rgba(6, 182, 212, 0.08); }
 .type-resp .metric-chip { color: #7c3aed; background: rgba(139, 92, 246, 0.08); }
 .type-presence .metric-chip { color: #059669; background: rgba(16, 185, 129, 0.08); }
-.card-label {
-  display: block;
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+.card-subtitle {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.3;
   color: #64748b;
+  font-weight: 700;
 }
 
-:global(.dark-mode) .card-label {
-  color: #94a3b8 !important;
+.card-subtitle {
+  color: var(--text-main);
+}
+
+:global(.dark-mode) .metric-title {
+  color: #f8fafc !important;
+}
+
+:global(.dark-mode) .card-subtitle {
+  color: #e2e8f0 !important;
 }
 .card-value {
-  margin: 10px 0 16px;
+  margin: 2px 0 16px;
   font-size: clamp(1.9rem, 2.6vw, 2.4rem);
   font-weight: 900;
   line-height: 1;

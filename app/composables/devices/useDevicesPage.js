@@ -9,7 +9,7 @@ const SOCKET_URL = 'http://localhost:5000'
 const INVENTORY_REFRESH_INTERVAL = 5000
 const CONNECTION_TIMEOUT_MS = 4000
 const DEFAULT_DEVICE_TYPE = 'Standard'
-const ALLOWED_DEVICE_TYPES = new Set(['Critical Care', 'Standard'])
+const ALLOWED_DEVICE_TYPES = new Set(['Critical Care', 'Standard', 'Double Bed'])
 
 export function useDevicesPage() {
   const auth = useAuthStore()
@@ -130,6 +130,7 @@ export function useDevicesPage() {
 
   const getTypeTone = (type) => {
     const normalizedType = String(type || '').toLowerCase()
+    if (normalizedType.includes('double')) return 'type-double'
     if (normalizedType.includes('critical')) return 'type-critical'
     if (normalizedType.includes('pump')) return 'type-pump'
     if (normalizedType.includes('vent')) return 'type-life'
@@ -217,7 +218,7 @@ export function useDevicesPage() {
     beds.value.push({
       mac: data.mac || fallbackId,
       name: `Bed-${fallbackId.slice(-5)}`,
-      type: DEFAULT_DEVICE_TYPE,
+      type: data.deviceType || DEFAULT_DEVICE_TYPE,
       isOnline: true,
       presence: lastReading.isOccupied ? 'Occupied' : 'Empty',
       lastEventDate: nowLabel,

@@ -14,6 +14,7 @@
         <select v-model="form.type">
           <option value="Critical Care">Critical Care</option>
           <option value="Standard">Standard</option>
+          <option value="Double Bed">Double Bed</option>
         </select>
       </div>
 

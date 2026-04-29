@@ -3,10 +3,152 @@ import { useRulesStore } from './rules'
 import { useAuthStore } from './auth'
 import { getScopedOwnerId } from '~/utils/accessContext'
 import { buildMetricBatch, mergeHistory, normalizeAlertStatus } from '~/utils/healthData'
+import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
 
 const EVENTS_API_BASE = 'http://localhost:5000/events'
 const TELEMETRY_HISTORY_API_BASE = 'http://localhost:5000/telemetry/history'
 const TELEMETRY_API_BASE = 'http://localhost:5000/telemetry/latest'
+const DEVICES_API_BASE = 'http://localhost:5000/devices'
+const MAX_TELEMETRY_RECORDS = 2000
+
+const normalizeTelemetryRecord = (record = {}, fallback = {}) => {
+  const timestamp = Number(record.ts ?? record.timestamp ?? fallback.ts ?? 0) || 0
+
+  return {
+    ...record,
+    ts: timestamp,
+    timestamp,
+    mac: normalizeScopeValue(record.mac || fallback.mac || 'unknown'),
+    deviceId: normalizeScopeValue(record.deviceId || fallback.deviceId || record.mac || fallback.mac || 'unknown'),
+    side: normalizeSideValue(record.side || fallback.side || 'all'),
+    heartRate: record.heartRate ?? fallback.heartRate ?? 0,
+    respiratoryRate: record.respiratoryRate ?? fallback.respiratoryRate ?? 0,
+    hrv: record.hrv ?? fallback.hrv ?? 0,
+    isOccupied: record.isOccupied ?? fallback.isOccupied ?? false
+  }
+}
+
+const mergeTelemetryRecords = (existingRecords = [], incomingRecords = []) => {
+  const merged = [...existingRecords, ...incomingRecords]
+  const deduped = []
+  const seen = new Set()
+
+  for (const record of merged) {
+    const key = [
+      normalizeScopeValue(record.mac),
+      normalizeScopeValue(record.deviceId),
+      normalizeSideValue(record.side),
+      Number(record.ts || 0),
+      Number(record.heartRate ?? 0),
+      Number(record.respiratoryRate ?? 0),
+      Number(record.hrv ?? 0),
+      record.isOccupied ? '1' : '0'
+    ].join('|')
+
+    if (seen.has(key)) continue
+    seen.add(key)
+    deduped.push(record)
+  }
+
+  deduped.sort((left, right) => Number(left.ts || 0) - Number(right.ts || 0))
+  return deduped.slice(-MAX_TELEMETRY_RECORDS)
+}
+
+const normalizeTelemetryBatch = (payload = {}) => {
+  const readings = Array.isArray(payload.readings) ? payload.readings : []
+  const mac = normalizeScopeValue(payload.mac || 'unknown')
+  const deviceId = normalizeScopeValue(payload.deviceId || payload.mac || 'unknown')
+
+  return readings.map(reading => normalizeTelemetryRecord(reading, {
+    mac,
+    deviceId
+  }))
+}
+
+const getLatestBatchForScope = (records = [], scopeMac = '') => {
+  const normalizedScopeMac = normalizeScopeValue(scopeMac)
+  const scopedRecords = normalizedScopeMac
+    ? records.filter(record => normalizeScopeValue(record.mac) === normalizedScopeMac)
+    : [...records]
+
+  if (!scopedRecords.length) return []
+
+  const latestTimestamp = scopedRecords.at(-1)?.ts ?? 0
+  return scopedRecords.filter(record => Number(record.ts || 0) === Number(latestTimestamp || 0))
+}
+
+const getTelemetryScope = (store) => ({
+  mac: store.currentMac,
+  deviceId: store.currentDeviceId
+})
+
+const normalizeSideValue = (value) => {
+  const normalized = normalizeScopeValue(value)
+  if (normalized === 'left' || normalized === 'right') return normalized
+  return 'all'
+}
+
+const normalizeDeviceRecord = (device = {}) => ({
+  mac: normalizeScopeValue(device.mac || device.id || ''),
+  deviceId: normalizeScopeValue(device.deviceId || device.id || device.mac || ''),
+  type: String(device.type || 'Standard').trim(),
+  ownerId: normalizeScopeValue(device.ownerId),
+  tenantKey: normalizeScopeValue(device.tenantKey),
+  residenceId: normalizeScopeValue(device.residenceId),
+  area: normalizeScopeValue(device.area),
+  residentId: normalizeScopeValue(device.residentId)
+})
+
+const findSelectedDeviceRecord = (store) => {
+  const scopeMac = normalizeScopeValue(store.selectedMac || store.currentMac)
+  const scopeDeviceId = normalizeScopeValue(store.currentDeviceId)
+
+  if (!scopeMac && !scopeDeviceId) return null
+
+  return store.deviceInventory.find((device) => {
+    const deviceMac = normalizeScopeValue(device.mac || device.id)
+    const deviceId = normalizeScopeValue(device.deviceId || device.id || device.mac)
+
+    if (scopeMac && (deviceMac === scopeMac || deviceId === scopeMac)) return true
+    if (scopeDeviceId && (deviceMac === scopeDeviceId || deviceId === scopeDeviceId)) return true
+    return false
+  }) || null
+}
+
+const filterTelemetryBySide = (records = [], selectedSide = 'all') => {
+  const normalizedSide = normalizeSideValue(selectedSide)
+  if (normalizedSide === 'all') return [...records]
+  return records.filter(record => normalizeScopeValue(record.side) === normalizedSide)
+}
+
+const summarizeLatestTelemetryBatch = (records = []) => {
+  if (!records.length) {
+    return {
+      heartRate: 0,
+      respiratoryRate: 0,
+      hrv: 0,
+      isOccupied: false,
+      latestReadings: []
+    }
+  }
+
+  const latestTimestamp = Number(records.at(-1)?.ts || 0)
+  const latestBatch = records.filter(record => Number(record.ts || 0) === latestTimestamp)
+
+  const averageValue = (key) => {
+    const values = latestBatch.map(item => Number(item[key] || 0)).filter(value => Number.isFinite(value))
+    if (!values.length) return 0
+    return values.reduce((accumulator, value) => accumulator + value, 0) / values.length
+  }
+
+  return {
+    heartRate: Math.round(averageValue('heartRate')),
+    respiratoryRate: Math.round(averageValue('respiratoryRate')),
+    hrv: Math.round(averageValue('hrv')),
+    isOccupied: latestBatch.some(item => Boolean(item.isOccupied)),
+    latestReadings: latestBatch
+  }
+}
 
 const getUserOwnerId = () => {
   const auth = useAuthStore()
@@ -31,6 +173,10 @@ export const useHealthStore = defineStore('health', {
     isOccupied: false,
     currentMac: 'N/A',
     currentDeviceId: 'N/A',
+    selectedMac: '',
+    selectedSide: 'all',
+    telemetryRecords: [],
+    deviceInventory: [],
     latestReadings: [],
     alertHistory: [],
     hrHistory: [],
@@ -39,6 +185,72 @@ export const useHealthStore = defineStore('health', {
     lastToast: null
   }),
   actions: {
+    setSelectedMac(mac) {
+      this.selectedMac = normalizeScopeValue(mac)
+      this.selectedSide = 'all'
+      this.rebuildSelectedTelemetrySnapshot()
+    },
+
+    setSelectedSide(side) {
+      this.selectedSide = normalizeSideValue(side)
+      this.rebuildSelectedTelemetrySnapshot()
+    },
+
+    rebuildSelectedTelemetrySnapshot() {
+      const scopeMac = normalizeScopeValue(this.selectedMac)
+      const scopedRecords = scopeMac
+        ? this.telemetryRecords.filter(record => normalizeScopeValue(record.mac) === scopeMac)
+        : [...this.telemetryRecords]
+
+      const sideScopedRecords = filterTelemetryBySide(scopedRecords, this.selectedSide)
+
+      if (!sideScopedRecords.length) {
+        this.currentMac = scopeMac || 'N/A'
+        this.currentDeviceId = 'N/A'
+        this.heartRate = 0
+        this.respiratoryRate = 0
+        this.hrv = 0
+        this.isOccupied = false
+        this.latestReadings = []
+        this.hrHistory = []
+        this.hrvHistory = []
+        this.respHistory = []
+        return
+      }
+
+      const orderedRecords = [...sideScopedRecords].sort((left, right) => Number(left.ts || 0) - Number(right.ts || 0))
+      const latestRecord = orderedRecords.at(-1)
+      const batchSummary = summarizeLatestTelemetryBatch(orderedRecords)
+
+      this.currentMac = latestRecord.mac || scopeMac || 'N/A'
+      this.currentDeviceId = latestRecord.deviceId || latestRecord.mac || 'N/A'
+      this.heartRate = batchSummary.heartRate
+      this.respiratoryRate = batchSummary.respiratoryRate
+      this.hrv = batchSummary.hrv
+      this.isOccupied = batchSummary.isOccupied
+      this.latestReadings = batchSummary.latestReadings
+      this.hrHistory = mergeHistory([], buildMetricBatch(orderedRecords, 'heartRate'))
+      this.hrvHistory = mergeHistory([], buildMetricBatch(orderedRecords, 'hrv'))
+      this.respHistory = mergeHistory([], buildMetricBatch(orderedRecords, 'respiratoryRate'))
+    },
+
+    ingestTelemetryPayload(payload, { selectIfEmpty = false } = {}) {
+      const normalizedBatch = normalizeTelemetryBatch(payload)
+      if (!normalizedBatch.length) return []
+
+      this.telemetryRecords = mergeTelemetryRecords(this.telemetryRecords, normalizedBatch)
+
+      if (!this.selectedMac) {
+        const fallbackMac = normalizeScopeValue(payload.mac || normalizedBatch.at(-1)?.mac || '')
+        if (fallbackMac && (selectIfEmpty || this.telemetryRecords.length)) {
+          this.selectedMac = fallbackMac
+        }
+      }
+
+      this.rebuildSelectedTelemetrySnapshot()
+      return normalizedBatch
+    },
+
     async fetchAlertHistory() {
       try {
         const ownerId = getScopeOwnerId()
@@ -63,7 +275,9 @@ export const useHealthStore = defineStore('health', {
               year: 'numeric'
             }),
             sensor: (event.parameter || 'UNTITLED').toUpperCase(),
-            mac: event.mac || 'N/A',
+            mac: normalizeScopeValue(event.mac || 'N/A'),
+            deviceId: normalizeScopeValue(event.deviceId || event.mac || 'N/A'),
+            side: normalizeSideValue(event.side || 'all'),
             message: event.message || `Alert on ${event.parameter}`,
             level: 'Critical',
             status: normalizeAlertStatus(event.status)
@@ -85,44 +299,32 @@ export const useHealthStore = defineStore('health', {
           headers: scopedHeaders()
         })
 
-        const items = Array.isArray(data) ? [...data] : []
-        if (!items.length) {
-          this.hrHistory = []
-          this.hrvHistory = []
-          this.respHistory = []
-          return
+        const items = Array.isArray(data) ? data : []
+        this.telemetryRecords = mergeTelemetryRecords([], items.map(item => normalizeTelemetryRecord(item)))
+
+        if (!this.selectedMac && this.telemetryRecords.length) {
+          const latestItem = this.telemetryRecords.at(-1)
+          this.selectedMac = latestItem?.mac || ''
         }
 
-        const orderedItems = items
-          .map(item => ({
-            ...item,
-            timestamp: Number(item.timestamp || item.ts || 0)
-          }))
-          .sort((left, right) => left.timestamp - right.timestamp)
-
-        const normalizedReadings = orderedItems.map(item => ({
-          ts: item.timestamp,
-          heartRate: item.heartRate,
-          respiratoryRate: item.respiratoryRate,
-          hrv: item.hrv,
-          isOccupied: item.isOccupied
-        }))
-
-        this.hrHistory = mergeHistory([], buildMetricBatch(normalizedReadings, 'heartRate'))
-        this.hrvHistory = mergeHistory([], buildMetricBatch(normalizedReadings, 'hrv'))
-        this.respHistory = mergeHistory([], buildMetricBatch(normalizedReadings, 'respiratoryRate'))
-
-        const latestItem = orderedItems.at(-1)
-        if (latestItem) {
-          this.currentMac = latestItem.mac || this.currentMac
-          this.currentDeviceId = latestItem.deviceId || this.currentDeviceId
-          this.heartRate = latestItem.heartRate ?? this.heartRate
-          this.respiratoryRate = latestItem.respiratoryRate ?? this.respiratoryRate
-          this.hrv = latestItem.hrv ?? this.hrv
-          this.isOccupied = latestItem.isOccupied ?? this.isOccupied
-        }
+        this.rebuildSelectedTelemetrySnapshot()
       } catch (err) {
-        console.error('Error al cargar historial de telemetría:', err)
+        console.error('Error al cargar historial de telemetrÃ­a:', err)
+      }
+    },
+
+    async fetchDeviceInventory() {
+      try {
+        const ownerId = getScopeOwnerId()
+        const data = await $fetch(DEVICES_API_BASE, {
+          params: ownerId ? { ownerId } : {},
+          headers: scopedHeaders()
+        })
+
+        const items = Array.isArray(data) ? data : []
+        this.deviceInventory = items.map(normalizeDeviceRecord)
+      } catch (err) {
+        console.error('Error al cargar inventario de dispositivos:', err)
       }
     },
 
@@ -131,23 +333,9 @@ export const useHealthStore = defineStore('health', {
         const data = await $fetch(TELEMETRY_API_BASE)
         if (!data || !data.lastReading) return
 
-        const lastReading = data.lastReading || {}
-        const readings = Array.isArray(data.readings) ? data.readings : [lastReading].filter(Boolean)
-
-        this.currentMac = data.mac || 'N/A'
-        this.currentDeviceId = data.deviceId || 'N/A'
-        this.heartRate = lastReading.heartRate ?? 0
-        this.respiratoryRate = lastReading.respiratoryRate ?? 0
-        this.hrv = lastReading.hrv ?? 0
-        this.isOccupied = lastReading.isOccupied ?? false
-        this.latestReadings = readings
-        if (readings.length > 0) {
-          this.hrHistory = mergeHistory(this.hrHistory, buildMetricBatch(readings, 'heartRate'))
-          this.hrvHistory = mergeHistory(this.hrvHistory, buildMetricBatch(readings, 'hrv'))
-          this.respHistory = mergeHistory(this.respHistory, buildMetricBatch(readings, 'respiratoryRate'))
-        }
+        this.ingestTelemetryPayload(data, { selectIfEmpty: true })
       } catch (err) {
-        console.error('Error al cargar telemetría inicial:', err)
+        console.error('Error al cargar telemetrÃ­a inicial:', err)
       }
     },
 
@@ -217,38 +405,56 @@ export const useHealthStore = defineStore('health', {
       }
     },
 
-    checkRules() {
+    checkRules(readings = []) {
       const rulesStore = useRulesStore()
-      rulesStore.rules.forEach(rule => {
-        let val = 0
-        const param = rule.parameter || rule.variable
-        if (param === 'hr' || param === 'heartRate') val = this.heartRate
-        else if (param === 'hrv') val = this.hrv
-        else if (param === 'resp' || param === 'respiratoryRate') val = this.respiratoryRate
+      const selectedDevice = findSelectedDeviceRecord(this) || {}
+      const inputReadings = Array.isArray(readings) && readings.length
+        ? readings
+        : (Array.isArray(this.latestReadings) ? this.latestReadings : [])
 
-        const condition = rule.condition || rule.operator
-        const threshold = Number(rule.value)
-
-        let isTriggered = false
-        if (condition === '>') isTriggered = val > threshold
-        else if (condition === '<') isTriggered = val < threshold
-        else if (condition === '==' || condition === '=') isTriggered = val == threshold
-
-        if (isTriggered && val > 0) {
-          const ownerId = getUserOwnerId()
-          const newAlert = {
-            id: Date.now(),
-            time: new Date().toLocaleTimeString(),
-            sensor: (param || 'SENSOR').toUpperCase(),
-            mac: this.currentMac,
-            message: `${rule.name}: ${val} detected`,
-            level: 'Critical',
-            status: 'PENDING',
-            ownerId
-          }
-          this.alertHistory.unshift(newAlert)
-          this.lastToast = newAlert
+      inputReadings.forEach((reading) => {
+        const readingScope = {
+          ...getTelemetryScope(this),
+          mac: normalizeScopeValue(reading.mac || this.currentMac),
+          deviceId: normalizeScopeValue(reading.deviceId || this.currentDeviceId),
+          side: normalizeSideValue(reading.side)
         }
+
+        rulesStore.rules.forEach(rule => {
+          if (!matchesDeviceRuleScope(rule, readingScope, selectedDevice)) return
+
+          let value = 0
+          const parameter = rule.parameter || rule.variable
+          if (parameter === 'hr' || parameter === 'heartRate') value = reading.heartRate ?? 0
+          else if (parameter === 'hrv') value = reading.hrv ?? 0
+          else if (parameter === 'resp' || parameter === 'respiratoryRate') value = reading.respiratoryRate ?? 0
+
+          const condition = rule.condition || rule.operator
+          const threshold = Number(rule.value)
+
+          let isTriggered = false
+          if (condition === '>') isTriggered = value > threshold
+          else if (condition === '<') isTriggered = value < threshold
+          else if (condition === '==' || condition === '=') isTriggered = value == threshold
+
+          if (isTriggered && value > 0) {
+            const ownerId = getUserOwnerId()
+            const newAlert = {
+              id: Date.now(),
+              time: new Date().toLocaleTimeString(),
+              sensor: (parameter || 'SENSOR').toUpperCase(),
+              mac: normalizeScopeValue(reading.mac || this.currentMac || 'N/A'),
+              deviceId: normalizeScopeValue(reading.deviceId || this.currentDeviceId || reading.mac || 'N/A'),
+              side: normalizeSideValue(reading.side),
+              message: `${rule.name}: ${value} detected`,
+              level: 'Critical',
+              status: 'PENDING',
+              ownerId
+            }
+            this.alertHistory.unshift(newAlert)
+            this.lastToast = newAlert
+          }
+        })
       })
     }
   }

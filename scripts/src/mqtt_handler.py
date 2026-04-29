@@ -59,7 +59,7 @@ def registrar_dispositivo_si_no_existe(data):
                 "id": mac,
                 "mac": mac,
                 "deviceId": device_id,
-                "type": "Standard",
+                "type": str(data.get("deviceType") or "Standard"),
             }
         )
         print(f"Dispositivo registrado automaticamente: {mac}")
@@ -112,6 +112,9 @@ def guardar_lectura_historial(normalized, reading, index):
                 "id": str(uuid.uuid4()),
                 "mac": mac or "unknown",
                 "deviceId": device_id,
+                "side": str(reading.get("side") or "center").strip().lower(),
+                "deviceType": str(normalized.get("deviceType") or "Standard"),
+                "layout": str(normalized.get("layout") or "single"),
                 "timestamp": timestamp,
                 "heartRate": reading.get("heartRate"),
                 "respiratoryRate": reading.get("respiratoryRate"),
@@ -138,12 +141,15 @@ def normalizar_payload(payload):
         "respiratoryRate": last_reading.get("respiratoryRate"),
         "hrv": last_reading.get("hrv"),
         "isOccupied": last_reading.get("isOccupied"),
+        "side": last_reading.get("side"),
         "ts": last_reading.get("ts"),
     }
 
     return {
         "mac": payload.get("mac", "unknown"),
         "deviceId": payload.get("deviceId", "unknown"),
+        "deviceType": payload.get("deviceType", "Standard"),
+        "layout": payload.get("layout", "single"),
         "lastReading": normalized_last_reading,
         "readings": readings,
     }
@@ -176,6 +182,7 @@ def on_message(client, userdata, message, socketio):
             data_for_rules = {
                 "mac": normalized["mac"],
                 "deviceId": normalized["deviceId"],
+                "side": reading.get("side"),
                 "heartRate": reading.get("heartRate"),
                 "respiratoryRate": reading.get("respiratoryRate"),
                 "hrv": reading.get("hrv"),

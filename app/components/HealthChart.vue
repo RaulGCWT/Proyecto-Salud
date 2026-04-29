@@ -44,6 +44,17 @@
       </div>
     </div>
 
+    <div v-if="isDoubleBedDevice" class="side-toolbar">
+      <button
+        v-for="side in sideOptions"
+        :key="side.id"
+        :class="['control-btn', { active: selectedSideModel === side.id }]"
+        @click="selectedSideModel = side.id"
+      >
+        {{ side.label }}
+      </button>
+    </div>
+
     <div class="chart-frame">
       <v-chart class="chart" :option="chartOption" autoresize />
     </div>
@@ -66,6 +77,7 @@ import VChart from 'vue-echarts'
 import { useHealthStore } from '~/stores/health'
 import { useRulesStore } from '~/stores/rules'
 import { buildHealthChartOption } from '~/utils/healthChart'
+import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
 
 use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, VisualMapComponent])
 
@@ -81,13 +93,67 @@ const metrics = [
 ]
 
 const timeRanges = [
+  { id: '30m', label: '30m', seconds: 30 * 60 },
   { id: '1h', label: '1h', seconds: 60 * 60 },
   { id: '6h', label: '6h', seconds: 6 * 60 * 60 },
   { id: '12h', label: '12h', seconds: 12 * 60 * 60 }
 ]
 
-const getAlertStatus = (id) => health.alertHistory.some(alert => alert.sensor.toLowerCase().includes(id))
+const getAlertStatus = (id) => health.alertHistory.some(alert => {
+  const selectedMac = normalizeScopeValue(health.selectedMac)
+  const selectedSide = normalizeScopeValue(health.selectedSide)
+  const alertMac = normalizeScopeValue(alert.mac)
+  const alertDeviceId = normalizeScopeValue(alert.deviceId)
+  const alertSide = normalizeScopeValue(alert.side)
+  const matchesScope = !selectedMac || alertMac === selectedMac || alertDeviceId === selectedMac
+  const matchesSide = selectedSide === 'all' || !alertSide || alertSide === selectedSide
+  return matchesScope && matchesSide && alert.sensor.toLowerCase().includes(id)
+})
 const isCurrentValueAlert = computed(() => getAlertStatus(activeMetric.value))
+
+const selectedDeviceRecord = computed(() => {
+  const scopeMac = normalizeScopeValue(health.selectedMac || health.currentMac)
+  const scopeDeviceId = normalizeScopeValue(health.currentDeviceId)
+
+  return health.deviceInventory.find((device) => {
+    const deviceMac = normalizeScopeValue(device.mac || device.id)
+    const deviceId = normalizeScopeValue(device.deviceId || device.id || device.mac)
+
+    if (scopeMac && (deviceMac === scopeMac || deviceId === scopeMac)) return true
+    if (scopeDeviceId && (deviceMac === scopeDeviceId || deviceId === scopeDeviceId)) return true
+    return false
+  }) || null
+})
+
+const isDoubleBedDevice = computed(() =>
+  String(selectedDeviceRecord.value?.type || '').trim().toLowerCase().includes('double')
+)
+
+const selectedSideModel = computed({
+  get: () => health.selectedSide,
+  set: value => health.setSelectedSide(value)
+})
+
+const sideOptions = computed(() => {
+  if (isDoubleBedDevice.value) {
+    return [
+      { id: 'all', label: 'All sides' },
+      { id: 'left', label: 'Left side' },
+      { id: 'right', label: 'Right side' }
+    ]
+  }
+
+  return [{ id: 'all', label: 'Single side' }]
+})
+
+const scopedRules = computed(() => {
+  const telemetryScope = {
+    mac: normalizeScopeValue(health.selectedMac || health.currentMac),
+    deviceId: normalizeScopeValue(health.currentDeviceId)
+  }
+
+  return rulesStore.rules.filter(rule => matchesDeviceRuleScope(rule, telemetryScope, selectedDeviceRecord.value || {}))
+})
 
 const currentData = computed(() => {
   if (activeMetric.value === 'hrv') return health.hrvHistory
@@ -95,14 +161,20 @@ const currentData = computed(() => {
   return health.hrHistory
 })
 
+const scopedCurrentData = computed(() => {
+  const selectedMac = normalizeScopeValue(health.selectedMac)
+  if (!selectedMac) return currentData.value
+  return currentData.value.filter(point => normalizeScopeValue(point.mac) === selectedMac)
+})
+
 const visibleData = computed(() => {
   const rangeConfig = timeRanges.find(range => range.id === selectedRange.value) || timeRanges[0]
-  const latestTimestamp = currentData.value.at(-1)?.ts
+  const latestTimestamp = scopedCurrentData.value.at(-1)?.ts
 
-  if (!latestTimestamp || !currentData.value.length) return currentData.value
+  if (!latestTimestamp || !scopedCurrentData.value.length) return scopedCurrentData.value
 
   const minimumTimestamp = latestTimestamp - rangeConfig.seconds
-  return currentData.value.filter(item => item.ts >= minimumTimestamp)
+  return scopedCurrentData.value.filter(item => item.ts >= minimumTimestamp)
 })
 
 const selectedRangeConfig = computed(() => {
@@ -110,8 +182,8 @@ const selectedRangeConfig = computed(() => {
 })
 
 const chartWindow = computed(() => {
-  const latestTimestamp = currentData.value.at(-1)?.ts
-  if (!latestTimestamp || !currentData.value.length) return { min: undefined, max: undefined }
+  const latestTimestamp = scopedCurrentData.value.at(-1)?.ts
+  if (!latestTimestamp || !scopedCurrentData.value.length) return { min: undefined, max: undefined }
 
   const rangeSeconds = selectedRangeConfig.value.seconds
   return {
@@ -142,7 +214,7 @@ const chartOption = computed(() => buildHealthChartOption({
   activeMetric: activeMetric.value,
   metrics,
   currentData: visibleData.value,
-  rules: rulesStore.rules,
+  rules: scopedRules.value,
   isCurrentValueAlert: isCurrentValueAlert.value,
   xAxisMin: chartWindow.value.min,
   xAxisMax: chartWindow.value.max
@@ -191,6 +263,7 @@ const chartOption = computed(() => buildHealthChartOption({
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .chart-eyebrow {
   margin: 0 0 8px;
@@ -280,6 +353,12 @@ const chartOption = computed(() => buildHealthChartOption({
   gap: 10px;
   margin-bottom: 14px;
 }
+.side-toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
 .range-controls,
 .chart-controls {
   display: flex;
@@ -298,10 +377,31 @@ const chartOption = computed(() => buildHealthChartOption({
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
+.side-toolbar .control-btn {
+  min-height: 58px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  font-size: 0.96rem;
+  justify-content: center;
+  text-align: center;
+  color: var(--text-main);
+  background: var(--surface-panel);
+}
+
 :global(.dark-mode) .control-btn {
   background: var(--surface-card) !important;
   border-color: var(--surface-border) !important;
   color: #cbd5e1 !important;
+}
+.side-toolbar .control-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+.side-toolbar .control-btn.active {
+  color: #ffffff;
+  border-color: transparent;
+  background: linear-gradient(135deg, #0f172a, #2559bd);
+  box-shadow: 0 14px 28px rgba(37, 89, 189, 0.18);
 }
 .control-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06); }
 .control-btn.active {
@@ -372,6 +472,7 @@ const chartOption = computed(() => buildHealthChartOption({
   .chart-header { flex-direction: column; }
   .chart-summary { grid-template-columns: 1fr; }
   .chart-toolbar { flex-direction: column; align-items: stretch; }
+  .side-toolbar { grid-template-columns: 1fr; }
   .range-controls, .chart-controls { justify-content: flex-start; }
   .chart-frame, .chart { min-height: 300px; }
 }
