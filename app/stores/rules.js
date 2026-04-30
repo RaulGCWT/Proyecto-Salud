@@ -57,7 +57,8 @@ export const useRulesStore = defineStore('rules', {
             operator: rule.operator,
             value: Number(rule.value),
             assignedToType: rule.assignedToType || 'none',
-            assignedToId: rule.assignedToId || ''
+            assignedToId: rule.assignedToId || '',
+            assignedToSide: rule.assignedToSide || 'all'
           }
         })
         await this.fetchRules()
@@ -81,7 +82,8 @@ export const useRulesStore = defineStore('rules', {
             operator: rule.operator,
             value: Number(rule.value),
             assignedToType: rule.assignedToType || 'none',
-            assignedToId: rule.assignedToId || ''
+            assignedToId: rule.assignedToId || '',
+            assignedToSide: rule.assignedToSide || 'all'
           }
         })
         await this.fetchRules()

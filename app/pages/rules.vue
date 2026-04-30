@@ -86,6 +86,9 @@
               </span>
             </div>
             <span class="rule-assignment__value">{{ assignmentTargetLabel(rule.assignedToId) }}</span>
+            <span v-if="normalizeRuleSide(rule.assignedToSide) !== 'all'" class="rule-assignment__side">
+              {{ assignmentSideLabel(rule.assignedToSide) }}
+            </span>
           </div>
 
           <footer class="rule-card__footer">
@@ -232,8 +235,10 @@
                 </div>
               </div>
             </div>
+          </div>
 
-            <div v-if="currentRule.assignedToType !== 'none'" class="form-group">
+          <div v-if="canAssignRules && currentRule.assignedToType !== 'none'" class="modal-grid">
+            <div class="form-group">
               <label class="form-label">Target</label>
               <div class="rule-dropdown" @click.stop>
                 <button
@@ -254,6 +259,34 @@
                     :class="{ 'dropdown-item--active': currentRule.assignedToId === option.value }"
                     type="button"
                     @click="selectAssignmentTarget(option.value)"
+                  >
+                    {{ option.label }}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Side</label>
+              <div class="rule-dropdown" @click.stop>
+                <button
+                  class="form-input form-input--select"
+                  type="button"
+                  :aria-expanded="activeRuleDropdown === 'assignment-side' ? 'true' : 'false'"
+                  @click="toggleRuleDropdown('assignment-side')"
+                >
+                  <span>{{ assignmentSideLabel(currentRule.assignedToSide) }}</span>
+                  <span class="material-symbols-outlined form-input__icon" aria-hidden="true">expand_more</span>
+                </button>
+
+                <div v-if="activeRuleDropdown === 'assignment-side'" class="dropdown-menu">
+                  <button
+                    v-for="option in assignmentSideOptions"
+                    :key="option.value"
+                    class="dropdown-item"
+                    :class="{ 'dropdown-item--active': normalizeRuleSide(currentRule.assignedToSide) === option.value }"
+                    type="button"
+                    @click="selectAssignmentSide(option.value)"
                   >
                     {{ option.label }}
                   </button>
@@ -345,6 +378,12 @@ const assignmentTypeOptions = [
   { value: 'none', label: 'None' },
   { value: 'device', label: 'Device' },
   { value: 'user', label: 'User' }
+]
+
+const assignmentSideOptions = [
+  { value: 'all', label: 'All sides' },
+  { value: 'left', label: 'Left side' },
+  { value: 'right', label: 'Right side' }
 ]
 
 const assignmentFilterOptions = [
@@ -508,7 +547,8 @@ function createEmptyRule() {
     operator: '>',
     value: 80,
     assignedToType: 'none',
-    assignedToId: ''
+    assignedToId: '',
+    assignedToSide: 'all'
   }
 }
 
@@ -542,6 +582,20 @@ function operatorLabel(value) {
 
 function assignmentTypeLabel(value) {
   return assignmentTypeOptions.find(option => option.value === String(value || 'none').trim())?.label || 'None'
+}
+
+function normalizeRuleSide(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === 'left' || normalized === 'right') return normalized
+  return 'all'
+}
+
+function assignmentSideLabel(value) {
+  return assignmentSideOptions.find(option => option.value === normalizeRuleSide(value))?.label || 'All sides'
+}
+
+function resolveAssignmentSideValue(value) {
+  return normalizeRuleSide(value)
 }
 
 function normalizeAssignmentTargetId(value) {
@@ -585,10 +639,13 @@ function resolveAssignmentTargetValue(value, type = currentRule.value.assignedTo
 function assignmentDisplayLabel(rule) {
   const type = String(rule.assignedToType || 'none').trim()
   const id = String(rule.assignedToId || '').trim()
+  const side = normalizeRuleSide(rule.assignedToSide)
 
   if (type === 'none' || !id) return ''
 
-  return `${assignmentTypeLabel(type)} · ${assignmentTargetLabel(id, type)}`
+  const parts = [assignmentTypeLabel(type), assignmentTargetLabel(id, type)]
+  if (side !== 'all') parts.push(assignmentSideLabel(side))
+  return parts.join(' · ')
 }
 
 function formatRuleValue(value) {
@@ -614,7 +671,8 @@ function openEditModal(rule) {
     operator: String(rule.operator || '>'),
     value: Number(rule.value) || 0,
     assignedToType: String(rule.assignedToType || 'none').trim() || 'none',
-    assignedToId: resolveAssignmentTargetValue(rule.assignedToId, String(rule.assignedToType || 'none').trim() || 'none')
+    assignedToId: resolveAssignmentTargetValue(rule.assignedToId, String(rule.assignedToType || 'none').trim() || 'none'),
+    assignedToSide: resolveAssignmentSideValue(rule.assignedToSide)
   }
   activeRuleDropdown.value = ''
   isModalOpen.value = true
@@ -654,11 +712,17 @@ function selectOperator(value) {
 function selectAssignmentType(value) {
   currentRule.value.assignedToType = value
   currentRule.value.assignedToId = ''
+  currentRule.value.assignedToSide = 'all'
   activeRuleDropdown.value = ''
 }
 
 function selectAssignmentTarget(value) {
   currentRule.value.assignedToId = resolveAssignmentTargetValue(value, currentRule.value.assignedToType)
+  activeRuleDropdown.value = ''
+}
+
+function selectAssignmentSide(value) {
+  currentRule.value.assignedToSide = resolveAssignmentSideValue(value)
   activeRuleDropdown.value = ''
 }
 
@@ -670,6 +734,9 @@ async function saveRule() {
   const assignedToId = canAssignRules.value && assignedToType !== 'none'
     ? resolveAssignmentTargetValue(currentRule.value.assignedToId, assignedToType)
     : ''
+  const assignedToSide = canAssignRules.value && assignedToType !== 'none'
+    ? resolveAssignmentSideValue(currentRule.value.assignedToSide)
+    : 'all'
 
   const payload = {
     name,
@@ -677,7 +744,8 @@ async function saveRule() {
     operator: String(currentRule.value.operator || '>').trim(),
     value: Number(currentRule.value.value) || 0,
     assignedToType,
-    assignedToId
+    assignedToId,
+    assignedToSide
   }
 
   if (isEditing.value && currentRuleId.value) {
@@ -745,6 +813,25 @@ async function saveRule() {
 .rule-assignment__chip--user { background: rgba(5, 150, 105, 0.18); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.24); }
 .rule-assignment__chip--none { background: rgba(71, 85, 105, 0.2); color: #cbd5e1; border-color: rgba(100, 116, 139, 0.22); }
 .rule-assignment__value { font-size: 0.8rem; font-weight: 900; color: var(--text-main); line-height: 1.4; }
+.rule-assignment__side {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(37, 89, 189, 0.18);
+  background: rgba(37, 89, 189, 0.1);
+  color: #2559bd;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+:global(.dark-mode) .rule-assignment__side {
+  color: #dbeafe !important;
+  background: rgba(37, 99, 235, 0.18) !important;
+  border-color: rgba(96, 165, 250, 0.22) !important;
+}
 .rule-card__footer { display: flex; align-items: center; justify-content: flex-end; gap: 14px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--surface-border); }
 .rule-actions { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
 .icon-button { width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid var(--surface-border); background: var(--surface-panel-strong); color: #475569; cursor: pointer; transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }

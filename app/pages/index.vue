@@ -128,7 +128,12 @@
           <div v-if="openAlerts.length" class="alert-list">
             <article v-for="alert in openAlerts" :key="alert.id" class="alert-item">
               <div class="alert-top">
-                <strong>{{ alert.sensor }}</strong>
+                <div class="alert-top__meta">
+                  <strong>{{ alert.sensor }}</strong>
+                  <span v-if="alert.side && alert.side !== 'all'" class="alert-side-badge">
+                    Side: {{ alert.side }}
+                  </span>
+                </div>
                 <span :class="['alert-badge', alert.status === 'READ' ? 'alert-read' : 'alert-open']">
                   {{ alert.status }}
                 </span>
@@ -257,7 +262,8 @@ const getAverageFromHistory = (history = [], limit = 10) => {
 const scopedRules = computed(() => {
   const telemetryScope = {
     mac: normalizeScopeValue(health.selectedMac || health.currentMac),
-    deviceId: normalizeScopeValue(health.currentDeviceId)
+    deviceId: normalizeScopeValue(health.currentDeviceId),
+    side: normalizeScopeValue(health.selectedSide)
   }
 
   return rulesStore.rules.filter(rule => matchesDeviceRuleScope(rule, telemetryScope, selectedDeviceRecord.value || {}))
@@ -659,6 +665,12 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
 :global(.dark-mode) .side-panel .alert-item strong {
   color: #f8fafc !important;
 }
+
+:global(.dark-mode) .alert-side-badge {
+  color: #dbeafe !important;
+  background: rgba(37, 99, 235, 0.18) !important;
+  border-color: rgba(96, 165, 250, 0.22) !important;
+}
 .chart-panel {
   padding: 0;
   border: none;
@@ -731,6 +743,7 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
   line-height: 1.5;
 }
 .alert-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.alert-top__meta { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .alert-badge {
   padding: 4px 10px;
   border-radius: 999px;
@@ -738,6 +751,17 @@ const hasLiveData = computed(() => health.latestReadings.length > 0 || health.he
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.1em;
+}
+.alert-side-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #2559bd;
+  background: rgba(37, 89, 189, 0.12);
+  border: 1px solid rgba(37, 89, 189, 0.18);
 }
 .alert-open { background: rgba(239, 68, 68, 0.12); color: #b91c1c; }
 .alert-read { background: rgba(37, 89, 189, 0.12); color: #2559bd; }

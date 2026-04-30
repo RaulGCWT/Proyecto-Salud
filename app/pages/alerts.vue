@@ -125,6 +125,60 @@
           </div>
         </div>
 
+        <div class="severity-control" @click.stop>
+          <button
+            class="severity-button"
+            type="button"
+            aria-label="Device filter"
+            :aria-expanded="isDeviceMenuOpen ? 'true' : 'false'"
+            @click="toggleDeviceMenu"
+          >
+            <span>Device</span>
+            <span class="severity-button__value">{{ deviceLabel }}</span>
+            <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
+          </button>
+
+          <div v-if="isDeviceMenuOpen" class="severity-menu">
+            <button
+              v-for="option in deviceFilters"
+              :key="option.value"
+              class="severity-menu-item"
+              :class="{ 'severity-menu-item--active': activeMacFilter === option.value }"
+              type="button"
+              @click="setDeviceFilter(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
+        <div class="severity-control" @click.stop>
+          <button
+            class="severity-button"
+            type="button"
+            aria-label="Side filter"
+            :aria-expanded="isSideMenuOpen ? 'true' : 'false'"
+            @click="toggleSideMenu"
+          >
+            <span>Side</span>
+            <span class="severity-button__value">{{ selectedSideLabel }}</span>
+            <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
+          </button>
+
+          <div v-if="isSideMenuOpen" class="severity-menu">
+            <button
+              v-for="option in sideFilters"
+              :key="option.value"
+              class="severity-menu-item"
+              :class="{ 'severity-menu-item--active': activeSideFilter === option.value }"
+              type="button"
+              @click="setSideFilter(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
         <div class="result-chip">
           Filtered: {{ filteredAlerts.length }} results
         </div>
@@ -136,8 +190,9 @@
             <thead>
               <tr>
                 <th>Timestamp</th>
-                <th>Device MAC</th>
+                <th>Device</th>
                 <th>Sensor</th>
+                <th>Side</th>
                 <th>Message</th>
                 <th>State</th>
                 <th>Severity</th>
@@ -152,10 +207,20 @@
                   <div class="secondary-cell">{{ alert.dateLabel }}</div>
                 </td>
                 <td>
-                  <code class="mac-chip">{{ alert.mac }}</code>
+                  <div class="device-cell">
+                    <strong class="device-name">{{ getAlertDeviceName(alert) }}</strong>
+                    <code class="mac-chip">{{ alert.mac }}</code>
+                  </div>
                 </td>
                 <td>
                   <span :class="['sensor-chip', getSensorTone(alert.sensor)]">{{ alert.sensor }}</span>
+                </td>
+                <td>
+                  <span
+                    :class="['side-chip', alert.side && normalizeSideFilterValue(alert.side) !== 'all' ? 'side-chip--active' : 'side-chip--neutral']"
+                  >
+                    {{ formatSideLabel(alert.side) }}
+                  </span>
                 </td>
                 <td>
                   <p class="message-cell" :title="alert.message">{{ alert.message }}</p>
@@ -202,7 +267,7 @@
             <span class="material-symbols-outlined" aria-hidden="true">notifications_off</span>
           </div>
           <h2>No alerts found</h2>
-          <p v-if="searchQuery || activeStatusFilter !== 'all' || activeSeverityFilter !== 'all'">
+          <p v-if="searchQuery || activeStatusFilter !== 'all' || activeSeverityFilter !== 'all' || activeMacFilter !== 'all' || activeSideFilter !== 'all'">
             Try adjusting your filters or search terms to find the clinical logs you're looking for.
           </p>
           <p v-else>No alerts recorded in the database.</p>
@@ -250,10 +315,14 @@ const auth = useAuthStore()
 const searchQuery = ref('')
 const activeStatusFilter = ref('all')
 const activeSeverityFilter = ref('all')
+const activeMacFilter = ref('all')
+const activeSideFilter = ref('all')
 const currentPage = ref(1)
 const activeMenuId = ref('')
 const isStatusMenuOpen = ref(false)
 const isSeverityMenuOpen = ref(false)
+const isDeviceMenuOpen = ref(false)
+const isSideMenuOpen = ref(false)
 const isRefreshing = ref(false)
 const lastRefreshedAt = ref(null)
 const pageSize = 10
@@ -271,6 +340,12 @@ const severityFilters = [
   { label: 'Info', value: 'info' }
 ]
 
+const sideFilters = [
+  { label: 'All', value: 'all' },
+  { label: 'Left', value: 'left' },
+  { label: 'Right', value: 'right' }
+]
+
 const canClearHistory = computed(() => auth.permissions.includes(PERMISSIONS.ALERTS_CLEAR))
 const totalAlerts = computed(() => healthStore.alertHistory.length)
 const pendingAlerts = computed(() => healthStore.alertHistory.filter(alert => alert.status !== 'READ').length)
@@ -281,6 +356,38 @@ const resolutionRate = computed(() => {
 const averageResponseLabel = computed(() => (pendingAlerts.value ? '1.4 min' : '0 min'))
 const statusLabel = computed(() => statusFilters.find(option => option.value === activeStatusFilter.value)?.label || 'All')
 const severityLabel = computed(() => severityFilters.find(option => option.value === activeSeverityFilter.value)?.label || 'All')
+const deviceFilters = computed(() => {
+  const macs = new Set()
+
+  healthStore.alertHistory.forEach((alert) => {
+    const mac = String(alert.mac || '').trim()
+    if (!mac) return
+    macs.add(mac)
+  })
+
+  const options = Array.from(macs)
+    .sort((left, right) => left.localeCompare(right))
+    .map(value => ({ label: value, value }))
+
+  return [{ label: 'All', value: 'all' }, ...options]
+})
+const deviceLabel = computed(() => deviceFilters.value.find(option => option.value === activeMacFilter.value)?.label || 'All')
+const selectedSideLabel = computed(() => sideFilters.find(option => option.value === activeSideFilter.value)?.label || 'All')
+const deviceLookup = computed(() => {
+  const lookup = new Map()
+
+  healthStore.deviceInventory.forEach((device) => {
+    const deviceName = String(device.name || '').trim()
+    const deviceMac = String(device.mac || '').trim().toLowerCase()
+    const deviceId = String(device.deviceId || device.id || '').trim().toLowerCase()
+    const label = deviceName || device.deviceId || device.mac || 'Unknown device'
+
+    if (deviceMac) lookup.set(deviceMac, label)
+    if (deviceId) lookup.set(deviceId, label)
+  })
+
+  return lookup
+})
 const lastRefreshedLabel = computed(() => {
   if (!lastRefreshedAt.value) return 'Never'
 
@@ -291,6 +398,11 @@ const lastRefreshedLabel = computed(() => {
 })
 
 const normalizeSeverity = (value) => String(value || '').trim().toLowerCase()
+const normalizeSideFilterValue = (value) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === 'left' || normalized === 'right') return normalized
+  return 'all'
+}
 
 const getSensorTone = (sensor) => {
   const value = String(sensor || '').toLowerCase()
@@ -307,15 +419,28 @@ const getSeverityTone = (severity) => {
   return 'severity-chip--info'
 }
 
+const formatSideLabel = (value) => {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (normalized === 'left') return 'Left'
+  if (normalized === 'right') return 'Right'
+  return 'All sides'
+}
+
 const normalizeSearchValue = (value) => String(value || '')
   .toLowerCase()
   .replace(/[^a-z0-9]/g, '')
+
+const getAlertDeviceName = (alert = {}) => {
+  const mac = String(alert.mac || '').trim().toLowerCase()
+  const deviceId = String(alert.deviceId || '').trim().toLowerCase()
+  return deviceLookup.value.get(mac) || deviceLookup.value.get(deviceId) || alert.deviceId || alert.mac || 'Unknown device'
+}
 
 const filteredAlerts = computed(() => {
   const query = normalizeSearchValue(searchQuery.value)
 
   return healthStore.alertHistory.filter((alert) => {
-    const searchableValues = [alert.mac, alert.sensor, alert.message, alert.dateLabel, alert.time]
+    const searchableValues = [alert.mac, alert.deviceId, getAlertDeviceName(alert), alert.sensor, alert.message, alert.dateLabel, alert.time, alert.side]
       .filter(Boolean)
       .map(value => normalizeSearchValue(value))
 
@@ -329,20 +454,44 @@ const filteredAlerts = computed(() => {
       || (activeStatusFilter.value === 'pending' && alertStatus !== 'read')
 
     const matchesSeverity = activeSeverityFilter.value === 'all' || alertLevel === activeSeverityFilter.value
+    const alertMac = String(alert.mac || '').trim()
+    const matchesMac = activeMacFilter.value === 'all' || normalizeSearchValue(alertMac) === normalizeSearchValue(activeMacFilter.value)
+    const alertSide = normalizeSideFilterValue(alert.side)
+    const matchesSide =
+      activeSideFilter.value === 'all'
+      || (activeSideFilter.value === 'left' && alertSide === 'left')
+      || (activeSideFilter.value === 'right' && alertSide === 'right')
 
-    return matchesQuery && matchesStatus && matchesSeverity
+    return matchesQuery && matchesStatus && matchesSeverity && matchesMac && matchesSide
   })
 })
+
+const sortAlertTimestamp = (alert = {}) => {
+  const numericTimestamp = Number(alert.timestamp || 0)
+  if (Number.isFinite(numericTimestamp) && numericTimestamp > 0) return numericTimestamp
+
+  const parsed = Date.parse(`${alert.dateLabel || ''} ${alert.time || ''}`)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const sortedAlerts = computed(() => [...filteredAlerts.value].sort((left, right) => {
+  const leftPending = normalizeSeverity(left.status) !== 'read'
+  const rightPending = normalizeSeverity(right.status) !== 'read'
+
+  if (leftPending !== rightPending) return leftPending ? -1 : 1
+
+  return sortAlertTimestamp(right) - sortAlertTimestamp(left)
+}))
 
 const pageCount = computed(() => Math.max(Math.ceil(filteredAlerts.value.length / pageSize), 1))
 
 const visibleAlerts = computed(() => {
   const start = (currentPage.value - 1) * pageSize
-  return filteredAlerts.value.slice(start, start + pageSize)
+  return sortedAlerts.value.slice(start, start + pageSize)
 })
 
-const pageStart = computed(() => (filteredAlerts.value.length ? (currentPage.value - 1) * pageSize + 1 : 0))
-const pageEnd = computed(() => Math.min(currentPage.value * pageSize, filteredAlerts.value.length))
+const pageStart = computed(() => (sortedAlerts.value.length ? (currentPage.value - 1) * pageSize + 1 : 0))
+const pageEnd = computed(() => Math.min(currentPage.value * pageSize, sortedAlerts.value.length))
 
 const pageNumbers = computed(() => {
   const totalPages = pageCount.value
@@ -366,10 +515,14 @@ const resetFilters = () => {
   searchQuery.value = ''
   activeStatusFilter.value = 'all'
   activeSeverityFilter.value = 'all'
+  activeMacFilter.value = 'all'
+  activeSideFilter.value = 'all'
   currentPage.value = 1
   activeMenuId.value = ''
   isStatusMenuOpen.value = false
   isSeverityMenuOpen.value = false
+  isDeviceMenuOpen.value = false
+  isSideMenuOpen.value = false
 }
 
 const setStatusFilter = (value) => {
@@ -380,6 +533,16 @@ const setStatusFilter = (value) => {
 const setSeverityFilter = (value) => {
   activeSeverityFilter.value = value
   isSeverityMenuOpen.value = false
+}
+
+const setDeviceFilter = (value) => {
+  activeMacFilter.value = value
+  isDeviceMenuOpen.value = false
+}
+
+const setSideFilter = (value) => {
+  activeSideFilter.value = value
+  isSideMenuOpen.value = false
 }
 
 const goToPage = (page) => {
@@ -398,25 +561,53 @@ const toggleAlertMenu = (alertId) => {
   activeMenuId.value = activeMenuId.value === alertId ? '' : alertId
   isStatusMenuOpen.value = false
   isSeverityMenuOpen.value = false
+  isDeviceMenuOpen.value = false
+  isSideMenuOpen.value = false
 }
 
 const closeAlertMenu = (event) => {
-  if (event?.target?.closest?.('.row-actions') || event?.target?.closest?.('.severity-control') || event?.target?.closest?.('.status-control')) return
+  if (
+    event?.target?.closest?.('.row-actions')
+    || event?.target?.closest?.('.severity-control')
+    || event?.target?.closest?.('.status-control')
+  ) return
   activeMenuId.value = ''
   isStatusMenuOpen.value = false
   isSeverityMenuOpen.value = false
+  isDeviceMenuOpen.value = false
+  isSideMenuOpen.value = false
 }
 
 const toggleStatusMenu = () => {
   activeMenuId.value = ''
   isStatusMenuOpen.value = !isStatusMenuOpen.value
   isSeverityMenuOpen.value = false
+  isDeviceMenuOpen.value = false
+  isSideMenuOpen.value = false
 }
 
 const toggleSeverityMenu = () => {
   activeMenuId.value = ''
   isStatusMenuOpen.value = false
   isSeverityMenuOpen.value = !isSeverityMenuOpen.value
+  isDeviceMenuOpen.value = false
+  isSideMenuOpen.value = false
+}
+
+const toggleDeviceMenu = () => {
+  activeMenuId.value = ''
+  isStatusMenuOpen.value = false
+  isSeverityMenuOpen.value = false
+  isDeviceMenuOpen.value = !isDeviceMenuOpen.value
+  isSideMenuOpen.value = false
+}
+
+const toggleSideMenu = () => {
+  activeMenuId.value = ''
+  isStatusMenuOpen.value = false
+  isSeverityMenuOpen.value = false
+  isDeviceMenuOpen.value = false
+  isSideMenuOpen.value = !isSideMenuOpen.value
 }
 
 const copyToClipboard = async (value) => {
@@ -457,6 +648,8 @@ const handleKeydown = (event) => {
     activeMenuId.value = ''
     isStatusMenuOpen.value = false
     isSeverityMenuOpen.value = false
+    isDeviceMenuOpen.value = false
+    isSideMenuOpen.value = false
   }
 }
 
@@ -465,10 +658,24 @@ watch([searchQuery, activeStatusFilter, activeSeverityFilter], () => {
   activeMenuId.value = ''
   isStatusMenuOpen.value = false
   isSeverityMenuOpen.value = false
+  isDeviceMenuOpen.value = false
+  isSideMenuOpen.value = false
+})
+
+watch([activeMacFilter, activeSideFilter], () => {
+  currentPage.value = 1
+  activeMenuId.value = ''
+  isStatusMenuOpen.value = false
+  isSeverityMenuOpen.value = false
+  isDeviceMenuOpen.value = false
+  isSideMenuOpen.value = false
 })
 
 onMounted(async () => {
-  await healthStore.fetchAlertHistory()
+  await Promise.all([
+    healthStore.fetchAlertHistory(),
+    healthStore.fetchDeviceInventory()
+  ])
   lastRefreshedAt.value = new Date()
   document.addEventListener('click', closeAlertMenu)
   document.addEventListener('keydown', handleKeydown)
@@ -535,7 +742,7 @@ onBeforeUnmount(() => {
 .result-chip { padding: 11px 14px; border-radius: 14px; background: var(--surface-panel-strong); color: var(--text-muted); font-size: 0.72rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; border: 1px solid var(--surface-border); }
 .table-card { overflow: hidden; border-radius: 24px; border: 1px solid var(--border-color); background: var(--surface-card); box-shadow: 0 18px 40px var(--surface-shadow); }
 .table-wrap { overflow-x: auto; }
-.alerts-table { width: 100%; min-width: 1060px; border-collapse: separate; border-spacing: 0; }
+.alerts-table { width: 100%; min-width: 1140px; border-collapse: separate; border-spacing: 0; }
 .alerts-table th { padding: 16px 18px; text-align: left; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: #64748b; background: var(--surface-panel-strong); border-bottom: 1px solid var(--surface-border); }
 .alerts-table td { padding: 18px; vertical-align: top; border-bottom: 1px solid rgba(148, 163, 184, 0.1); color: var(--text-main); }
 .alerts-table tbody tr:hover { background: var(--surface-card-soft); }
@@ -543,12 +750,37 @@ onBeforeUnmount(() => {
 .primary-cell { font-size: 0.92rem; font-weight: 800; color: var(--text-main); }
 .secondary-cell { margin-top: 3px; font-size: 0.72rem; color: var(--text-muted); }
 .mac-chip, .sensor-chip, .severity-chip, .status-chip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 10px; border-radius: 999px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
+.device-cell { display: flex; flex-direction: column; gap: 6px; }
+.device-name { font-size: 0.92rem; font-weight: 900; color: var(--text-main); }
 .mac-chip { font-family: 'Inter', sans-serif; color: #2559bd; background: rgba(37, 89, 189, 0.08); }
 .sensor-chip { border: 1px solid transparent; }
 .sensor-chip--blue { color: #2559bd; background: rgba(37, 89, 189, 0.08); border-color: rgba(37, 89, 189, 0.14); }
 .sensor-chip--teal { color: #047857; background: rgba(16, 185, 129, 0.1); border-color: rgba(16, 185, 129, 0.12); }
 .sensor-chip--amber { color: #b45309; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.14); }
 .sensor-chip--neutral { color: #475569; background: rgba(148, 163, 184, 0.12); border-color: rgba(148, 163, 184, 0.14); }
+.side-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 78px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+.side-chip--active {
+  color: #2559bd;
+  background: rgba(37, 89, 189, 0.08);
+  border-color: rgba(37, 89, 189, 0.14);
+}
+.side-chip--neutral {
+  color: #475569;
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.14);
+}
 .message-cell { margin: 0; max-width: 520px; font-size: 0.92rem; line-height: 1.5; color: var(--text-main); }
 .status-chip--pending { color: #b45309; background: rgba(245, 158, 11, 0.14); }
 .status-chip--read { color: #047857; background: rgba(16, 185, 129, 0.14); }
@@ -585,6 +817,7 @@ onBeforeUnmount(() => {
   .segment-button { flex: 1 1 140px; justify-content: center; }
   .table-footer { align-items: flex-start; }
   .pagination { width: 100%; }
+  .alerts-table { min-width: 1020px; }
 }
 
 </style>

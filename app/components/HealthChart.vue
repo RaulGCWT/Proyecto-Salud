@@ -149,7 +149,8 @@ const sideOptions = computed(() => {
 const scopedRules = computed(() => {
   const telemetryScope = {
     mac: normalizeScopeValue(health.selectedMac || health.currentMac),
-    deviceId: normalizeScopeValue(health.currentDeviceId)
+    deviceId: normalizeScopeValue(health.currentDeviceId),
+    side: normalizeScopeValue(health.selectedSide)
   }
 
   return rulesStore.rules.filter(rule => matchesDeviceRuleScope(rule, telemetryScope, selectedDeviceRecord.value || {}))

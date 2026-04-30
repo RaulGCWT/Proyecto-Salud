@@ -15,6 +15,13 @@ def normalize_assignment_type(value):
     return 'none'
 
 
+def normalize_rule_side(value):
+    raw = str(value or '').strip().lower()
+    if raw in {'left', 'right'}:
+        return raw
+    return 'all'
+
+
 def can_assign_rules(role):
     return str(role or '').strip().lower() in ALLOWED_ASSIGNMENT_ROLES
 
@@ -27,6 +34,7 @@ def get_rules(event, context):
     for item in items:
         item["assignedToType"] = normalize_assignment_type(item.get("assignedToType"))
         item["assignedToId"] = str(item.get("assignedToId") or "")
+        item["assignedToSide"] = normalize_rule_side(item.get("assignedToSide"))
     return response(200, items)
 
 
@@ -37,6 +45,7 @@ def create_rule(event, context):
     value = body.get("value", 0)
     assigned_to_type = normalize_assignment_type(body.get("assignedToType"))
     assigned_to_id = str(body.get("assignedToId") or "").strip()
+    assigned_to_side = normalize_rule_side(body.get("assignedToSide"))
 
     if assigned_to_type != 'none' and not can_assign_rules(role):
         return response(403, {"error": "You are not allowed to assign rules"})
@@ -52,6 +61,7 @@ def create_rule(event, context):
         "value": Decimal(str(value)),
         "assignedToType": assigned_to_type,
         "assignedToId": assigned_to_id,
+        "assignedToSide": assigned_to_side,
     }
 
     if not rule["name"]:
@@ -75,6 +85,7 @@ def update_rule(event, context):
     name = body.get("name", "").strip()
     assigned_to_type = normalize_assignment_type(body.get("assignedToType"))
     assigned_to_id = str(body.get("assignedToId") or "").strip()
+    assigned_to_side = normalize_rule_side(body.get("assignedToSide"))
     if not name:
         return response(400, {"error": "Rule name is required"})
     if assigned_to_type != 'none' and not can_assign_rules(role):
@@ -90,7 +101,7 @@ def update_rule(event, context):
 
     response_data = table_rules.update_item(
         Key={"id": rule_id},
-        UpdateExpression="SET #n = :n, #v = :v, #o = :o, #val = :val, #owner = :owner, #assignedType = :assignedType, #assignedId = :assignedId",
+        UpdateExpression="SET #n = :n, #v = :v, #o = :o, #val = :val, #owner = :owner, #assignedType = :assignedType, #assignedId = :assignedId, #assignedSide = :assignedSide",
         ExpressionAttributeNames={
             "#n": "name",
             "#v": "variable",
@@ -99,6 +110,7 @@ def update_rule(event, context):
             "#owner": "ownerId",
             "#assignedType": "assignedToType",
             "#assignedId": "assignedToId",
+            "#assignedSide": "assignedToSide",
         },
         ExpressionAttributeValues={
             ":n": name,
@@ -108,6 +120,7 @@ def update_rule(event, context):
             ":owner": owner_id or current_item.get("ownerId", ""),
             ":assignedType": assigned_to_type,
             ":assignedId": assigned_to_id,
+            ":assignedSide": assigned_to_side,
         },
         ReturnValues="ALL_NEW",
     )

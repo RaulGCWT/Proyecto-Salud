@@ -3,6 +3,7 @@ from flask_socketio import SocketIO
 from flask_cors import CORS
 from src.database import init_db, decimal_default, table_telemetry
 from src.mqtt_handler import start_mqtt, get_latest_telemetry
+from src.storage import init_storage
 from src.routes.devices import devices_bp
 from src.routes.events import events_bp
 from src.routes.family_users import family_users_bp
@@ -31,6 +32,7 @@ def main():
     global mqtt_client
 
     init_db()
+    init_storage()
     mqtt_client = start_mqtt(socketio)
     socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
 

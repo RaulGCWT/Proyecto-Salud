@@ -10,6 +10,12 @@ export function normalizeAssignmentType(value) {
   return 'none'
 }
 
+export function normalizeRuleSide(value) {
+  const normalized = normalizeScopeValue(value)
+  if (normalized === 'left' || normalized === 'right') return normalized
+  return 'all'
+}
+
 export function buildTelemetryScope(telemetry = {}) {
   return {
     mac: normalizeScopeValue(telemetry.mac),
@@ -65,9 +71,12 @@ export function matchesRuleScope(rule = {}, telemetry = {}, user = {}) {
 export function matchesDeviceRuleScope(rule = {}, telemetry = {}, device = {}) {
   const assignmentType = normalizeAssignmentType(rule.assignedToType)
   const assignedToId = normalizeScopeValue(rule.assignedToId)
+  const ruleSide = normalizeRuleSide(rule.assignedToSide || rule.side)
+  const telemetrySide = normalizeRuleSide(telemetry.side)
 
   if (assignmentType === 'none') return false
   if (!assignedToId) return false
+  if (telemetrySide !== 'all' && ruleSide !== 'all' && ruleSide !== telemetrySide) return false
 
   const deviceScope = buildDeviceRuleScope(telemetry, device)
 

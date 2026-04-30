@@ -19,6 +19,13 @@ def normalize_assignment_type(value):
     return "none"
 
 
+def normalize_rule_side(value):
+    raw = normalize_scope_value(value)
+    if raw in {"left", "right"}:
+        return raw
+    return "all"
+
+
 def load_device_context(data):
     mac = normalize_scope_value(data.get("mac"))
     device_id = normalize_scope_value(data.get("deviceId") or mac)
@@ -48,12 +55,17 @@ def load_device_context(data):
 def rule_matches_device_scope(rule, device_context):
     assignment_type = normalize_assignment_type(rule.get("assignedToType"))
     assigned_to_id = normalize_scope_value(rule.get("assignedToId"))
+    rule_side = normalize_rule_side(rule.get("assignedToSide") or rule.get("side"))
+    device_side = normalize_rule_side(device_context.get("side"))
 
     # Las reglas sin asignación no deben disparar alertas sobre ningún dispositivo.
     if assignment_type == "none":
         return False
 
     if not assigned_to_id:
+        return False
+
+    if device_side != "all" and rule_side != "all" and rule_side != device_side:
         return False
 
     if assignment_type == "device":
@@ -135,6 +147,7 @@ def check_rules_and_save(data):
                     "rule_id": rule_id,
                     "assignedToType": normalize_assignment_type(rule.get("assignedToType")),
                     "assignedToId": normalize_scope_value(rule.get("assignedToId")),
+                    "assignedToSide": normalize_rule_side(rule.get("assignedToSide")),
                     "timestamp": str(now),
                     "message": f"Alert: {param} at {current_value}",
                     "status": "PENDING",

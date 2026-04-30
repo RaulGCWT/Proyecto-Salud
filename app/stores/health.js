@@ -262,9 +262,11 @@ export const useHealthStore = defineStore('health', {
 
         this.alertHistory = events.map(event => {
           const eventDate = new Date(parseFloat(event.timestamp) * 1000)
+          const numericTimestamp = Number(event.timestamp) || 0
 
           return {
             id: event.id,
+            timestamp: numericTimestamp,
             time: eventDate.toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit'
@@ -441,6 +443,7 @@ export const useHealthStore = defineStore('health', {
             const ownerId = getUserOwnerId()
             const newAlert = {
               id: Date.now(),
+              timestamp: Math.floor(Date.now() / 1000),
               time: new Date().toLocaleTimeString(),
               sensor: (parameter || 'SENSOR').toUpperCase(),
               mac: normalizeScopeValue(reading.mac || this.currentMac || 'N/A'),

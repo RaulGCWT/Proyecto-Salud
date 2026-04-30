@@ -24,7 +24,7 @@ MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
 MQTT_BROKER_CLIENT_ID = os.getenv("MQTT_BROKER_CLIENT_ID", "cama_simulator_local")
 MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "false").strip().lower() == "true"
 DEVICE_ID = os.getenv("DEVICE_ID", "Bed-01")
-DEVICE_MAC = os.getenv("DEVICE_MAC", "52:54:00:ab:cd:ra")
+DEVICE_MAC = os.getenv("DEVICE_MAC", "52:54:00:ab:cd:vi")
 DEVICE_TYPE = os.getenv("DEVICE_TYPE", "Double Bed")#Double Bed #Standard
 SAMPLING_SECONDS = int(os.getenv("SAMPLING_SECONDS", "10"))
 SIMULATION_TIMESTAMP_MODE = os.getenv("SIMULATION_TIMESTAMP_MODE", "burst").strip().lower()

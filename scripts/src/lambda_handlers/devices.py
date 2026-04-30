@@ -2,6 +2,27 @@ from src.database import table_devices
 from src.lambda_handlers.common import get_owner_id, parse_body, response
 
 
+def _normalize_device_item(existing=None, body=None, device_id=""):
+    existing = existing or {}
+    body = body or {}
+    normalized_id = str(device_id or body.get("id") or body.get("mac") or existing.get("id") or existing.get("mac") or "").strip().lower()
+    normalized_name = str(body.get("name") or existing.get("name") or body.get("deviceId") or existing.get("deviceId") or f"Bed-{normalized_id[-5:]}").strip()
+    normalized_type = str(body.get("type") or existing.get("type") or "Standard").strip() or "Standard"
+
+    return {
+        "id": normalized_id,
+        "mac": str(body.get("mac") or existing.get("mac") or normalized_id).strip().lower(),
+        "deviceId": str(body.get("deviceId") or existing.get("deviceId") or normalized_name or normalized_id).strip(),
+        "name": normalized_name,
+        "type": normalized_type,
+        "ownerId": str(body.get("ownerId") or existing.get("ownerId") or "").strip(),
+        "tenantKey": str(body.get("tenantKey") or existing.get("tenantKey") or "").strip(),
+        "residenceId": str(body.get("residenceId") or existing.get("residenceId") or "").strip(),
+        "area": str(body.get("area") or existing.get("area") or "").strip(),
+        "residentId": str(body.get("residentId") or existing.get("residentId") or "").strip(),
+    }
+
+
 def get_devices(event, context):
     items = table_devices.scan().get("Items", [])
     owner_id = get_owner_id(event)
@@ -67,17 +88,13 @@ def save_device(event, context):
     area = body.get("area") or headers.get("x-area") or headers.get("X-Area") or ""
     resident_id = body.get("residentId") or headers.get("x-resident-id") or headers.get("X-Resident-Id") or ""
 
-    device = {
-        "id": device_id,
-        "mac": device_id,
-        "name": body.get("name") or f"Bed-{device_id[-5:]}",
-        "type": body.get("type") or "Standard",
-        "ownerId": owner_id,
-        "tenantKey": tenant_key,
-        "residenceId": residence_id,
-        "area": area,
-        "residentId": resident_id,
-    }
+    existing = table_devices.get_item(Key={"id": device_id}).get("Item") or {}
+    device = _normalize_device_item(existing, body, device_id)
+    device["ownerId"] = owner_id or device["ownerId"]
+    device["tenantKey"] = tenant_key or device["tenantKey"]
+    device["residenceId"] = residence_id or device["residenceId"]
+    device["area"] = area or device["area"]
+    device["residentId"] = resident_id or device["residentId"]
 
     table_devices.put_item(Item=device)
     return response(201, device)
@@ -95,6 +112,8 @@ def update_device(event, context):
     if not name:
         return response(400, {"error": "Device name is required"})
 
+    existing = table_devices.get_item(Key={"id": current_id}).get("Item") or {}
+
     owner_id = (
         body["ownerId"]
         if "ownerId" in body
@@ -105,30 +124,13 @@ def update_device(event, context):
     area = body.get("area") or headers.get("x-area") or headers.get("X-Area") or ""
     resident_id = body.get("residentId") or headers.get("x-resident-id") or headers.get("X-Resident-Id") or ""
 
-    response_data = table_devices.update_item(
-        Key={"id": current_id},
-        UpdateExpression="SET #n = :n, #t = :t, #m = :m, #owner = :owner, #tenant = :tenant, #residence = :residence, #area = :area, #resident = :resident",
-        ExpressionAttributeNames={
-            "#n": "name",
-            "#t": "type",
-            "#m": "mac",
-            "#owner": "ownerId",
-            "#tenant": "tenantKey",
-            "#residence": "residenceId",
-            "#area": "area",
-            "#resident": "residentId",
-        },
-        ExpressionAttributeValues={
-            ":n": name,
-            ":t": body.get("type") or "Standard",
-            ":m": current_id,
-            ":owner": owner_id,
-            ":tenant": tenant_key,
-            ":residence": residence_id,
-            ":area": area,
-            ":resident": resident_id,
-        },
-        ReturnValues="ALL_NEW",
-    )
+    item = _normalize_device_item(existing, body, current_id)
+    item["name"] = name or item["name"]
+    item["ownerId"] = owner_id or item["ownerId"]
+    item["tenantKey"] = tenant_key or item["tenantKey"]
+    item["residenceId"] = residence_id or item["residenceId"]
+    item["area"] = area or item["area"]
+    item["residentId"] = resident_id or item["residentId"]
 
-    return response(200, response_data.get("Attributes", {"id": current_id}))
+    table_devices.put_item(Item=item)
+    return response(200, item)

@@ -9,6 +9,7 @@ import paho.mqtt.client as paho_mqtt
 
 from src.database import table_devices, table_telemetry
 from src.rules_engine import check_rules_and_save
+from src.storage import save_telemetry_batch
 
 
 BASE_DIR = Path(__file__).resolve().parents[1]
@@ -54,11 +55,13 @@ def registrar_dispositivo_si_no_existe(data):
             return
 
         device_id = str(data.get("deviceId") or mac)
+        device_name = str(data.get("deviceName") or data.get("name") or device_id).strip() or device_id
         table_devices.put_item(
             Item={
                 "id": mac,
                 "mac": mac,
                 "deviceId": device_id,
+                "name": device_name,
                 "type": str(data.get("deviceType") or "Standard"),
             }
         )
@@ -176,6 +179,9 @@ def on_message(client, userdata, message, socketio):
         # Guardamos cada lectura para que luego la gráfica y el histórico tengan base real.
         for index, reading in enumerate(normalized["readings"]):
             guardar_lectura_historial(normalized, reading, index)
+
+        # Guardamos el lote bruto en S3 para conservar el histórico completo del dispositivo.
+        save_telemetry_batch(normalized)
 
         # Evaluamos reglas con cada lectura del lote para no perder alertas.
         for reading in normalized["readings"]:
