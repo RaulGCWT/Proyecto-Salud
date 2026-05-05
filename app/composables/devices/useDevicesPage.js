@@ -3,6 +3,7 @@ import { io } from 'socket.io-client'
 import { useAuthStore } from '~/stores/auth'
 import { PERMISSIONS } from '~/utils/permissions'
 import { filterDevicesByAccessContext } from '~/utils/accessContext'
+import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 
 const DEVICES_API_BASE = 'http://localhost:5000/devices'
 const SOCKET_URL = 'http://localhost:5000'
@@ -74,12 +75,7 @@ export function useDevicesPage() {
   })
 
   const devicesHeaders = computed(() => ({
-    ...(auth.user?.role ? { 'X-Role': auth.user.role } : {}),
-    ...(auth.user?.residenceId ? { 'X-Residence-Id': auth.user.residenceId } : {}),
-    ...(auth.user?.area ? { 'X-Area': auth.user.area } : {}),
-    ...(auth.user?.residentId ? { 'X-Resident-Id': auth.user.residentId } : {}),
-    ...(Array.isArray(auth.user?.deviceIds) && auth.user.deviceIds.length ? { 'X-Device-Ids': auth.user.deviceIds.join(',') } : {}),
-    ...(auth.user?.email ? { 'X-Owner-Id': auth.user.email } : {})
+    ...buildBackendAuthHeaders(auth)
   }))
 
   const normalizeMac = (value) => String(value || '').trim().toLowerCase()
@@ -290,12 +286,7 @@ export function useDevicesPage() {
         headers: devicesHeaders.value,
         body: {
           name: nextName,
-          type: nextType,
-          ownerId: nextOwnerId,
-          tenantKey: auth.user?.tenantKey || '',
-          residenceId: auth.user?.residenceId || '',
-          area: auth.user?.area || '',
-          residentId: auth.user?.residentId || ''
+          type: nextType
         }
       })
 
@@ -356,8 +347,15 @@ export function useDevicesPage() {
   onMounted(() => {
     refreshInventory()
 
-    socketClient.value = io(SOCKET_URL)
-    socketClient.value.on('sensor_update', handleSensorUpdate)
+    const socketToken = auth.idToken || auth.accessToken || ''
+    if (socketToken) {
+      socketClient.value = io(SOCKET_URL, {
+        auth: {
+          token: socketToken
+        }
+      })
+      socketClient.value.on('sensor_update', handleSensorUpdate)
+    }
 
     inventoryIntervalId.value = window.setInterval(refreshInventory, INVENTORY_REFRESH_INTERVAL)
     connectionIntervalId.value = window.setInterval(() => {

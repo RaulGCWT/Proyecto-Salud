@@ -5,7 +5,8 @@
         <p class="chart-eyebrow">Telemetry analytics</p>
         <h3 class="chart-title">Vital Biometrics Stream</h3>
         <p class="chart-subtitle">Continuous synchronization of the latest sensor data.</p>
-      </div>
+      </div>clear
+      
     </div>
 
     <div class="chart-summary">

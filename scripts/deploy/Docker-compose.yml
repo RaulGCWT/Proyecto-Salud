@@ -8,7 +8,7 @@ services:
       - "4566:4566"
       - "4510-4559:4510-4559"
     environment:
-      - LOCALSTACK_AUTH_TOKEN=${LOCALSTACK_AUTH_TOKEN:?Please set LOCALSTACK_AUTH_TOKEN before starting LocalStack}
+      - LOCALSTACK_AUTH_TOKEN=ls-ToHuQIwa-7086-7403-JAzo-piGIBeDAd018
       - SERVICES=dynamodb,s3
       - DEBUG=0
       - LOG_LICENSE_ISSUES=0
@@ -57,6 +57,8 @@ services:
       - MQTT_BROKER_HOST=mqtt-broker
       - MQTT_BROKER_PORT=1883
       - MQTT_TOPIC=residencia/camas/+/datos
+      - FLASK_DEBUG=0
+      - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001
       - USE_AWS_DYNAMODB=${USE_AWS_DYNAMODB:-false}
       - USE_AWS_ALERTS_TABLE=${USE_AWS_ALERTS_TABLE:-false}
       - AWS_REGION=${AWS_REGION:-eu-west-1}

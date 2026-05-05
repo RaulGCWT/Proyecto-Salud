@@ -1,5 +1,6 @@
 import { useAuthStore } from '~/stores/auth'
 import { PERMISSIONS } from '~/utils/permissions'
+import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 import {
   buildFamilyInvitePayload,
   buildFamilyUserPayload,
@@ -45,32 +46,38 @@ function buildUpdateEndpoint(baseUrl, id) {
 
 export function useUsersManagement() {
   const auth = useAuthStore()
+  const backendHeaders = computed(() => buildBackendAuthHeaders(auth))
   const search = ref('')
   const activeTab = ref('all')
   const modal = ref({ type: '' })
 
   const { data: staffData, refresh: refreshStaff } = useFetch(STAFF_API_BASE, {
     server: false,
+    headers: backendHeaders.value,
     default: () => []
   })
 
   const { data: residentsData, refresh: refreshResidents } = useFetch(RESIDENTS_API_BASE, {
     server: false,
+    headers: backendHeaders.value,
     default: () => []
   })
 
   const { data: devicesData, pending: resourcesLoading } = useFetch(DEVICES_API_BASE, {
     server: false,
+    headers: backendHeaders.value,
     default: () => []
   })
 
   const { data: familyUsersData, refresh: refreshFamilyUsers } = useFetch(FAMILY_USERS_API_BASE, {
     server: false,
+    headers: backendHeaders.value,
     default: () => []
   })
 
   const { data: invitesData, refresh: refreshInvites } = useFetch(INVITES_API_BASE, {
     server: false,
+    headers: backendHeaders.value,
     default: () => []
   })
 
@@ -252,6 +259,7 @@ export function useUsersManagement() {
 
       await $fetch(endpoint, {
         method: staffForm.value.id ? 'PUT' : 'POST',
+        headers: backendHeaders.value,
         body: payload
       })
 
@@ -279,6 +287,7 @@ export function useUsersManagement() {
 
       await $fetch(endpoint, {
         method: residentForm.value.id ? 'PUT' : 'POST',
+        headers: backendHeaders.value,
         body: payload
       })
 
@@ -313,6 +322,7 @@ export function useUsersManagement() {
     try {
       const invitation = await $fetch(INVITES_API_BASE, {
         method: 'POST',
+        headers: backendHeaders.value,
         body: payload
       })
 
@@ -341,6 +351,7 @@ export function useUsersManagement() {
     try {
       await $fetch(buildUpdateEndpoint(FAMILY_USERS_API_BASE, familyUserForm.value.id), {
         method: 'PUT',
+        headers: backendHeaders.value,
         body: payload
       })
 
@@ -366,6 +377,7 @@ export function useUsersManagement() {
     try {
       await $fetch(buildUpdateEndpoint(FAMILY_USERS_API_BASE, familyUser.id), {
         method: 'PUT',
+        headers: backendHeaders.value,
         body: {
           name: familyUser.name,
           email: familyUser.email,
@@ -409,6 +421,7 @@ export function useUsersManagement() {
     try {
       await $fetch(`${INVITES_API_BASE}/${inviteId}/state`, {
         method: 'PUT',
+        headers: backendHeaders.value,
         body: { state }
       })
 

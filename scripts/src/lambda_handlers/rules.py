@@ -1,11 +1,9 @@
 import uuid
 from decimal import Decimal
 
+from src.auth import can_assign_rules, get_record_owner_id, get_scoped_owner_id
 from src.database import table_rules
-from src.lambda_handlers.common import get_owner_id, get_role, parse_body, response
-
-
-ALLOWED_ASSIGNMENT_ROLES = {'admin', 'technician', 'members'}
+from src.lambda_handlers.common import parse_body, require_user_context, response
 
 
 def normalize_assignment_type(value):
@@ -22,15 +20,15 @@ def normalize_rule_side(value):
     return 'all'
 
 
-def can_assign_rules(role):
-    return str(role or '').strip().lower() in ALLOWED_ASSIGNMENT_ROLES
-
-
 def get_rules(event, context):
+    user_context, auth_error = require_user_context(event, "rules:view")
+    if auth_error:
+        return auth_error
+
     items = table_rules.scan().get("Items", [])
-    owner_id = get_owner_id(event)
-    if owner_id:
-        items = [item for item in items if str(item.get("ownerId") or "") == str(owner_id)]
+    scoped_owner_id = get_scoped_owner_id(user_context)
+    if scoped_owner_id:
+        items = [item for item in items if str(item.get("ownerId") or "") == str(scoped_owner_id)]
     for item in items:
         item["assignedToType"] = normalize_assignment_type(item.get("assignedToType"))
         item["assignedToId"] = str(item.get("assignedToId") or "")
@@ -39,15 +37,18 @@ def get_rules(event, context):
 
 
 def create_rule(event, context):
+    user_context, auth_error = require_user_context(event, "rules:manage")
+    if auth_error:
+        return auth_error
+
     body = parse_body(event)
-    owner_id = get_owner_id(event, body)
-    role = get_role(event, body)
+    owner_id = get_record_owner_id(user_context)
     value = body.get("value", 0)
     assigned_to_type = normalize_assignment_type(body.get("assignedToType"))
     assigned_to_id = str(body.get("assignedToId") or "").strip()
     assigned_to_side = normalize_rule_side(body.get("assignedToSide"))
 
-    if assigned_to_type != 'none' and not can_assign_rules(role):
+    if assigned_to_type != 'none' and not can_assign_rules(user_context):
         return response(403, {"error": "You are not allowed to assign rules"})
     if assigned_to_type != 'none' and not assigned_to_id:
         return response(400, {"error": "assignedToId is required when assignedToType is set"})
@@ -74,13 +75,16 @@ def create_rule(event, context):
 
 
 def update_rule(event, context):
+    user_context, auth_error = require_user_context(event, "rules:manage")
+    if auth_error:
+        return auth_error
+
     rule_id = (event.get("pathParameters") or {}).get("rule_id")
     if not rule_id:
         return response(400, {"error": "rule_id is required"})
 
     body = parse_body(event)
-    owner_id = get_owner_id(event, body)
-    role = get_role(event, body)
+    owner_id = get_record_owner_id(user_context)
     value = body.get("value", 0)
     name = body.get("name", "").strip()
     assigned_to_type = normalize_assignment_type(body.get("assignedToType"))
@@ -88,7 +92,7 @@ def update_rule(event, context):
     assigned_to_side = normalize_rule_side(body.get("assignedToSide"))
     if not name:
         return response(400, {"error": "Rule name is required"})
-    if assigned_to_type != 'none' and not can_assign_rules(role):
+    if assigned_to_type != 'none' and not can_assign_rules(user_context):
         return response(403, {"error": "You are not allowed to assign rules"})
     if assigned_to_type != 'none' and not assigned_to_id:
         return response(400, {"error": "assignedToId is required when assignedToType is set"})
@@ -129,11 +133,15 @@ def update_rule(event, context):
 
 
 def delete_rule(event, context):
+    user_context, auth_error = require_user_context(event, "rules:manage")
+    if auth_error:
+        return auth_error
+
     rule_id = (event.get("pathParameters") or {}).get("rule_id")
     if not rule_id:
         return response(400, {"error": "rule_id is required"})
 
-    owner_id = get_owner_id(event)
+    owner_id = get_scoped_owner_id(user_context)
     current_item = table_rules.get_item(Key={"id": rule_id}).get("Item")
     if not current_item:
         return response(404, {"error": "Rule not found"})

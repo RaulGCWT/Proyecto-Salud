@@ -1,10 +1,15 @@
 from src.database import table_events
-from src.lambda_handlers.common import get_owner_id, normalize_alert_status, parse_body, response
+from src.auth import get_scoped_owner_id
+from src.lambda_handlers.common import normalize_alert_status, parse_body, require_user_context, response
 
 
 def get_events(event, context):
+    user_context, auth_error = require_user_context(event, "alerts:view")
+    if auth_error:
+        return auth_error
+
     items = table_events.scan().get("Items", [])
-    owner_id = get_owner_id(event)
+    owner_id = get_scoped_owner_id(user_context)
     normalized_items = []
 
     for item in items:
@@ -19,13 +24,17 @@ def get_events(event, context):
 
 
 def update_event_status(event, context):
+    user_context, auth_error = require_user_context(event, "alerts:view")
+    if auth_error:
+        return auth_error
+
     event_id = (event.get("pathParameters") or {}).get("event_id")
     if not event_id:
         return response(400, {"error": "event_id is required"})
 
     body = parse_body(event)
     new_status = normalize_alert_status(body.get("status"))
-    owner_id = get_owner_id(event, body)
+    owner_id = get_scoped_owner_id(user_context)
 
     current_item = table_events.get_item(Key={"id": event_id}).get("Item")
     if not current_item:
@@ -45,11 +54,15 @@ def update_event_status(event, context):
 
 
 def delete_event(event, context):
+    user_context, auth_error = require_user_context(event, "alerts:clear")
+    if auth_error:
+        return auth_error
+
     event_id = (event.get("pathParameters") or {}).get("event_id")
     if not event_id:
         return response(400, {"error": "event_id is required"})
 
-    owner_id = get_owner_id(event)
+    owner_id = get_scoped_owner_id(user_context)
     current_item = table_events.get_item(Key={"id": event_id}).get("Item")
     if not current_item:
         return response(404, {"error": "Event not found"})
@@ -61,8 +74,12 @@ def delete_event(event, context):
 
 
 def clear_events(event, context):
+    user_context, auth_error = require_user_context(event, "alerts:clear")
+    if auth_error:
+        return auth_error
+
     items = table_events.scan().get("Items", [])
-    owner_id = get_owner_id(event)
+    owner_id = get_scoped_owner_id(user_context)
     with table_events.batch_writer() as batch:
         for item in items:
             if owner_id and str(item.get("ownerId") or "") != str(owner_id):

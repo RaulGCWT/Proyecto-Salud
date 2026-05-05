@@ -337,6 +337,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRulesStore } from '~/stores/rules'
 import { useAuthStore } from '~/stores/auth'
 import { canAssignRules as canAssignRulesForUser } from '~/utils/accessContext'
+import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 
 useHead({
   title: 'Monitoring Rules | Clinical Sentinel'
@@ -344,6 +345,7 @@ useHead({
 
 const rulesStore = useRulesStore()
 const auth = useAuthStore()
+const backendHeaders = buildBackendAuthHeaders(auth)
 
 const STAFF_API_BASE = 'http://localhost:5000/staff-members'
 const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
@@ -357,10 +359,10 @@ const isEditing = ref(false)
 const currentRuleId = ref(null)
 const activeRuleDropdown = ref('')
 const currentRule = ref(createEmptyRule())
-const { data: staffData } = useFetch(STAFF_API_BASE, { server: false, default: () => [] })
-const { data: residentsData } = useFetch(RESIDENTS_API_BASE, { server: false, default: () => [] })
-const { data: devicesData } = useFetch(DEVICES_API_BASE, { server: false, default: () => [] })
-const { data: familyUsersData } = useFetch(FAMILY_USERS_API_BASE, { server: false, default: () => [] })
+const { data: staffData } = useFetch(STAFF_API_BASE, { server: false, headers: backendHeaders, default: () => [] })
+const { data: residentsData } = useFetch(RESIDENTS_API_BASE, { server: false, headers: backendHeaders, default: () => [] })
+const { data: devicesData } = useFetch(DEVICES_API_BASE, { server: false, headers: backendHeaders, default: () => [] })
+const { data: familyUsersData } = useFetch(FAMILY_USERS_API_BASE, { server: false, headers: backendHeaders, default: () => [] })
 
 const variableOptions = [
   { value: 'hr', label: 'Heart Rate' },

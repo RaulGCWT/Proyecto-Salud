@@ -3,7 +3,17 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Instalamos todas las librerías necesarias, incluyendo 'requests' para el registro en DB
-RUN pip install --no-cache-dir flask flask-cors flask-socketio paho-mqtt boto3 requests AWSIoTPythonSDK
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && python -m pip install --no-cache-dir \
+      flask \
+      flask-cors \
+      flask-socketio \
+      paho-mqtt \
+      boto3 \
+      requests \
+      "PyJWT[crypto]==2.10.1" \
+      cryptography \
+      AWSIoTPythonSDK
 
 
 # Copiamos el código fuente al contenedor

@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { useRulesStore } from './rules'
 import { useAuthStore } from './auth'
-import { getScopedOwnerId } from '~/utils/accessContext'
+import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 import { buildMetricBatch, mergeHistory, normalizeAlertStatus } from '~/utils/healthData'
 import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
 
@@ -150,19 +150,8 @@ const summarizeLatestTelemetryBatch = (records = []) => {
   }
 }
 
-const getUserOwnerId = () => {
-  const auth = useAuthStore()
-  return auth.user?.email || auth.user?.tenantKey || ''
-}
-
-const getScopeOwnerId = () => {
-  const auth = useAuthStore()
-  return getScopedOwnerId(auth.user || {})
-}
-
 const scopedHeaders = () => {
-  const ownerId = getScopeOwnerId()
-  return ownerId ? { 'X-Owner-Id': ownerId } : {}
+  return buildBackendAuthHeaders(useAuthStore())
 }
 
 export const useHealthStore = defineStore('health', {
@@ -253,9 +242,7 @@ export const useHealthStore = defineStore('health', {
 
     async fetchAlertHistory() {
       try {
-        const ownerId = getScopeOwnerId()
         const data = await $fetch(EVENTS_API_BASE, {
-          params: ownerId ? { ownerId } : {},
           headers: scopedHeaders()
         })
         const events = Array.isArray(data) ? data : []
@@ -292,12 +279,8 @@ export const useHealthStore = defineStore('health', {
 
     async fetchTelemetryHistory(limit = 200) {
       try {
-        const ownerId = getScopeOwnerId()
         const data = await $fetch(TELEMETRY_HISTORY_API_BASE, {
-          params: {
-            limit,
-            ...(ownerId ? { ownerId } : {})
-          },
+          params: { limit },
           headers: scopedHeaders()
         })
 
@@ -317,9 +300,7 @@ export const useHealthStore = defineStore('health', {
 
     async fetchDeviceInventory() {
       try {
-        const ownerId = getScopeOwnerId()
         const data = await $fetch(DEVICES_API_BASE, {
-          params: ownerId ? { ownerId } : {},
           headers: scopedHeaders()
         })
 
@@ -332,7 +313,9 @@ export const useHealthStore = defineStore('health', {
 
     async fetchLatestTelemetry() {
       try {
-        const data = await $fetch(TELEMETRY_API_BASE)
+        const data = await $fetch(TELEMETRY_API_BASE, {
+          headers: scopedHeaders()
+        })
         if (!data || !data.lastReading) return
 
         this.ingestTelemetryPayload(data, { selectIfEmpty: true })
@@ -347,14 +330,13 @@ export const useHealthStore = defineStore('health', {
         const normalized = normalizeAlertStatus(status)
         const target = this.alertHistory.find(a => a.id === alertId)
         previousStatus = target?.status || 'PENDING'
-        const ownerId = getScopeOwnerId()
 
         if (target) target.status = normalized
 
         const response = await $fetch(`${EVENTS_API_BASE}/${alertId}/status`, {
           method: 'PUT',
           headers: scopedHeaders(),
-          body: ownerId ? { status: normalized, ownerId } : { status: normalized }
+          body: { status: normalized }
         })
 
         if (response?.status) {
@@ -377,11 +359,9 @@ export const useHealthStore = defineStore('health', {
       this.alertHistory = this.alertHistory.filter(alert => alert.id !== alertId)
 
       try {
-        const ownerId = getScopeOwnerId()
         const requestOptions = {
           method: 'DELETE',
-          headers: scopedHeaders(),
-          params: ownerId ? { ownerId } : {}
+          headers: scopedHeaders()
         }
 
         await $fetch(`${EVENTS_API_BASE}/${alertId}`, requestOptions)
@@ -395,10 +375,8 @@ export const useHealthStore = defineStore('health', {
     async clearAllAlerts() {
       if (!confirm('Seguro que quieres borrar todas las alertas de la base de datos?')) return
       try {
-        const ownerId = getScopeOwnerId()
         await $fetch(`${EVENTS_API_BASE}/clear`, {
           method: 'DELETE',
-          params: ownerId ? { ownerId } : {},
           headers: scopedHeaders()
         })
         this.alertHistory = []
@@ -440,7 +418,6 @@ export const useHealthStore = defineStore('health', {
           else if (condition === '==' || condition === '=') isTriggered = value == threshold
 
           if (isTriggered && value > 0) {
-            const ownerId = getUserOwnerId()
             const newAlert = {
               id: Date.now(),
               timestamp: Math.floor(Date.now() / 1000),
@@ -452,7 +429,7 @@ export const useHealthStore = defineStore('health', {
               message: `${rule.name}: ${value} detected`,
               level: 'Critical',
               status: 'PENDING',
-              ownerId
+              ownerId: ''
             }
             this.alertHistory.unshift(newAlert)
             this.lastToast = newAlert

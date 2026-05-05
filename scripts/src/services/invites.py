@@ -120,6 +120,7 @@ def create_invitation(payload):
         'residentId': invite.get('residentId'),
         'patientName': invite.get('patientName', 'Unassigned'),
         'deviceId': invite.get('deviceId', ''),
+        'ownerId': invite.get('ownerId', ''),
         'state': INVITE_PENDING,
         'createdAt': created_at,
         'expiresAt': expires_at,
@@ -158,6 +159,7 @@ def register_family_user_from_invitation(invitation, name, password):
         'patientName': invitation.get('patientName', 'Unassigned'),
         'deviceId': invitation.get('deviceId', ''),
         'deviceIdOverride': '',
+        'ownerId': invitation.get('ownerId', ''),
         'invitationId': invitation.get('id'),
         'createdAt': utc_now_iso()
     }

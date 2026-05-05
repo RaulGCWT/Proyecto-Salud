@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 
+from src.auth import require_user_context
 from src.services.invites import (
     get_invitation_access_error,
     get_invitation_state_change_error,
@@ -17,16 +18,30 @@ invites_bp = Blueprint('invites', __name__)
 @invites_bp.route('/invites', methods=['GET', 'POST'])
 def handle_invites():
     if request.method == 'POST':
+        user_context, auth_error = require_user_context('user:create-records')
+        if auth_error:
+            return auth_error
+
         invite = dict(request.json or {})
         if not invite.get('email') or not invite.get('name'):
             return jsonify({"error": "Invite name and email are required"}), 400
+        if not invite.get('ownerId'):
+            invite['ownerId'] = str(user_context.get('email') or user_context.get('tenantKey') or user_context.get('sub') or '').strip()
         return jsonify(create_invitation(invite)), 201
+
+    user_context, auth_error = require_user_context('user:create-records')
+    if auth_error:
+        return auth_error
 
     return jsonify(list_invitations()), 200
 
 
 @invites_bp.route('/invites/<invite_id>/state', methods=['PUT'])
 def update_invite_state(invite_id):
+    user_context, auth_error = require_user_context('user:create-records')
+    if auth_error:
+        return auth_error
+
     payload = dict(request.json or {})
     invitation = get_invitation_by_id(invite_id)
     if not invitation:
