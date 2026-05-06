@@ -1,7 +1,7 @@
 import { PERMISSIONS } from '~/utils/permissions'
 
 export const APP_NAV_ITEMS = [
-  { to: '/', label: 'Dashboard', icon: 'dashboard', permission: PERMISSIONS.DASHBOARD_VIEW },
+  { to: '/', label: 'Overview', icon: 'dashboard', permission: PERMISSIONS.DASHBOARD_VIEW },
   { to: '/devices', label: 'Devices', icon: 'sensors', permission: PERMISSIONS.DEVICES_VIEW },
   { to: '/alerts', label: 'Alerts', icon: 'notifications_active', permission: PERMISSIONS.ALERTS_VIEW },
   { to: '/rules', label: 'Rules', icon: 'policy', permission: PERMISSIONS.RULES_VIEW },

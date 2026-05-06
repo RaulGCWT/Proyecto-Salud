@@ -90,7 +90,8 @@ const normalizeSideValue = (value) => {
 
 const normalizeDeviceRecord = (device = {}) => ({
   mac: normalizeScopeValue(device.mac || device.id || ''),
-  deviceId: normalizeScopeValue(device.deviceId || device.id || device.mac || ''),
+  deviceId: String(device.deviceId || device.id || device.mac || '').trim(),
+  name: String(device.name || device.deviceId || device.mac || '').trim(),
   type: String(device.type || 'Standard').trim(),
   ownerId: normalizeScopeValue(device.ownerId),
   tenantKey: normalizeScopeValue(device.tenantKey),
@@ -298,6 +299,45 @@ export const useHealthStore = defineStore('health', {
         this.rebuildSelectedTelemetrySnapshot()
       } catch (err) {
         console.error('Error al cargar historial de telemetrÃ­a:', err)
+      }
+    },
+
+    async fetchTelemetryHistoryForInventory(limit = 200) {
+      try {
+        const inventoryMacs = Array.from(new Set(
+          (this.deviceInventory || [])
+            .map(device => normalizeScopeValue(device.mac || device.deviceId))
+            .filter(Boolean)
+        ))
+
+        if (!inventoryMacs.length) {
+          this.telemetryRecords = []
+          this.rebuildSelectedTelemetrySnapshot()
+          return
+        }
+
+        const responses = await Promise.all(
+          inventoryMacs.map((mac) => $fetch(TELEMETRY_HISTORY_API_BASE, {
+            params: { limit, mac },
+            headers: scopedHeaders()
+          }).catch(() => []))
+        )
+
+        const mergedItems = responses.flatMap((items) => {
+          const safeItems = Array.isArray(items) ? items : []
+          return safeItems.map(item => normalizeTelemetryRecord(item))
+        })
+
+        this.telemetryRecords = mergeTelemetryRecords([], mergedItems)
+
+        if (!this.selectedMac && this.telemetryRecords.length) {
+          const latestItem = this.telemetryRecords.at(-1)
+          this.selectedMac = latestItem?.mac || inventoryMacs[0] || ''
+        }
+
+        this.rebuildSelectedTelemetrySnapshot()
+      } catch (err) {
+        console.error('Error al cargar historial global de telemetria:', err)
       }
     },
 

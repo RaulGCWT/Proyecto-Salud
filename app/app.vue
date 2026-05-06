@@ -24,7 +24,7 @@ const layoutName = computed(() => disableLayout.value ? undefined : route.meta.l
 onMounted(async () => {
   await health.fetchDeviceInventory()
   await health.fetchLatestTelemetry()
-  await health.fetchTelemetryHistory(200, health.selectedMac || health.currentMac || health.deviceInventory[0]?.mac)
+  await health.fetchTelemetryHistoryForInventory(200)
   connectHealthSocket()
   telemetryRefreshInterval.value = window.setInterval(() => {
     health.fetchLatestTelemetry()
