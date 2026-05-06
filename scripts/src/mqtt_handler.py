@@ -83,6 +83,10 @@ def _parse_reading_timestamp(reading):
     return int(time.time())
 
 
+def _clean_item(item):
+    return {key: value for key, value in item.items() if value is not None}
+
+
 def guardar_lectura_historial(normalized, reading, index):
     mac = _normalizar_mac(normalized.get("mac"))
     device_id = str(normalized.get("deviceId") or mac or "unknown").strip()
@@ -110,26 +114,27 @@ def guardar_lectura_historial(normalized, reading, index):
         print(f"No se pudo leer la metadata del dispositivo {mac}: {error}")
 
     try:
-        table_telemetry.put_item(
-            Item={
-                "id": str(uuid.uuid4()),
-                "mac": mac or "unknown",
-                "deviceId": device_id,
-                "side": str(reading.get("side") or "center").strip().lower(),
-                "deviceType": str(normalized.get("deviceType") or "Standard"),
-                "layout": str(normalized.get("layout") or "single"),
-                "timestamp": timestamp,
-                "heartRate": reading.get("heartRate"),
-                "respiratoryRate": reading.get("respiratoryRate"),
-                "hrv": reading.get("hrv"),
-                "isOccupied": reading.get("isOccupied"),
-                "batchIndex": int(index),
-                **metadata,
-            }
-        )
+        telemetry_item = _clean_item({
+            "id": str(uuid.uuid4()),
+            "mac": mac or "unknown",
+            "deviceId": device_id,
+            "side": str(reading.get("side") or "center").strip().lower(),
+            "deviceType": str(normalized.get("deviceType") or "Standard"),
+            "layout": str(normalized.get("layout") or "single"),
+            "timestamp": timestamp,
+            "heartRate": reading.get("heartRate"),
+            "respiratoryRate": reading.get("respiratoryRate"),
+            "hrv": reading.get("hrv"),
+            "isOccupied": reading.get("isOccupied"),
+            "batchIndex": int(index),
+            **metadata,
+        })
+
+        table_telemetry.put_item(Item=telemetry_item)
+        print(f"Telemetry row stored in DynamoDB: {telemetry_item['mac']} ts={telemetry_item['timestamp']}")
     except Exception as error:
-        # El histórico no debe bloquear la actualización en vivo ni las alertas.
-        print(f"No se pudo guardar la lectura histórica para {mac}: {error}")
+        # El historico no debe bloquear la actualizacion en vivo ni las alertas.
+        print(f"No se pudo guardar la lectura historica para {mac}: {error}")
 
 
 def normalizar_payload(payload):
@@ -176,11 +181,11 @@ def on_message(client, userdata, message, socketio):
         # Emitimos primero para no perder la actualizacion en la UI si falla DynamoDB.
         registrar_dispositivo_si_no_existe(normalized)
 
-        # Guardamos cada lectura para que luego la gráfica y el histórico tengan base real.
+        # Guardamos cada lectura para que luego la grafica y el historico tengan base real.
         for index, reading in enumerate(normalized["readings"]):
             guardar_lectura_historial(normalized, reading, index)
 
-        # Guardamos el lote bruto en S3 para conservar el histórico completo del dispositivo.
+        # Guardamos el lote bruto en S3 para conservar el historico completo del dispositivo.
         save_telemetry_batch(normalized)
 
         # Evaluamos reglas con cada lectura del lote para no perder alertas.
@@ -212,7 +217,7 @@ def _on_paho_connect(client, userdata, flags, rc):
         print(f"Suscrito al topic MQTT: {MQTT_TOPIC}")
         return
 
-    print(f"No se pudo conectar al broker MQTT local. Código: {rc}")
+    print(f"No se pudo conectar al broker MQTT local. Codigo: {rc}")
 
 
 def _on_paho_message(socketio):
@@ -226,7 +231,7 @@ def _start_local_broker(socketio):
     client = paho_mqtt.Client(client_id=MQTT_BROKER_CLIENT_ID)
 
     if MQTT_USE_TLS:
-        # Solo activamos TLS si se pide explícitamente; el broker local del compose usa TCP plano.
+        # Solo activamos TLS si se pide explicitamente; el broker local del compose usa TCP plano.
         client.tls_set()
 
     client.on_connect = _on_paho_connect
@@ -261,8 +266,8 @@ def _start_aws_iot(socketio):
 
 def start_mqtt(socketio):
     if _is_local_broker_transport():
-        print("Arrancando telemetría con broker MQTT local.")
+        print("Arrancando telemetria con broker MQTT local.")
         return _start_local_broker(socketio)
 
-    print("Arrancando telemetría con AWS IoT Core.")
+    print("Arrancando telemetria con AWS IoT Core.")
     return _start_aws_iot(socketio)

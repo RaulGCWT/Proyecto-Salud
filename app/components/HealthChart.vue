@@ -5,8 +5,7 @@
         <p class="chart-eyebrow">Telemetry analytics</p>
         <h3 class="chart-title">Vital Biometrics Stream</h3>
         <p class="chart-subtitle">Continuous synchronization of the latest sensor data.</p>
-      </div>clear
-      
+      </div>
     </div>
 
     <div class="chart-summary">
@@ -479,4 +478,3 @@ const chartOption = computed(() => buildHealthChartOption({
   .chart-frame, .chart { min-height: 300px; }
 }
 </style>
-

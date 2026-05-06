@@ -3,8 +3,8 @@ import os
 from flask import Flask, jsonify, request
 from flask_socketio import SocketIO
 from flask_cors import CORS
-from src.auth import build_user_context, decode_verified_token, get_scoped_owner_id, require_user_context, AuthError
-from src.database import init_db, decimal_default, table_telemetry
+from src.auth import build_user_context, decode_verified_token, require_user_context, AuthError
+from src.database import init_db, decimal_default, query_telemetry_history
 from src.mqtt_handler import start_mqtt, get_latest_telemetry
 from src.storage import init_storage
 from src.routes.devices import devices_bp
@@ -104,21 +104,38 @@ def get_telemetry_history_route():
 
         mac = str(request.args.get('mac') or '').strip().lower()
         limit = request.args.get('limit', 200)
-        scoped_owner_id = get_scoped_owner_id(user_context)
+        from_timestamp = request.args.get('from')
+        to_timestamp = request.args.get('to')
 
         try:
             limit_value = max(1, min(int(limit), 500))
         except (TypeError, ValueError):
             limit_value = 200
 
-        items = table_telemetry.scan().get('Items', [])
-        if scoped_owner_id:
-            items = [item for item in items if str(item.get('ownerId') or '') == str(scoped_owner_id)]
-        if mac:
-            items = [item for item in items if str(item.get('mac') or '').strip().lower() == mac]
+        if not mac:
+            return jsonify({"error": "mac query parameter is required"}), 400
 
-        items.sort(key=lambda item: float(item.get('timestamp', 0)), reverse=True)
-        return jsonify(items[:limit_value]), 200
+        def _parse_timestamp(raw_value):
+            if raw_value in (None, ''):
+                return None
+            try:
+                return int(float(raw_value))
+            except (TypeError, ValueError):
+                raise ValueError("Invalid timestamp range")
+
+        try:
+            parsed_from = _parse_timestamp(from_timestamp)
+            parsed_to = _parse_timestamp(to_timestamp)
+        except ValueError:
+            return jsonify({"error": "Invalid timestamp range"}), 400
+
+        items = query_telemetry_history(
+            mac=mac,
+            from_timestamp=parsed_from,
+            to_timestamp=parsed_to,
+            limit=limit_value,
+        )
+        return jsonify(items), 200
     except Exception as error:
         return jsonify({"error": str(error)}), 500
 

@@ -1,8 +1,10 @@
 import os
 from decimal import Decimal
+from time import sleep
 
 import boto3
 from botocore.exceptions import ClientError
+from boto3.dynamodb.conditions import Key
 
 
 def decimal_default(obj):
@@ -39,6 +41,7 @@ FAMILY_USERS_TABLE_NAME = _read_str_env("FAMILY_USERS_TABLE_NAME", "FamilyUsers"
 RESIDENTS_TABLE_NAME = _read_str_env("RESIDENTS_TABLE_NAME", "Residents")
 STAFF_TABLE_NAME = _read_str_env("STAFF_TABLE_NAME", "StaffMembers")
 TELEMETRY_TABLE_NAME = _read_str_env("TELEMETRY_TABLE_NAME", "MonitoringTelemetry")
+TELEMETRY_MAC_INDEX_NAME = _read_str_env("TELEMETRY_MAC_INDEX_NAME", "MacTimestampIndex")
 
 TABLE_NAMES = {
     "rules": RULES_TABLE_NAME,
@@ -152,6 +155,141 @@ def _create_table_if_missing(table_name):
     print(f"Table created: {table_name}")
 
 
+def _create_telemetry_table_if_missing():
+    # La telemetría necesita un índice por owner para poder consultar histórico sin hacer scan.
+    try:
+        local_dynamodb.meta.client.describe_table(TableName=TELEMETRY_TABLE_NAME)
+        return
+    except ClientError as error:
+        error_code = error.response.get("Error", {}).get("Code")
+        if error_code != "ResourceNotFoundException":
+            raise
+
+    local_dynamodb.create_table(
+        TableName=TELEMETRY_TABLE_NAME,
+        KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
+        AttributeDefinitions=[
+            {"AttributeName": "id", "AttributeType": "S"},
+            {"AttributeName": "mac", "AttributeType": "S"},
+            {"AttributeName": "timestamp", "AttributeType": "N"},
+        ],
+        GlobalSecondaryIndexes=[
+            {
+                "IndexName": TELEMETRY_MAC_INDEX_NAME,
+                "KeySchema": [
+                    {"AttributeName": "mac", "KeyType": "HASH"},
+                    {"AttributeName": "timestamp", "KeyType": "RANGE"},
+                ],
+                "Projection": {"ProjectionType": "ALL"},
+                "ProvisionedThroughput": {"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+            }
+        ],
+        ProvisionedThroughput={"ReadCapacityUnits": 5, "WriteCapacityUnits": 5},
+    )
+    print(f"Table created: {TELEMETRY_TABLE_NAME}")
+
+
+def _ensure_telemetry_owner_index():
+    # Si la tabla ya existía con el esquema antiguo, añadimos el índice sin romper datos.
+    try:
+        description = local_dynamodb.meta.client.describe_table(TableName=TELEMETRY_TABLE_NAME)
+    except ClientError as error:
+        if error.response.get("Error", {}).get("Code") == "ResourceNotFoundException":
+            return
+        raise
+
+    indexes = description.get("Table", {}).get("GlobalSecondaryIndexes", []) or []
+    if any(index.get("IndexName") == TELEMETRY_MAC_INDEX_NAME for index in indexes):
+        return
+
+    try:
+        local_dynamodb.meta.client.update_table(
+            TableName=TELEMETRY_TABLE_NAME,
+            AttributeDefinitions=[
+                {"AttributeName": "mac", "AttributeType": "S"},
+                {"AttributeName": "timestamp", "AttributeType": "N"},
+            ],
+            GlobalSecondaryIndexUpdates=[
+                {
+                    "Create": {
+                        "IndexName": TELEMETRY_MAC_INDEX_NAME,
+                        "KeySchema": [
+                            {"AttributeName": "mac", "KeyType": "HASH"},
+                            {"AttributeName": "timestamp", "KeyType": "RANGE"},
+                        ],
+                        "Projection": {"ProjectionType": "ALL"},
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": 5,
+                            "WriteCapacityUnits": 5,
+                        },
+                    }
+                }
+            ],
+        )
+        print(f"Index created: {TELEMETRY_MAC_INDEX_NAME} on {TELEMETRY_TABLE_NAME}")
+    except ClientError as error:
+        error_code = error.response.get("Error", {}).get("Code")
+        if error_code not in {"ResourceInUseException", "ValidationException"}:
+            raise
+
+
+def _wait_for_telemetry_owner_index(max_attempts=30, sleep_seconds=1):
+    # Esperamos a que el índice esté activo para evitar una primera petición fallida al arrancar.
+    for _ in range(max_attempts):
+        try:
+            description = local_dynamodb.meta.client.describe_table(TableName=TELEMETRY_TABLE_NAME)
+        except ClientError:
+            return
+
+        indexes = description.get("Table", {}).get("GlobalSecondaryIndexes", []) or []
+        for index in indexes:
+            if index.get("IndexName") == TELEMETRY_MAC_INDEX_NAME and index.get("IndexStatus") == "ACTIVE":
+                return
+
+        sleep(sleep_seconds)
+
+
+def query_telemetry_history(mac, from_timestamp=None, to_timestamp=None, limit=200):
+    mac = str(mac or '').strip().lower()
+    if not mac:
+        return []
+
+    try:
+        limit_value = max(1, min(int(limit), 500))
+    except (TypeError, ValueError):
+        limit_value = 200
+
+    key_condition = Key("mac").eq(mac)
+    if from_timestamp is not None and to_timestamp is not None:
+        key_condition = key_condition & Key("timestamp").between(int(from_timestamp), int(to_timestamp))
+    elif from_timestamp is not None:
+        key_condition = key_condition & Key("timestamp").gte(int(from_timestamp))
+    elif to_timestamp is not None:
+        key_condition = key_condition & Key("timestamp").lte(int(to_timestamp))
+
+    query_kwargs = {
+        "IndexName": TELEMETRY_MAC_INDEX_NAME,
+        "KeyConditionExpression": key_condition,
+        "ScanIndexForward": False,
+        "Limit": limit_value,
+    }
+
+    items = []
+    last_evaluated_key = None
+
+    while len(items) < limit_value:
+        if last_evaluated_key:
+            query_kwargs["ExclusiveStartKey"] = last_evaluated_key
+        response = table_telemetry.query(**query_kwargs)
+        items.extend(response.get("Items", []))
+        last_evaluated_key = response.get("LastEvaluatedKey")
+        if not last_evaluated_key:
+            break
+
+    items.sort(key=lambda item: float(item.get("timestamp", 0)), reverse=True)
+    return items[:limit_value]
+
+
 def init_db():
     # In full AWS mode we do not auto-create local tables.
     if USE_AWS_DYNAMODB:
@@ -166,10 +304,13 @@ def init_db():
         TABLE_NAMES["family_users"],
         TABLE_NAMES["residents"],
         TABLE_NAMES["staff_members"],
-        TABLE_NAMES["telemetry"],
     }
     if not USE_AWS_ALERTS_TABLE:
         local_tables_to_create.add(TABLE_NAMES["events"])
 
     for table_name in sorted(local_tables_to_create):
         _create_table_if_missing(table_name)
+
+    _create_telemetry_table_if_missing()
+    _ensure_telemetry_owner_index()
+    _wait_for_telemetry_owner_index()

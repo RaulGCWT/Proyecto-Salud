@@ -277,10 +277,13 @@ export const useHealthStore = defineStore('health', {
       }
     },
 
-    async fetchTelemetryHistory(limit = 200) {
+    async fetchTelemetryHistory(limit = 200, mac = '') {
       try {
+        const scopeMac = normalizeScopeValue(mac || this.selectedMac || this.currentMac || this.deviceInventory[0]?.mac)
+        if (!scopeMac) return
+
         const data = await $fetch(TELEMETRY_HISTORY_API_BASE, {
-          params: { limit },
+          params: { limit, mac: scopeMac },
           headers: scopedHeaders()
         })
 
