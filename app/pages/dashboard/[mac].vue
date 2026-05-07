@@ -115,7 +115,6 @@ const {
   currentDeviceRecord,
   currentPatientLabel,
   currentTitle,
-  scopedRules,
   scopedAlerts,
   sidePanelRows,
   dashboardCards,

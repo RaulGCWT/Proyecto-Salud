@@ -23,24 +23,6 @@ function formatRelativeSeconds(seconds = 0) {
   return `${hours}h ${remainingMinutes}m ago`
 }
 
-function resolveMetricAlert(ruleList = [], metricId = '', currentValue = 0) {
-  const normalizedValue = Number(currentValue || 0)
-
-  return ruleList.some((rule) => {
-    const parameter = String(rule.parameter || rule.variable || '').trim()
-    const threshold = Number(rule.value)
-    const condition = String(rule.condition || rule.operator || '').trim()
-
-    if (metricId === 'hr' && !['hr', 'heartRate'].includes(parameter)) return false
-    if (metricId === 'hrv' && parameter !== 'hrv') return false
-    if (metricId === 'resp' && !['resp', 'respiratoryRate'].includes(parameter)) return false
-
-    if (condition === '>') return normalizedValue > threshold
-    if (condition === '<') return normalizedValue < threshold
-    if (condition === '=' || condition === '==') return normalizedValue === threshold
-    return false
-  })
-}
 
 export function useDeviceDashboard(route) {
   const auth = useAuthStore()
@@ -116,7 +98,11 @@ export function useDeviceDashboard(route) {
       startRealtimeCountdown(response?.durationSeconds || REALTIME_DURATION_SECONDS)
     } catch (error) {
       console.error('Could not activate real time mode:', error)
-      alert('Could not activate real time mode for this device.')
+      health.lastToast = {
+        id: Date.now(),
+        sensor: 'SYSTEM',
+        message: 'Could not activate real time mode for this device.'
+      }
     } finally {
       isRealtimePending.value = false
     }
@@ -193,6 +179,17 @@ export function useDeviceDashboard(route) {
       .slice(0, 5)
   })
 
+  const activeDeviceAlerts = computed(() => {
+    const routeMac = normalizeScopeValue(route.params.mac)
+
+    return health.alertHistory.filter((alert) => {
+      const alertMac = normalizeScopeValue(alert.mac)
+      const alertDeviceId = normalizeScopeValue(alert.deviceId)
+      return (alertMac === routeMac || alertDeviceId === routeMac)
+        && String(alert.status || '').toUpperCase() !== 'READ'
+    })
+  })
+
   const activeAlertsCount = computed(() => {
     return scopedAlerts.value.filter(alert => String(alert.status || '').toUpperCase() !== 'READ').length
   })
@@ -227,10 +224,6 @@ export function useDeviceDashboard(route) {
     if (telemetrySecondsAgo.value === null) return 'Waiting for telemetry'
     if (telemetrySecondsAgo.value > TELEMETRY_TIMEOUT_SECONDS) return 'Telemetry delayed'
     return 'Telemetry active'
-  })
-
-  const isDeviceActivelyStreaming = computed(() => {
-    return telemetrySecondsAgo.value !== null && telemetrySecondsAgo.value <= TELEMETRY_TIMEOUT_SECONDS
   })
 
   const lastHeartbeatLabel = computed(() => {
@@ -314,7 +307,7 @@ export function useDeviceDashboard(route) {
         title: 'Heart rate',
         subtitle: 'Current average',
         mainText: `${health.heartRate || 0} BPM`,
-        isAlert: resolveMetricAlert(scopedRules.value, 'hr', health.heartRate)
+        isAlert: activeDeviceAlerts.value.some(a => a.sensor === 'HR')
       },
       {
         key: 'hrv',
@@ -322,7 +315,7 @@ export function useDeviceDashboard(route) {
         title: 'HR variability',
         subtitle: 'Current average',
         mainText: `${health.hrv || 0} ms`,
-        isAlert: resolveMetricAlert(scopedRules.value, 'hrv', health.hrv)
+        isAlert: activeDeviceAlerts.value.some(a => a.sensor === 'HRV')
       },
       {
         key: 'resp',
@@ -330,14 +323,14 @@ export function useDeviceDashboard(route) {
         title: 'Resp. rate',
         subtitle: 'Current average',
         mainText: `${health.respiratoryRate || 0} RPM`,
-        isAlert: resolveMetricAlert(scopedRules.value, 'resp', health.respiratoryRate)
+        isAlert: activeDeviceAlerts.value.some(a => a.sensor === 'RESP')
       },
       {
         key: 'presence',
         type: 'presence',
         title: 'Bed status',
-        subtitle: 'Current stream state',
-        mainText: isDeviceActivelyStreaming.value ? 'In Use' : 'Empty',
+        subtitle: 'Sensor reading',
+        mainText: health.isOccupied ? 'Occupied' : 'Empty',
         isAlert: false
       }
     ]
@@ -353,7 +346,6 @@ export function useDeviceDashboard(route) {
     currentDeviceRecord,
     currentPatientLabel,
     currentTitle,
-    scopedRules,
     scopedAlerts,
     sidePanelRows,
     dashboardCards,

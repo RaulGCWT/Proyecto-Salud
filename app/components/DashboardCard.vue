@@ -24,7 +24,6 @@ const props = defineProps({
   title: { type: String, default: '' },
   subtitle: { type: String, default: '' },
   mainText: { type: String, default: '' },
-  description: { type: String, default: '' },
   isAlert: { type: Boolean, default: false },
   type: { type: String, default: '' },
   isLoading: { type: Boolean, default: false }
