@@ -21,11 +21,13 @@ AWS_IOT_ENDPOINT = os.getenv("AWS_IOT_ENDPOINT", "a3hfcqvqmb234v-ats.iot.eu-west
 AWS_IOT_PORT = int(os.getenv("AWS_IOT_PORT", "8883"))
 AWS_IOT_CLIENT_ID = os.getenv("AWS_IOT_CLIENT_ID", "backend_listener_welltech")
 AWS_IOT_TOPIC = os.getenv("AWS_IOT_TOPIC", "residencia/camas/+/datos")
+AWS_IOT_STATUS_TOPIC = os.getenv("AWS_IOT_STATUS_TOPIC", "residencia/camas/+/status")
 AWS_IOT_ROOT_CA = os.getenv("AWS_IOT_ROOT_CA", str(CERTS_DIR / "cama01-AmazonRootCA1.pem"))
 AWS_IOT_CERT = os.getenv("AWS_IOT_CERT", str(CERTS_DIR / "cama01-certificado.pem.crt"))
 AWS_IOT_PRIVATE_KEY = os.getenv("AWS_IOT_PRIVATE_KEY", str(CERTS_DIR / "cama01-private.pem.key"))
 AWS_IOT_QOS = int(os.getenv("AWS_IOT_QOS", "1"))
 MQTT_TOPIC = os.getenv("MQTT_TOPIC", AWS_IOT_TOPIC)
+MQTT_STATUS_TOPIC = os.getenv("MQTT_STATUS_TOPIC", AWS_IOT_STATUS_TOPIC)
 MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
 MQTT_BROKER_CLIENT_ID = os.getenv("MQTT_BROKER_CLIENT_ID", "backend_listener_welltech_local")
@@ -42,6 +44,10 @@ def _normalizar_mac(mac):
     if not mac:
         return ""
     return str(mac).strip().lower()
+
+
+def _normalizar_topic(topic):
+    return str(topic or "").strip()
 
 
 def registrar_dispositivo_si_no_existe(data):
@@ -63,12 +69,49 @@ def registrar_dispositivo_si_no_existe(data):
                 "deviceId": device_id,
                 "name": device_name,
                 "type": str(data.get("deviceType") or "Standard"),
+                "telemetryTopic": _normalizar_topic(data.get("telemetryTopic") or MQTT_TOPIC),
+                "commandTopic": _normalizar_topic(data.get("commandTopic")),
+                "statusTopic": _normalizar_topic(data.get("statusTopic") or MQTT_STATUS_TOPIC),
+                "connectionState": "online",
+                "lastHeartbeatTs": int(time.time()),
             }
         )
         print(f"Dispositivo registrado automaticamente: {mac}")
     except Exception as error:
         # Si la tabla no esta disponible, no bloqueamos la actualizacion en tiempo real.
         print(f"No se pudo registrar el dispositivo {mac}: {error}")
+
+
+def actualizar_presencia_dispositivo(data):
+    mac = _normalizar_mac(data.get("mac"))
+    if not mac:
+        return
+
+    heartbeat_timestamp = int(float(data.get("ts") or time.time()))
+
+    try:
+        existing = table_devices.get_item(Key={"id": mac}).get("Item") or {}
+        device_id = str(data.get("deviceId") or existing.get("deviceId") or mac).strip()
+        device_name = str(data.get("deviceName") or data.get("name") or existing.get("name") or device_id).strip() or device_id
+
+        item = {
+            **existing,
+            "id": mac,
+            "mac": mac,
+            "deviceId": device_id,
+            "name": device_name,
+            "type": str(data.get("deviceType") or existing.get("type") or "Standard").strip() or "Standard",
+            "telemetryTopic": _normalizar_topic(data.get("telemetryTopic") or existing.get("telemetryTopic") or MQTT_TOPIC),
+            "commandTopic": _normalizar_topic(data.get("commandTopic") or existing.get("commandTopic")),
+            "statusTopic": _normalizar_topic(data.get("statusTopic") or existing.get("statusTopic") or MQTT_STATUS_TOPIC),
+            "connectionState": str(data.get("status") or "online").strip().lower() or "online",
+            "lastHeartbeatTs": heartbeat_timestamp,
+        }
+
+        table_devices.put_item(Item=item)
+        print(f"Presencia actualizada para {mac}: {item['connectionState']}")
+    except Exception as error:
+        print(f"No se pudo actualizar la presencia del dispositivo {mac}: {error}")
 
 
 def _parse_reading_timestamp(reading):
@@ -158,12 +201,81 @@ def normalizar_payload(payload):
         "deviceId": payload.get("deviceId", "unknown"),
         "deviceType": payload.get("deviceType", "Standard"),
         "layout": payload.get("layout", "single"),
+        "telemetryTopic": _normalizar_topic(payload.get("telemetryTopic") or MQTT_TOPIC),
+        "commandTopic": _normalizar_topic(payload.get("commandTopic")),
+        "statusTopic": _normalizar_topic(payload.get("statusTopic") or MQTT_STATUS_TOPIC),
         "lastReading": normalized_last_reading,
         "readings": readings,
     }
 
 
-def on_message(client, userdata, message, socketio):
+def normalizar_presencia(payload):
+    message_type = str(payload.get("type") or "").strip().lower()
+    if message_type not in {"presence", "heartbeat"}:
+        return None
+
+    mac = _normalizar_mac(payload.get("mac"))
+    if not mac:
+        return None
+
+    return {
+        "type": message_type,
+        "mac": mac,
+        "deviceId": str(payload.get("deviceId") or mac).strip(),
+        "deviceName": str(payload.get("deviceName") or payload.get("name") or payload.get("deviceId") or mac).strip(),
+        "deviceType": str(payload.get("deviceType") or "Standard").strip() or "Standard",
+        "telemetryTopic": _normalizar_topic(payload.get("telemetryTopic") or MQTT_TOPIC),
+        "commandTopic": _normalizar_topic(payload.get("commandTopic")),
+        "statusTopic": _normalizar_topic(payload.get("statusTopic") or MQTT_STATUS_TOPIC),
+        "status": str(payload.get("status") or "online").strip().lower() or "online",
+        "ts": int(float(payload.get("ts") or time.time())),
+    }
+
+
+def build_device_command_topic(device=None):
+    device = device or {}
+    explicit_topic = _normalizar_topic(device.get("commandTopic"))
+    if explicit_topic:
+        return explicit_topic
+
+    telemetry_topic = _normalizar_topic(device.get("telemetryTopic"))
+    if telemetry_topic.endswith("/datos"):
+        return telemetry_topic[:-6] + "/cmd"
+
+    return ""
+
+
+def _publish_with_local_broker(topic, payload):
+    client = _build_local_client(client_id_suffix="publisher")
+    client.connect(MQTT_BROKER_HOST, MQTT_BROKER_PORT, keepalive=60)
+    client.loop_start()
+    client.publish(topic, json.dumps(payload), AWS_IOT_QOS)
+    time.sleep(0.5)
+    client.loop_stop()
+    client.disconnect()
+
+
+def _publish_with_aws_iot(topic, payload):
+    client = _build_aws_iot_client(client_id_suffix="publisher")
+    client.connect()
+    client.publish(topic, json.dumps(payload), AWS_IOT_QOS)
+    time.sleep(0.5)
+    client.disconnect()
+
+
+def publish_device_command(topic, payload):
+    topic_value = _normalizar_topic(topic)
+    if not topic_value:
+        raise ValueError("Device command topic is required")
+
+    if _is_local_broker_transport():
+        _publish_with_local_broker(topic_value, payload)
+        return
+
+    _publish_with_aws_iot(topic_value, payload)
+
+
+def on_telemetry_message(client, userdata, message, socketio):
     global latest_telemetry
 
     try:
@@ -206,6 +318,22 @@ def on_message(client, userdata, message, socketio):
         print(f"Error procesando mensaje MQTT desde AWS IoT Core: {error}")
 
 
+def on_status_message(client, userdata, message, socketio):
+    try:
+        raw_payload = message.payload.decode() if isinstance(message.payload, bytes) else message.payload
+        payload = json.loads(raw_payload)
+        normalized = normalizar_presencia(payload)
+
+        if not normalized:
+            print("Mensaje de presencia invalido. Se ignora el mensaje.")
+            return
+
+        actualizar_presencia_dispositivo(normalized)
+        socketio.emit("device_presence", normalized)
+    except Exception as error:
+        print(f"Error procesando presencia MQTT: {error}")
+
+
 def get_latest_telemetry():
     return latest_telemetry or {}
 
@@ -214,7 +342,9 @@ def _on_paho_connect(client, userdata, flags, rc):
     if rc == 0:
         print(f"Conectado al broker MQTT local en {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
         client.subscribe(MQTT_TOPIC, AWS_IOT_QOS)
-        print(f"Suscrito al topic MQTT: {MQTT_TOPIC}")
+        client.subscribe(MQTT_STATUS_TOPIC, AWS_IOT_QOS)
+        print(f"Suscrito al topic MQTT de datos: {MQTT_TOPIC}")
+        print(f"Suscrito al topic MQTT de presencia: {MQTT_STATUS_TOPIC}")
         return
 
     print(f"No se pudo conectar al broker MQTT local. Codigo: {rc}")
@@ -222,17 +352,19 @@ def _on_paho_connect(client, userdata, flags, rc):
 
 def _on_paho_message(socketio):
     def handle_message(client, userdata, message):
-        on_message(client, userdata, message, socketio)
+        topic = str(getattr(message, "topic", "") or "").strip().lower()
+
+        if topic.endswith("/status"):
+            on_status_message(client, userdata, message, socketio)
+            return
+
+        on_telemetry_message(client, userdata, message, socketio)
 
     return handle_message
 
 
 def _start_local_broker(socketio):
-    client = paho_mqtt.Client(client_id=MQTT_BROKER_CLIENT_ID)
-
-    if MQTT_USE_TLS:
-        # Solo activamos TLS si se pide explicitamente; el broker local del compose usa TCP plano.
-        client.tls_set()
+    client = _build_local_client()
 
     client.on_connect = _on_paho_connect
     client.on_message = _on_paho_message(socketio)
@@ -247,16 +379,19 @@ def _start_local_broker(socketio):
 
 
 def _start_aws_iot(socketio):
-    client = AWSIoTMQTTClient(AWS_IOT_CLIENT_ID)
-    client.configureEndpoint(AWS_IOT_ENDPOINT, AWS_IOT_PORT)
-    client.configureCredentials(AWS_IOT_ROOT_CA, AWS_IOT_PRIVATE_KEY, AWS_IOT_CERT)
+    client = _build_aws_iot_client()
 
     try:
         client.connect()
         client.subscribe(
             AWS_IOT_TOPIC,
             AWS_IOT_QOS,
-            lambda c, u, m: on_message(c, u, m, socketio),
+            lambda c, u, m: on_telemetry_message(c, u, m, socketio),
+        )
+        client.subscribe(
+            AWS_IOT_STATUS_TOPIC,
+            AWS_IOT_QOS,
+            lambda c, u, m: on_status_message(c, u, m, socketio),
         )
         return client
     except Exception as error:
@@ -271,3 +406,20 @@ def start_mqtt(socketio):
 
     print("Arrancando telemetria con AWS IoT Core.")
     return _start_aws_iot(socketio)
+
+
+def _build_local_client(client_id_suffix="listener"):
+    client = paho_mqtt.Client(client_id=f"{MQTT_BROKER_CLIENT_ID}_{client_id_suffix}")
+
+    if MQTT_USE_TLS:
+        # Solo activamos TLS si se pide explicitamente; el broker local del compose usa TCP plano.
+        client.tls_set()
+
+    return client
+
+
+def _build_aws_iot_client(client_id_suffix="listener"):
+    client = AWSIoTMQTTClient(f"{AWS_IOT_CLIENT_ID}_{client_id_suffix}")
+    client.configureEndpoint(AWS_IOT_ENDPOINT, AWS_IOT_PORT)
+    client.configureCredentials(AWS_IOT_ROOT_CA, AWS_IOT_PRIVATE_KEY, AWS_IOT_CERT)
+    return client

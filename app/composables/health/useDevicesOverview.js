@@ -6,6 +6,7 @@ import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
 
 const OFFLINE_TIMEOUT_SECONDS = 60
+const HEARTBEAT_TIMEOUT_SECONDS = 45
 const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
 
 function buildTelemetrySeries(records = [], metricKey = 'heartRate', limit = 10) {
@@ -193,6 +194,11 @@ export function useDevicesOverview() {
       }, device))
       const hasRuleWarning = latestBatch.some(reading => activeRules.some(rule => isRuleTriggered(rule, reading)))
       const latestSecondsAgo = latestTimestamp > 0 ? Math.max(0, Math.floor(Date.now() / 1000) - latestTimestamp) : null
+      const latestHeartbeatTs = Number(device.lastHeartbeatTs || 0)
+      const heartbeatSecondsAgo = latestHeartbeatTs > 0 ? Math.max(0, Math.floor(Date.now() / 1000) - latestHeartbeatTs) : null
+      const isConnected = normalizeScopeValue(device.connectionState) === 'online'
+        && heartbeatSecondsAgo !== null
+        && heartbeatSecondsAgo <= HEARTBEAT_TIMEOUT_SECONDS
       const isOnline = latestSecondsAgo !== null && latestSecondsAgo <= OFFLINE_TIMEOUT_SECONDS
       const averageMetric = (metricKey) => {
         const values = latestBatch
@@ -205,13 +211,20 @@ export function useDevicesOverview() {
       const heartSeries = buildTelemetrySeries(records, 'heartRate')
       const respiratorySeries = buildTelemetrySeries(records, 'respiratoryRate')
       const hrvSeries = buildTelemetrySeries(records, 'hrv')
-      const status = !isOnline
+      const status = !isConnected
         ? 'offline'
-        : openAlerts.length
+        : !isOnline
+          ? 'connected'
+          : openAlerts.length
           ? 'urgent'
           : hasRuleWarning
             ? 'attention'
             : 'stable'
+      const lastSeenLabel = !isConnected
+        ? 'Disconnected'
+        : latestSecondsAgo === null
+          ? 'Connected · waiting telemetry'
+          : `${formatRelativeSeconds(latestSecondsAgo)} ago`
 
       return {
         ...device,
@@ -227,8 +240,9 @@ export function useDevicesOverview() {
         latestAlertMessage: openAlerts[0]?.message || scopedAlerts[0]?.message || '',
         latestAlertStatus: openAlerts[0]?.status || scopedAlerts[0]?.status || '',
         status,
+        isConnected,
         isOnline,
-        lastSeenLabel: latestSecondsAgo === null ? 'No telemetry yet' : `${formatRelativeSeconds(latestSecondsAgo)} ago`,
+        lastSeenLabel,
         sparklinePaths: {
           heartRate: buildSparklinePath(heartSeries),
           respiratoryRate: buildSparklinePath(respiratorySeries),
@@ -260,7 +274,7 @@ export function useDevicesOverview() {
 
   const overviewStats = computed(() => {
     const cards = deviceCards.value
-    const onlineCards = cards.filter(card => card.isOnline)
+    const onlineCards = cards.filter(card => card.isConnected)
     const stableCards = cards.filter(card => card.status === 'stable')
     const attentionCards = cards.filter(card => card.status === 'attention')
     const urgentCards = cards.filter(card => card.status === 'urgent')

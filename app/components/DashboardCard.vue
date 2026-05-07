@@ -1,15 +1,19 @@
 <template>
-  <article class="metric-card" :class="[metricToneClass, { 'card-alert': isAlert, 'is-empty': type === 'presence' && mainText === 'Empty' }]">
+  <article class="metric-card" :class="[metricToneClass, { 'card-alert': isAlert, 'is-empty': type === 'presence' && mainText === 'Empty', 'metric-card--loading': isLoading }]">
     <div class="metric-card-top">
       <div class="metric-title-group">
         <div class="metric-icon">{{ metricMeta.code }}</div>
-        <span class="metric-title">{{ title }}</span>
+        <span v-if="!isLoading" class="metric-title">{{ title }}</span>
+        <span v-else class="metric-skeleton metric-skeleton--title" aria-hidden="true"></span>
       </div>
-      <span class="metric-chip">{{ metricMeta.unit }}</span>
+      <span v-if="!isLoading" class="metric-chip">{{ metricMeta.unit }}</span>
+      <span v-else class="metric-skeleton metric-skeleton--chip" aria-hidden="true"></span>
     </div>
 
-    <p v-if="subtitle" class="card-subtitle">{{ subtitle }}</p>
-    <div class="card-value" :class="valueClass">{{ mainText }}</div>
+    <p v-if="subtitle && !isLoading" class="card-subtitle">{{ subtitle }}</p>
+    <span v-else-if="isLoading" class="metric-skeleton metric-skeleton--subtitle" aria-hidden="true"></span>
+    <div v-if="!isLoading" class="card-value" :class="valueClass">{{ mainText }}</div>
+    <span v-else class="metric-skeleton metric-skeleton--value" aria-hidden="true"></span>
   </article>
 </template>
 
@@ -22,7 +26,8 @@ const props = defineProps({
   mainText: { type: String, default: '' },
   description: { type: String, default: '' },
   isAlert: { type: Boolean, default: false },
-  type: { type: String, default: '' }
+  type: { type: String, default: '' },
+  isLoading: { type: Boolean, default: false }
 })
 
 const metricMeta = computed(() => {
@@ -62,6 +67,10 @@ const valueClass = computed(() => {
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
+.metric-card--loading {
+  opacity: 0.92;
+}
+
 :global(.dark-mode) .metric-card {
   background: var(--surface-panel-strong) !important;
   border-color: var(--surface-border) !important;
@@ -88,6 +97,11 @@ const valueClass = computed(() => {
 
 :global(.dark-mode) .metric-card::after {
   background: radial-gradient(circle, rgba(37, 89, 189, 0.12), transparent 70%);
+}
+
+:global(.dark-mode) .metric-skeleton {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.92), rgba(51, 65, 85, 0.96), rgba(30, 41, 59, 0.92));
+  background-size: 200% 100%;
 }
 .metric-card-top {
   display: flex;
@@ -131,6 +145,37 @@ const valueClass = computed(() => {
   color: #2559bd;
   background: rgba(37, 89, 189, 0.08);
 }
+
+.metric-skeleton {
+  display: inline-block;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.9), rgba(241, 245, 249, 1), rgba(226, 232, 240, 0.9));
+  background-size: 200% 100%;
+  animation: metric-skeleton-shimmer 1.3s ease-in-out infinite;
+}
+
+.metric-skeleton--title {
+  width: 120px;
+  height: 1rem;
+}
+
+.metric-skeleton--chip {
+  width: 48px;
+  height: 1.8rem;
+}
+
+.metric-skeleton--subtitle {
+  width: 140px;
+  height: 0.92rem;
+  margin-top: 8px;
+}
+
+.metric-skeleton--value {
+  width: 62%;
+  height: 2.4rem;
+  margin-top: 10px;
+  border-radius: 18px;
+}
 .type-hr .metric-icon { background: linear-gradient(135deg, #ef4444, #f97316); }
 .type-hrv .metric-icon { background: linear-gradient(135deg, #06b6d4, #0284c7); }
 .type-resp .metric-icon { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
@@ -164,6 +209,16 @@ const valueClass = computed(() => {
   font-weight: 900;
   line-height: 1;
   letter-spacing: -0.04em;
+}
+
+@keyframes metric-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
 }
 .heart-color { color: #ef4444; }
 .hrv-color { color: #0891b2; }

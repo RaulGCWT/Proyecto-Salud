@@ -93,6 +93,8 @@ const normalizeDeviceRecord = (device = {}) => ({
   deviceId: String(device.deviceId || device.id || device.mac || '').trim(),
   name: String(device.name || device.deviceId || device.mac || '').trim(),
   type: String(device.type || 'Standard').trim(),
+  connectionState: normalizeScopeValue(device.connectionState || 'offline'),
+  lastHeartbeatTs: Number(device.lastHeartbeatTs || 0) || 0,
   ownerId: normalizeScopeValue(device.ownerId),
   tenantKey: normalizeScopeValue(device.tenantKey),
   residenceId: normalizeScopeValue(device.residenceId),

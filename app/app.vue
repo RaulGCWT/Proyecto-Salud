@@ -27,6 +27,7 @@ onMounted(async () => {
   await health.fetchTelemetryHistoryForInventory(200)
   connectHealthSocket()
   telemetryRefreshInterval.value = window.setInterval(() => {
+    health.fetchDeviceInventory()
     health.fetchLatestTelemetry()
   }, 5000)
 })

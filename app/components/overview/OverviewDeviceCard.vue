@@ -81,6 +81,7 @@ defineEmits(['view-details'])
 const badgeLabel = computed(() => {
   if (props.card.status === 'urgent') return 'Urgent'
   if (props.card.status === 'attention') return 'Attention'
+  if (props.card.status === 'connected') return 'Connected'
   if (props.card.status === 'offline') return 'Offline'
   return 'Stable'
 })
@@ -312,6 +313,15 @@ const badgeLabel = computed(() => {
 .overview-card--stable .overview-card__badge {
   background: rgba(144, 239, 239, 0.8);
   color: #006a6a;
+}
+
+.overview-card--connected {
+  border-color: rgba(37, 99, 235, 0.16);
+}
+
+.overview-card--connected .overview-card__badge {
+  background: rgba(219, 234, 254, 0.95);
+  color: #1d4ed8;
 }
 
 .overview-card--attention {

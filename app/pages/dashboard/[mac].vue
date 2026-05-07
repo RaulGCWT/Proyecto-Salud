@@ -1,31 +1,49 @@
 <template>
   <div class="detail-page">
-    <section class="detail-hero">
+    <section class="detail-hero" :class="{ 'detail-hero--loading': isLoading }">
       <div class="detail-hero__copy">
         <p class="detail-hero__eyebrow">Clinical Sentinel</p>
-        <h1>{{ currentTitle }}</h1>
+        <h1 v-if="!isLoading">{{ currentTitle }}</h1>
+        <div v-else class="skeleton skeleton--title" aria-hidden="true"></div>
         <p class="detail-hero__description">
-          Vista detallada del dispositivo seleccionado con métricas en vivo, reglas activas y alertas recientes.
+          <template v-if="!isLoading">
+            Detailed view of the selected device with live metrics, active rules, and recent alerts.
+          </template>
+          <span v-else class="skeleton skeleton--text" aria-hidden="true"></span>
         </p>
       </div>
 
       <div class="detail-hero__meta">
         <div class="detail-meta-card">
           <span>MAC</span>
-          <strong>{{ health.currentMac }}</strong>
+          <strong v-if="!isLoading">{{ health.currentMac }}</strong>
+          <span v-else class="skeleton skeleton--value" aria-hidden="true"></span>
         </div>
         <div class="detail-meta-card">
           <span>Patient</span>
-          <strong>{{ currentPatientLabel }}</strong>
+          <strong v-if="!isLoading">{{ currentPatientLabel }}</strong>
+          <span v-else class="skeleton skeleton--value" aria-hidden="true"></span>
         </div>
         <div class="detail-meta-card">
           <span>Status</span>
-          <strong>{{ health.isOccupied ? 'Occupied' : 'Empty' }}</strong>
+          <strong v-if="!isLoading">{{ health.isOccupied ? 'Occupied' : 'Empty' }}</strong>
+          <span v-else class="skeleton skeleton--value" aria-hidden="true"></span>
+        </div>
+        <div class="detail-meta-card detail-meta-card--action">
+          <span>Real time</span>
+          <button
+            class="detail-hero__action"
+            type="button"
+            :disabled="isRealtimePending || realtimeSecondsLeft > 0 || !currentDeviceRecord"
+            @click="startRealtimeMode"
+          >
+            {{ realtimeButtonLabel }}
+          </button>
         </div>
       </div>
     </section>
 
-    <section class="detail-metrics">
+    <section class="detail-metrics" :class="{ 'detail-metrics--loading': isLoading }">
       <DashboardCard
         v-for="card in dashboardCards"
         :key="card.key"
@@ -34,6 +52,7 @@
         :subtitle="card.subtitle"
         :main-text="card.mainText"
         :is-alert="card.isAlert"
+        :is-loading="isLoading"
       />
     </section>
 
@@ -45,24 +64,18 @@
       <aside class="detail-grid__side">
         <section class="side-panel">
           <p class="side-panel__eyebrow">Device Context</p>
-          <h2 class="side-panel__title">Telemetry scope</h2>
+          <h2 class="side-panel__title">Live device snapshot</h2>
 
           <div class="side-list">
-            <div class="side-row">
-              <span>Device ID</span>
-              <strong>{{ health.currentDeviceId }}</strong>
-            </div>
-            <div class="side-row">
-              <span>Patient</span>
-              <strong>{{ currentPatientLabel }}</strong>
-            </div>
-            <div class="side-row">
-              <span>Rules loaded</span>
-              <strong>{{ scopedRules.length }}</strong>
-            </div>
-            <div class="side-row">
-              <span>Samples buffered</span>
-              <strong>{{ health.latestReadings.length }}</strong>
+            <div v-for="row in sidePanelRows" :key="row.key" class="side-row">
+              <span>{{ row.label }}</span>
+              <strong
+                v-if="!isLoading"
+                :class="['side-row__value', `side-row__value--${row.tone || 'neutral'}`]"
+              >
+                {{ row.value }}
+              </strong>
+              <span v-else class="skeleton skeleton--row-value" aria-hidden="true"></span>
             </div>
           </div>
         </section>
@@ -82,7 +95,7 @@
             </article>
           </div>
 
-          <p v-else class="empty-copy">No hay alertas recientes para este dispositivo.</p>
+          <p v-else class="empty-copy">No recent alerts for this device.</p>
         </section>
       </aside>
     </section>
@@ -90,174 +103,31 @@
 </template>
 
 <script setup>
-import { computed, onMounted, watch } from 'vue'
 import DashboardCard from '~/components/DashboardCard.vue'
 import HealthChart from '~/components/HealthChart.vue'
-import { useAuthStore } from '~/stores/auth'
-import { useHealthStore } from '~/stores/health'
-import { useRulesStore } from '~/stores/rules'
-import { buildBackendAuthHeaders } from '~/utils/backendAuth'
-import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
+import { useDeviceDashboard } from '~/composables/health/useDeviceDashboard'
 
 const route = useRoute()
-const auth = useAuthStore()
-const health = useHealthStore()
-const rulesStore = useRulesStore()
-const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
 
-const { data: residentsData } = useFetch(RESIDENTS_API_BASE, {
-  server: false,
-  headers: buildBackendAuthHeaders(auth),
-  default: () => []
-})
-
-function resolveMetricAlert(ruleList = [], metricId = '', currentValue = 0) {
-  const normalizedValue = Number(currentValue || 0)
-
-  return ruleList.some((rule) => {
-    const parameter = String(rule.parameter || rule.variable || '').trim()
-    const threshold = Number(rule.value)
-    const condition = String(rule.condition || rule.operator || '').trim()
-
-    if (metricId === 'hr' && !['hr', 'heartRate'].includes(parameter)) return false
-    if (metricId === 'hrv' && parameter !== 'hrv') return false
-    if (metricId === 'resp' && !['resp', 'respiratoryRate'].includes(parameter)) return false
-
-    if (condition === '>') return normalizedValue > threshold
-    if (condition === '<') return normalizedValue < threshold
-    if (condition === '=' || condition === '==') return normalizedValue === threshold
-    return false
-  })
-}
-
-async function syncRouteScope() {
-  const routeMac = normalizeScopeValue(route.params.mac)
-  if (!routeMac) return
-
-  health.setSelectedMac(routeMac)
-  await Promise.all([
-    rulesStore.fetchRules(),
-    health.fetchDeviceInventory(),
-    health.fetchAlertHistory()
-  ])
-  await health.fetchTelemetryHistory(200, routeMac)
-}
-
-const currentDeviceRecord = computed(() => {
-  const routeMac = normalizeScopeValue(route.params.mac)
-
-  return health.deviceInventory.find((device) => {
-    const deviceMac = normalizeScopeValue(device.mac)
-    const deviceId = normalizeScopeValue(device.deviceId)
-    return deviceMac === routeMac || deviceId === routeMac
-  }) || null
-})
-
-const residents = computed(() => Array.isArray(residentsData.value) ? residentsData.value : [])
-
-const residentsById = computed(() => {
-  const residentMap = new Map()
-
-  for (const resident of residents.value) {
-    const residentId = normalizeScopeValue(resident.id || resident.residentId)
-    if (!residentId) continue
-    residentMap.set(residentId, resident)
-  }
-
-  return residentMap
-})
-
-const currentPatientLabel = computed(() => {
-  const currentDevice = currentDeviceRecord.value
-  if (!currentDevice) {
-    return 'Patient not assigned'
-  }
-
-  // Reutilizamos el mismo criterio del overview para no mostrar UUIDs internos en la UI.
-  const linkedResident = residentsById.value.get(normalizeScopeValue(currentDevice.residentId))
-    || residents.value.find((resident) => {
-      const residentDeviceId = normalizeScopeValue(resident.deviceId)
-      return residentDeviceId && (
-        residentDeviceId === normalizeScopeValue(currentDevice.mac)
-        || residentDeviceId === normalizeScopeValue(currentDevice.deviceId)
-        || residentDeviceId === normalizeScopeValue(currentDevice.name)
-      )
-    })
-
-  return linkedResident?.name || currentDevice.ownerId || currentDevice.name || 'Patient not assigned'
-})
-
-const currentTitle = computed(() => {
-  const deviceId = currentDeviceRecord.value?.deviceId || health.currentDeviceId || route.params.mac
-  return `${deviceId} · ${currentPatientLabel.value}`
-})
-
-const scopedRules = computed(() => {
-  const routeMac = normalizeScopeValue(route.params.mac)
-
-  return rulesStore.rules.filter(rule => matchesDeviceRuleScope(rule, {
-    mac: routeMac,
-    deviceId: normalizeScopeValue(currentDeviceRecord.value?.deviceId),
-    side: normalizeScopeValue(health.selectedSide)
-  }, currentDeviceRecord.value || {}))
-})
-
-const scopedAlerts = computed(() => {
-  const routeMac = normalizeScopeValue(route.params.mac)
-
-  return health.alertHistory
-    .filter((alert) => {
-      const alertMac = normalizeScopeValue(alert.mac)
-      const alertDeviceId = normalizeScopeValue(alert.deviceId)
-      return alertMac === routeMac || alertDeviceId === routeMac
-    })
-    .slice(0, 5)
-})
-
-const dashboardCards = computed(() => {
-  return [
-    {
-      key: 'hr',
-      type: 'hr',
-      title: 'Heart rate',
-      subtitle: 'Current average',
-      mainText: `${health.heartRate || 0} BPM`,
-      isAlert: resolveMetricAlert(scopedRules.value, 'hr', health.heartRate)
-    },
-    {
-      key: 'hrv',
-      type: 'hrv',
-      title: 'HR variability',
-      subtitle: 'Current average',
-      mainText: `${health.hrv || 0} ms`,
-      isAlert: resolveMetricAlert(scopedRules.value, 'hrv', health.hrv)
-    },
-    {
-      key: 'resp',
-      type: 'resp',
-      title: 'Resp. rate',
-      subtitle: 'Current average',
-      mainText: `${health.respiratoryRate || 0} RPM`,
-      isAlert: resolveMetricAlert(scopedRules.value, 'resp', health.respiratoryRate)
-    },
-    {
-      key: 'presence',
-      type: 'presence',
-      title: 'Bed status',
-      subtitle: 'Current occupancy',
-      mainText: health.isOccupied ? 'In Use' : 'Empty',
-      isAlert: false
-    }
-  ]
-})
+const {
+  health,
+  isLoading,
+  currentDeviceRecord,
+  currentPatientLabel,
+  currentTitle,
+  scopedRules,
+  scopedAlerts,
+  sidePanelRows,
+  dashboardCards,
+  isRealtimePending,
+  realtimeSecondsLeft,
+  realtimeButtonLabel,
+  startRealtimeMode
+} = useDeviceDashboard(route)
 
 useHead({
   title: 'Clinical Sentinel | Device Detail'
 })
-
-onMounted(syncRouteScope)
-
-watch(() => route.params.mac, syncRouteScope)
 </script>
 
 <style scoped>
@@ -277,6 +147,10 @@ watch(() => route.params.mac, syncRouteScope)
   background: linear-gradient(135deg, rgba(37, 89, 189, 0.08), rgba(255, 255, 255, 0.96));
   border: 1px solid var(--surface-border);
   box-shadow: 0 18px 40px var(--surface-shadow);
+}
+
+.detail-hero--loading {
+  opacity: 0.92;
 }
 
 .detail-hero__eyebrow {
@@ -322,6 +196,11 @@ watch(() => route.params.mac, syncRouteScope)
   padding: 16px 18px;
 }
 
+.detail-meta-card--action {
+  display: grid;
+  gap: 10px;
+}
+
 .detail-meta-card span,
 .side-panel__eyebrow,
 .side-row span,
@@ -342,10 +221,37 @@ watch(() => route.params.mac, syncRouteScope)
   color: var(--text-main);
 }
 
+.detail-hero__action {
+  width: 100%;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 14px;
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, #00327d 0%, #0047ab 100%);
+  color: #ffffff;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.detail-hero__action:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.detail-hero__action:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
 .detail-metrics {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 18px;
+}
+
+.detail-metrics--loading {
+  opacity: 0.88;
 }
 
 .detail-grid {
@@ -358,6 +264,38 @@ watch(() => route.params.mac, syncRouteScope)
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.skeleton {
+  display: inline-block;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(226, 232, 240, 0.9), rgba(241, 245, 249, 1), rgba(226, 232, 240, 0.9));
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.3s ease-in-out infinite;
+}
+
+.skeleton--title {
+  width: min(680px, 78%);
+  height: clamp(2.2rem, 3vw, 3rem);
+  border-radius: 18px;
+}
+
+.skeleton--text {
+  display: block;
+  width: min(620px, 92%);
+  height: 1rem;
+  margin-top: 2px;
+}
+
+.skeleton--value {
+  width: 70%;
+  height: 1.15rem;
+  margin-top: 6px;
+}
+
+.skeleton--row-value {
+  width: 96px;
+  height: 0.95rem;
 }
 
 .side-panel {
@@ -392,6 +330,18 @@ watch(() => route.params.mac, syncRouteScope)
   border: 1px solid rgba(148, 163, 184, 0.14);
 }
 
+.side-row__value--ok {
+  color: #0f766e;
+}
+
+.side-row__value--warn {
+  color: #b45309;
+}
+
+.side-row__value--danger {
+  color: #b91c1c;
+}
+
 .alert-card {
   padding: 16px;
 }
@@ -424,6 +374,16 @@ watch(() => route.params.mac, syncRouteScope)
   color: var(--text-muted);
 }
 
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+
+  100% {
+    background-position: -200% 0;
+  }
+}
+
 :global(.dark-mode) .detail-hero,
 :global(.dark-mode) .detail-meta-card,
 :global(.dark-mode) .side-panel,
@@ -448,6 +408,23 @@ watch(() => route.params.mac, syncRouteScope)
 :global(.dark-mode) .side-row span,
 :global(.dark-mode) .alert-card__meta {
   color: #94a3b8 !important;
+}
+
+:global(.dark-mode) .skeleton {
+  background: linear-gradient(90deg, rgba(30, 41, 59, 0.92), rgba(51, 65, 85, 0.96), rgba(30, 41, 59, 0.92));
+  background-size: 200% 100%;
+}
+
+:global(.dark-mode) .side-row__value--ok {
+  color: #5eead4 !important;
+}
+
+:global(.dark-mode) .side-row__value--warn {
+  color: #fbbf24 !important;
+}
+
+:global(.dark-mode) .side-row__value--danger {
+  color: #fca5a5 !important;
 }
 
 @media (max-width: 1100px) {
