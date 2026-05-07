@@ -93,13 +93,23 @@
 import { computed, onMounted, watch } from 'vue'
 import DashboardCard from '~/components/DashboardCard.vue'
 import HealthChart from '~/components/HealthChart.vue'
+import { useAuthStore } from '~/stores/auth'
 import { useHealthStore } from '~/stores/health'
 import { useRulesStore } from '~/stores/rules'
+import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
 
 const route = useRoute()
+const auth = useAuthStore()
 const health = useHealthStore()
 const rulesStore = useRulesStore()
+const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
+
+const { data: residentsData } = useFetch(RESIDENTS_API_BASE, {
+  server: false,
+  headers: buildBackendAuthHeaders(auth),
+  default: () => []
+})
 
 function resolveMetricAlert(ruleList = [], metricId = '', currentValue = 0) {
   const normalizedValue = Number(currentValue || 0)
@@ -143,8 +153,38 @@ const currentDeviceRecord = computed(() => {
   }) || null
 })
 
+const residents = computed(() => Array.isArray(residentsData.value) ? residentsData.value : [])
+
+const residentsById = computed(() => {
+  const residentMap = new Map()
+
+  for (const resident of residents.value) {
+    const residentId = normalizeScopeValue(resident.id || resident.residentId)
+    if (!residentId) continue
+    residentMap.set(residentId, resident)
+  }
+
+  return residentMap
+})
+
 const currentPatientLabel = computed(() => {
-  return currentDeviceRecord.value?.residentId || currentDeviceRecord.value?.ownerId || currentDeviceRecord.value?.name || 'Patient not assigned'
+  const currentDevice = currentDeviceRecord.value
+  if (!currentDevice) {
+    return 'Patient not assigned'
+  }
+
+  // Reutilizamos el mismo criterio del overview para no mostrar UUIDs internos en la UI.
+  const linkedResident = residentsById.value.get(normalizeScopeValue(currentDevice.residentId))
+    || residents.value.find((resident) => {
+      const residentDeviceId = normalizeScopeValue(resident.deviceId)
+      return residentDeviceId && (
+        residentDeviceId === normalizeScopeValue(currentDevice.mac)
+        || residentDeviceId === normalizeScopeValue(currentDevice.deviceId)
+        || residentDeviceId === normalizeScopeValue(currentDevice.name)
+      )
+    })
+
+  return linkedResident?.name || currentDevice.ownerId || currentDevice.name || 'Patient not assigned'
 })
 
 const currentTitle = computed(() => {
