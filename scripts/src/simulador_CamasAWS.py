@@ -26,13 +26,14 @@ MQTT_COMMAND_TOPIC = os.getenv("MQTT_COMMAND_TOPIC", "").strip()
 MQTT_STATUS_TOPIC = os.getenv("MQTT_STATUS_TOPIC", "").strip()
 MQTT_BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
 MQTT_BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", "1883"))
-MQTT_BROKER_CLIENT_ID = os.getenv("MQTT_BROKER_CLIENT_ID", "cama_simulator_local")
 MQTT_USE_TLS = os.getenv("MQTT_USE_TLS", "false").strip().lower() == "true"
 MQTT_QOS = int(os.getenv("MQTT_QOS", "1"))
 
 DEVICE_ID = os.getenv("DEVICE_ID", "Bed-01").strip()
 DEVICE_MAC = os.getenv("DEVICE_MAC", "52:54:00:ab:cd:da").strip().lower()
+MQTT_BROKER_CLIENT_ID = os.getenv("MQTT_BROKER_CLIENT_ID", f"simulator_{DEVICE_MAC.replace(':', '')}")
 DEVICE_TYPE = os.getenv("DEVICE_TYPE", "Double Bed").strip()
+IS_DOUBLE_BED = "double" in DEVICE_TYPE.lower()
 
 # --- Configuracion del simulador persistente. ---
 SIMULATOR_RUN_MODE = os.getenv("SIMULATOR_RUN_MODE", "service").strip().lower()
@@ -45,6 +46,76 @@ PRESENCE_HEARTBEAT_SECONDS = max(5, int(os.getenv("PRESENCE_HEARTBEAT_SECONDS", 
 MAX_BUFFER_READINGS = max(10, int(os.getenv("MAX_BUFFER_READINGS", "5000")))
 SERVICE_LOOP_SLEEP_SECONDS = float(os.getenv("SERVICE_LOOP_SLEEP_SECONDS", "0.25"))
 
+# --- Configuracion de escenarios y ocupacion. ---
+SCENARIO = os.getenv("SCENARIO", "stable").strip().lower()
+OCCUPANCY_MIN_DURATION_SECONDS = max(10, int(os.getenv("OCCUPANCY_MIN_DURATION_SECONDS", "120")))
+OCCUPANCY_CHANGE_PROBABILITY = float(os.getenv("OCCUPANCY_CHANGE_PROBABILITY", "0.05"))
+
+
+SIDE_OFFSETS = {"left": -2, "right": 2}
+
+
+@dataclass
+class ScenarioProfile:
+    hr_init: tuple
+    hr_target: tuple
+    rr_init: tuple
+    rr_target: tuple
+    hrv_init: tuple
+    hrv_target: tuple
+    occupied_default: bool = True
+    hr_center: float = field(init=False)
+    rr_center: float = field(init=False)
+    hrv_center: float = field(init=False)
+
+    def __post_init__(self):
+        self.hr_center = (self.hr_target[0] + self.hr_target[1]) / 2.0
+        self.rr_center = (self.rr_target[0] + self.rr_target[1]) / 2.0
+        self.hrv_center = (self.hrv_target[0] + self.hrv_target[1]) / 2.0
+
+
+SCENARIOS = {
+    "stable":      ScenarioProfile(
+        hr_init=(60, 80),   hr_target=(65, 75),
+        rr_init=(14, 18),   rr_target=(14, 18),
+        hrv_init=(40, 70),  hrv_target=(45, 65),
+    ),
+    "tachycardia": ScenarioProfile(
+        hr_init=(105, 130), hr_target=(108, 128),
+        rr_init=(18, 24),   rr_target=(18, 24),
+        hrv_init=(15, 30),  hrv_target=(18, 28),
+    ),
+    "bradycardia": ScenarioProfile(
+        hr_init=(40, 58),   hr_target=(42, 56),
+        rr_init=(12, 16),   rr_target=(12, 16),
+        hrv_init=(60, 90),  hrv_target=(65, 85),
+    ),
+    "tachypnea":   ScenarioProfile(
+        hr_init=(65, 85),   hr_target=(65, 80),
+        rr_init=(22, 30),   rr_target=(22, 30),
+        hrv_init=(35, 60),  hrv_target=(38, 58),
+    ),
+    "bradypnea":   ScenarioProfile(
+        hr_init=(62, 78),   hr_target=(62, 78),
+        rr_init=(6, 11),    rr_target=(6, 11),
+        hrv_init=(40, 65),  hrv_target=(42, 62),
+    ),
+    "alert_test":  ScenarioProfile(
+        hr_init=(130, 145), hr_target=(128, 145),
+        rr_init=(28, 32),   rr_target=(28, 32),
+        hrv_init=(8, 12),   hrv_target=(8, 12),
+    ),
+}
+
+
+@dataclass
+class VitalsState:
+    hr: float
+    rr: float
+    hrv: float
+    is_occupied: bool
+    next_occupancy_change_at: float = 0.0
+
 
 @dataclass
 class RuntimeState:
@@ -54,22 +125,19 @@ class RuntimeState:
     next_capture_at: float = 0.0
     next_batch_publish_at: float = 0.0
     next_presence_at: float = 0.0
+    vitals: dict = field(default_factory=dict)
 
 
 def _is_local_broker_transport():
     return MQTT_TRANSPORT in {"broker", "local", "mosquitto", "paho"}
 
 
-def _is_double_bed():
-    return "double" in str(DEVICE_TYPE).strip().lower()
-
-
 def _get_device_type_label():
-    return "Double Bed" if _is_double_bed() else str(DEVICE_TYPE).strip() or "Standard"
+    return "Double Bed" if IS_DOUBLE_BED else DEVICE_TYPE or "Standard"
 
 
 def _get_layout_label():
-    return "double" if _is_double_bed() else "single"
+    return "double" if IS_DOUBLE_BED else "single"
 
 
 def _get_command_topic():
@@ -109,33 +177,68 @@ def _build_aws_client():
     return client
 
 
-def generate_reading(timestamp, side="center"):
-    side_key = str(side or "center").strip().lower()
-    base_offset = 0
+def load_scenario():
+    profile = SCENARIOS.get(SCENARIO)
+    if profile is None:
+        print(f"[scenario] Escenario desconocido '{SCENARIO}'. Usando 'stable' por defecto.")
+        return SCENARIOS["stable"]
 
-    if side_key == "left":
-        base_offset = -2
-    elif side_key == "right":
-        base_offset = 2
+    print(f"[scenario] Escenario activo: {SCENARIO}")
+    return profile
+
+
+def init_vitals(scenario, sides):
+    now = time.time()
+    vitals = {}
+
+    for side in sides:
+        side_offset = SIDE_OFFSETS.get(side, 0)
+        vitals[side] = VitalsState(
+            hr=float(random.randint(*scenario.hr_init) + side_offset),
+            rr=float(random.randint(*scenario.rr_init)),
+            hrv=float(random.randint(*scenario.hrv_init)),
+            is_occupied=scenario.occupied_default,
+            next_occupancy_change_at=now + OCCUPANCY_MIN_DURATION_SECONDS,
+        )
+
+    return vitals
+
+
+def step_vitals(vitals_state, side, scenario, ts):
+    now = time.time()
+    drift = 0.05
+
+    vitals_state.hr += random.uniform(-1.5, 1.5) + drift * (scenario.hr_center - vitals_state.hr)
+    vitals_state.rr += random.uniform(-0.5, 0.5) + drift * (scenario.rr_center - vitals_state.rr)
+    vitals_state.hrv += random.uniform(-2.0, 2.0) + drift * (scenario.hrv_center - vitals_state.hrv)
+
+    vitals_state.hr = max(20.0, min(250.0, vitals_state.hr))
+    vitals_state.rr = max(4.0, min(60.0, vitals_state.rr))
+    vitals_state.hrv = max(1.0, min(150.0, vitals_state.hrv))
+
+    if now >= vitals_state.next_occupancy_change_at:
+        if random.random() < OCCUPANCY_CHANGE_PROBABILITY:
+            vitals_state.is_occupied = not vitals_state.is_occupied
+            vitals_state.next_occupancy_change_at = now + OCCUPANCY_MIN_DURATION_SECONDS
 
     return {
-        "heartRate": max(40, random.randint(65, 120) + base_offset),
-        "respiratoryRate": max(8, random.randint(12, 35) + (base_offset // 2)),
-        "hrv": max(10, random.randint(25, 75) - abs(base_offset)),
-        "isOccupied": random.choice([True, False]),
-        "side": side_key,
-        "ts": int(timestamp)
+        "heartRate": round(vitals_state.hr),
+        "respiratoryRate": round(vitals_state.rr),
+        "hrv": round(vitals_state.hrv),
+        "isOccupied": vitals_state.is_occupied,
+        "side": side or "center",
+        "ts": int(ts),
     }
 
 
-def capture_readings(timestamp):
-    if _is_double_bed():
+def capture_readings(state, scenario, timestamp):
+    if IS_DOUBLE_BED:
         return [
-            generate_reading(timestamp, "left"),
-            generate_reading(timestamp, "right"),
+            step_vitals(state.vitals["left"], "left", scenario, timestamp),
+            step_vitals(state.vitals["right"], "right", scenario, timestamp),
         ]
 
-    return [generate_reading(timestamp)]
+    return [step_vitals(state.vitals["center"], "center", scenario, timestamp)]
 
 
 def build_payload(readings, sampling_seconds, source_mode):
@@ -291,7 +394,7 @@ def build_command_handler(state):
     return handle_message
 
 
-def connect_client(state):
+def connect_client(state, subscribe_commands=True):
     command_topic = _get_command_topic()
 
     if _is_local_broker_transport():
@@ -303,19 +406,25 @@ def connect_client(state):
                 return
 
             print(f"Conectado al broker MQTT local en {MQTT_BROKER_HOST}:{MQTT_BROKER_PORT}")
-            local_client.subscribe(command_topic, MQTT_QOS)
-            print(f"Suscrito al topic de comandos: {command_topic}")
+
+            if subscribe_commands:
+                local_client.subscribe(command_topic, MQTT_QOS)
+                print(f"Suscrito al topic de comandos: {command_topic}")
 
         client.on_connect = on_connect
-        client.on_message = build_command_handler(state)
+        if subscribe_commands:
+            client.on_message = build_command_handler(state)
         client.connect(MQTT_BROKER_HOST, MQTT_BROKER_PORT, keepalive=60)
         client.loop_start()
         return client
 
     client = _build_aws_client()
     client.connect()
-    client.subscribe(command_topic, MQTT_QOS, lambda c, u, m: build_command_handler(state)(c, u, m))
-    print(f"Conectado a AWS IoT Core y suscrito al topic de comandos: {command_topic}")
+    if subscribe_commands:
+        client.subscribe(command_topic, MQTT_QOS, lambda c, u, m: build_command_handler(state)(c, u, m))
+        print(f"Conectado a AWS IoT Core y suscrito al topic de comandos: {command_topic}")
+    else:
+        print("Conectado a AWS IoT Core (sin suscripcion a comandos).")
     return client
 
 
@@ -334,17 +443,25 @@ def disconnect_client(client):
         print(f"Error cerrando la conexion MQTT: {error}")
 
 
+def _init_runtime_state():
+    scenario = load_scenario()
+    sides = ["left", "right"] if IS_DOUBLE_BED else ["center"]
+    return scenario, RuntimeState(vitals=init_vitals(scenario, sides))
+
+
 def run_once(batch_size=40):
+    scenario, state = _init_runtime_state()
+
     readings = []
     current_timestamp = int(time.time())
 
     for _ in range(batch_size):
-        readings.extend(capture_readings(current_timestamp))
+        readings.extend(capture_readings(state, scenario, current_timestamp))
         current_timestamp += NORMAL_CAPTURE_SECONDS
 
     client = None
     try:
-        client = connect_client(RuntimeState())
+        client = connect_client(state, subscribe_commands=False)
         payload = build_payload(readings, NORMAL_CAPTURE_SECONDS, "manual")
         publish_payload(client, payload)
         print(f"Envio manual completado. Se han publicado {payload['samplingCount']} muestras.")
@@ -356,7 +473,7 @@ def run_once(batch_size=40):
 
 
 def run_service():
-    state = RuntimeState()
+    scenario, state = _init_runtime_state()
     switch_to_normal_mode(state, use_initial_publish_delay=True)
     client = None
 
@@ -376,7 +493,7 @@ def run_service():
             )
 
             if now >= state.next_capture_at:
-                readings = capture_readings(int(now))
+                readings = capture_readings(state, scenario, int(now))
                 state.next_capture_at = now + current_capture_interval
 
                 if state.mode == "realtime":
