@@ -29,7 +29,9 @@
 
       <div class="modal-actions">
         <button class="btn-cancel" type="button" @click="emit('close')">Cancel</button>
-        <button class="btn-save" type="button" @click="emit('save', { ...form })">Save Changes</button>
+        <button class="btn-save" type="button" :disabled="isSaving" @click="emit('save', { ...form })">
+          {{ isSaving ? 'Saving...' : 'Save Changes' }}
+        </button>
       </div>
     </div>
   </div>
@@ -41,7 +43,8 @@ import { reactive, watch } from 'vue'
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
   device: { type: Object, default: null },
-  ownerOptions: { type: Array, default: () => [] }
+  ownerOptions: { type: Array, default: () => [] },
+  isSaving: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['close', 'save'])
@@ -59,9 +62,6 @@ const syncForm = () => {
 }
 
 watch(() => props.device, syncForm, { immediate: true })
-watch(() => props.isOpen, (isOpen) => {
-  if (isOpen) syncForm()
-})
 </script>
 
 <style scoped>

@@ -131,7 +131,9 @@
           <p class="panel-subtitle">{{ filteredBeds.length }} units matched</p>
         </div>
 
-        <button class="panel-action" type="button" @click="refreshInventory">Refresh</button>
+        <button class="panel-action" type="button" :disabled="isRefreshing" @click="refreshInventory">
+          {{ isRefreshing ? 'Refreshing...' : 'Refresh' }}
+        </button>
       </div>
 
       <div class="table-wrapper">
@@ -222,7 +224,7 @@
       </div>
     </section>
 
-    <DeviceEditModal :is-open="isEditing" :device="editingBed" :owner-options="ownerOptions" @close="closeModal" @save="saveChanges" />
+    <DeviceEditModal :is-open="isEditing" :is-saving="isSaving" :device="editingBed" :owner-options="ownerOptions" @close="closeModal" @save="saveChanges" />
   </div>
 </template>
 
@@ -245,6 +247,8 @@ const {
   lastInventorySync,
   canEditDevices,
   isEditing,
+  isSaving,
+  isRefreshing,
   editingBed,
   refreshInventory,
   checkConnections,

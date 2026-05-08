@@ -1,6 +1,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { io } from 'socket.io-client'
 import { useAuthStore } from '~/stores/auth'
+import { useHealthStore } from '~/stores/health'
 import { PERMISSIONS } from '~/utils/permissions'
 import { filterDevicesByAccessContext } from '~/utils/accessContext'
 import { buildBackendAuthHeaders } from '~/utils/backendAuth'
@@ -8,12 +9,13 @@ import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 const DEVICES_API_BASE = 'http://localhost:5000/devices'
 const SOCKET_URL = 'http://localhost:5000'
 const INVENTORY_REFRESH_INTERVAL = 5000
-const CONNECTION_TIMEOUT_MS = 4000
+const CONNECTION_TIMEOUT_MS = 45000
 const DEFAULT_DEVICE_TYPE = 'Standard'
 const ALLOWED_DEVICE_TYPES = new Set(['Critical Care', 'Standard', 'Double Bed'])
 
 export function useDevicesPage() {
   const auth = useAuthStore()
+  const health = useHealthStore()
   const beds = ref([])
   const filters = ref({
     search: '',
@@ -25,6 +27,8 @@ export function useDevicesPage() {
   const lastInventorySync = ref('Never')
   const heartbeatTick = ref(0)
   const isEditing = ref(false)
+  const isSaving = ref(false)
+  const isRefreshing = ref(false)
   const editingBed = ref(null)
   const editForm = ref({
     name: '',
@@ -180,14 +184,17 @@ export function useDevicesPage() {
   }
 
   const refreshInventory = async () => {
+    if (isRefreshing.value) return
+    isRefreshing.value = true
     try {
       const response = await $fetch(DEVICES_API_BASE, { headers: devicesHeaders.value })
       const inventory = Array.isArray(response) ? response : []
-
       inventory.forEach(mergeDatabaseDevice)
       lastInventorySync.value = new Date().toLocaleString()
-    } catch (error) {
-      console.error('Error fetching device inventory:', error)
+    } catch {
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not refresh devices.' }
+    } finally {
+      isRefreshing.value = false
     }
   }
 
@@ -228,16 +235,11 @@ export function useDevicesPage() {
     const now = Date.now()
 
     beds.value.forEach((bed) => {
-      if (bed.presence === 'Occupied') {
-        bed.isOnline = true
-        return
-      }
-
       const bedMac = normalizeMac(bed.mac)
-      const lastTimestamp = lastSeen.value[bedMac]
-      if (lastTimestamp && (now - lastTimestamp > CONNECTION_TIMEOUT_MS)) {
-        bed.isOnline = false
-      }
+      const socketTimestamp = lastSeen.value[bedMac]
+      const heartbeatTimestamp = bed.lastHeartbeatTs ? Number(bed.lastHeartbeatTs) * 1000 : 0
+      const lastTimestamp = socketTimestamp || heartbeatTimestamp
+      bed.isOnline = !!lastTimestamp && (now - lastTimestamp) <= CONNECTION_TIMEOUT_MS
     })
   }
 
@@ -271,31 +273,30 @@ export function useDevicesPage() {
     const nextOwnerId = String(formData.ownerId || editForm.value.ownerId || '').trim()
 
     if (!nextName) {
-      alert('Please enter a valid device name.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Please enter a valid device name.' }
       return
     }
 
-    editForm.value = {
-      name: nextName,
-      type: nextType
-    }
-
+    isSaving.value = true
     try {
       await $fetch(`${DEVICES_API_BASE}/${editingBed.value.mac}`, {
         method: 'PUT',
         headers: devicesHeaders.value,
         body: {
           name: nextName,
-          type: nextType
+          type: nextType,
+          ownerId: nextOwnerId
         }
       })
 
-      editingBed.value.name = nextName
-      editingBed.value.type = nextType
-      editingBed.value.ownerId = nextOwnerId
+      const target = beds.value.find(b => normalizeMac(b.mac) === normalizeMac(editingBed.value.mac))
+      if (target) Object.assign(target, { name: nextName, type: nextType, ownerId: nextOwnerId })
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Device saved successfully.' }
       closeModal()
-    } catch (error) {
-      console.error('Error saving device changes:', error)
+    } catch {
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not save device. Try again.' }
+    } finally {
+      isSaving.value = false
     }
   }
 
@@ -386,6 +387,8 @@ export function useDevicesPage() {
     filteredBeds,
     healthCards,
     isEditing,
+    isSaving,
+    isRefreshing,
     editingBed,
     editForm,
     refreshInventory,
