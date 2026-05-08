@@ -774,36 +774,14 @@ async function saveRule() {
 </script>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-
 .rules-page { min-height: 100%; }
 .rules-shell { display: flex; flex-direction: column; gap: 22px; max-width: 1440px; margin: 0 auto; padding-bottom: 12px; }
-.page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
-.page-eyebrow { margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.18em; font-size: 0.68rem; font-weight: 900; color: #2559bd; }
-.page-title { margin: 0; font-size: clamp(2rem, 3vw, 2.8rem); font-weight: 900; letter-spacing: -0.05em; color: var(--text-main); }
-.page-subtitle { margin: 8px 0 0; font-size: 0.95rem; line-height: 1.6; color: var(--text-muted); max-width: 640px; }
-.page-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .action-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 16px; border-radius: 16px; border: 1px solid transparent; font-weight: 900; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, background 0.2s ease; text-decoration: none; }
 .action-button:hover { transform: translateY(-1px); }
 .action-button--primary { background: linear-gradient(135deg, #00327d 0%, #0047ab 100%); color: #ffffff; box-shadow: 0 14px 30px rgba(37, 89, 189, 0.18); }
 .action-button--ghost { background: rgba(255, 255, 255, 0.88); color: var(--text-main); border-color: rgba(148, 163, 184, 0.18); box-shadow: 0 8px 20px rgba(15, 23, 42, 0.04); }
 .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
-.summary-card { padding: 22px; border-radius: 24px; border: 1px solid rgba(148, 163, 184, 0.14); background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)); box-shadow: 0 14px 34px rgba(15, 23, 42, 0.04); }
-.summary-card__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-.summary-icon { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; }
-.summary-icon span { font-size: 1.2rem; }
-.summary-icon--blue { color: #2559bd; background: rgba(37, 89, 189, 0.1); }
-.summary-icon--red { color: #b91c1c; background: rgba(239, 68, 68, 0.12); }
-.summary-icon--teal { color: #047857; background: rgba(16, 185, 129, 0.1); }
-.summary-icon--amber { color: #b45309; background: rgba(245, 158, 11, 0.12); }
-.summary-label { font-size: 0.68rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: #64748b; }
-.summary-value { display: block; margin: 0; font-size: clamp(1.9rem, 3vw, 2.7rem); font-weight: 900; letter-spacing: -0.05em; color: var(--text-main); line-height: 1; }
-.summary-note { margin: 8px 0 0; color: var(--text-muted); font-size: 0.92rem; line-height: 1.5; }
 .toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 14px; border-radius: 22px; border: 1px solid var(--border-color); background: var(--surface-panel); box-shadow: 0 14px 30px var(--surface-shadow); }
-.search-field { position: relative; flex: 1 1 320px; min-width: 260px; }
-.search-field__icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem; }
-.search-input { width: 100%; padding: 13px 16px 13px 46px; border-radius: 18px; border: 1px solid var(--surface-border); background: var(--surface-panel-strong); color: var(--text-main); font-weight: 700; box-sizing: border-box; outline: none; }
-.search-input::placeholder { color: var(--text-muted); }
 .toolbar-filters { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .filter-pill { padding: 11px 14px; border-radius: 999px; border: 1px solid var(--surface-border); background: var(--surface-panel-strong); color: var(--text-main); font-size: 0.72rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease; }
 .filter-pill:hover { transform: translateY(-1px); }

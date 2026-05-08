@@ -174,7 +174,6 @@
 <script setup>
 import { useDevicesPage } from '~/composables/devices/useDevicesPage'
 import DeviceEditModal from '~/components/DeviceEditModal.vue'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 useHead({
   title: 'Clinical Sentinel | Devices'
@@ -203,8 +202,6 @@ const {
   getPresenceTone
 } = useDevicesPage()
 
-const activeFilterMenu = ref('')
-
 const filterOptions = {
   status: [
     { label: 'All Statuses', value: 'all' },
@@ -224,47 +221,10 @@ const filterOptions = {
   ]
 }
 
-const filterLabels = {
-  status: {
-    all: 'All Statuses',
-    online: 'Connected',
-    offline: 'Disconnected'
-  },
-  type: {
-    all: 'All Types',
-    'Critical Care': 'Critical Care',
-    Standard: 'Standard',
-    'Double Bed': 'Double Bed'
-  },
-  presence: {
-    all: 'All Presence',
-    Occupied: 'Occupied',
-    Empty: 'Empty'
-  }
-}
-
-const toggleFilterMenu = (menuName) => {
-  activeFilterMenu.value = activeFilterMenu.value === menuName ? '' : menuName
-}
-
 const selectFilterOption = (field, value) => {
   filters.value[field] = value
-  activeFilterMenu.value = ''
 }
 
-const closeFilterMenu = (event) => {
-  const target = event.target
-  if (target?.closest?.('.filter-dropdown')) return
-  activeFilterMenu.value = ''
-}
-
-onMounted(() => {
-  document.addEventListener('click', closeFilterMenu)
-})
-
-onBeforeUnmount(() => {
-  document.removeEventListener('click', closeFilterMenu)
-})
 </script>
 
 <style scoped>
@@ -294,16 +254,6 @@ onBeforeUnmount(() => {
 .search-box input { width: 100%; padding: 11px 14px 11px 90px; border-radius: 14px; border: 1px solid rgba(148, 163, 184, 0.2); background: var(--bg-main); color: var(--text-main); outline: none; box-sizing: border-box; }
 .search-box input::placeholder { color: var(--text-muted); }
 .select-group { display: flex; flex-wrap: nowrap; gap: 10px; align-items: center; flex: 1 1 auto; justify-content: flex-end; }
-.filter-dropdown { position: relative; min-width: 190px; }
-.filter-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.22); background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)); color: var(--text-main); font-weight: 700; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03); cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
-.filter-trigger:hover { border-color: rgba(37, 89, 189, 0.28); box-shadow: 0 12px 24px rgba(37, 89, 189, 0.08); transform: translateY(-1px); }
-.filter-trigger span { font-size: 0.68rem; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b; }
-.filter-trigger strong { flex: 1; text-align: left; font-size: 0.92rem; font-weight: 800; color: var(--text-main); }
-.filter-caret { color: #2559bd; font-size: 0.72rem; }
-.filter-menu { position: absolute; top: calc(100% + 10px); left: 0; width: 100%; padding: 8px; border-radius: 18px; border: 1px solid rgba(148, 163, 184, 0.18); background: rgba(255, 255, 255, 0.98); box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12); z-index: 20; }
-.filter-option { width: 100%; display: flex; align-items: center; padding: 10px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-main); font-weight: 700; text-align: left; cursor: pointer; transition: background 0.2s ease, color 0.2s ease; }
-.filter-option:hover { background: rgba(37, 89, 189, 0.08); color: #2559bd; }
-.filter-option--active { background: rgba(37, 89, 189, 0.12); color: #2559bd; }
 .btn-reset { padding: 11px 14px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.2); background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92)); color: var(--text-main); font-weight: 800; cursor: pointer; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03); transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
 .btn-reset:hover { border-color: rgba(37, 89, 189, 0.24); box-shadow: 0 12px 24px rgba(37, 89, 189, 0.08); transform: translateY(-1px); }
 .btn-reset:focus { outline: none; box-shadow: 0 0 0 4px rgba(37, 89, 189, 0.12); }
@@ -378,11 +328,8 @@ onBeforeUnmount(() => {
 .health-meta strong { font-size: 0.82rem; font-weight: 800; color: var(--text-main); }
 .health-freshness { display: inline-flex; }
 .health-freshness { padding: 5px 10px; border-radius: 999px; width: fit-content; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
-.search-chip, .filter-trigger span, .filter-option, .btn-reset, .edit-button { font-family: inherit; }
+.search-chip, .btn-reset, .edit-button { font-family: inherit; }
 .search-chip { font-size: 0.66rem; letter-spacing: 0.16em; font-weight: 900; }
-.filter-trigger span { font-size: 0.66rem; letter-spacing: 0.16em; font-weight: 900; }
-.filter-trigger strong { font-size: 0.9rem; font-weight: 900; letter-spacing: -0.01em; }
-.filter-option { font-size: 0.92rem; font-weight: 800; }
 .btn-reset { font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; }
 .edit-button { font-size: 0.95rem; font-weight: 900; }
 .freshness-fresh { color: #047857; }
@@ -391,5 +338,5 @@ onBeforeUnmount(() => {
 .freshness-silent { color: #b91c1c; }
 @media (max-width: 900px) { .summary-grid { grid-template-columns: 1fr; } .panel-header { flex-direction: column; align-items: flex-start; } }
 @media (max-width: 900px) { .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 768px) { .filters-panel { align-items: stretch; } .search-box, .select-group { flex: 1 1 100%; max-width: none; } .select-group { justify-content: stretch; } .filter-dropdown, .btn-reset { flex: 1 1 160px; min-width: 0; } .health-grid { grid-template-columns: 1fr; } .health-meta { grid-template-columns: 1fr; } .health-card { min-height: unset; } }
+@media (max-width: 768px) { .filters-panel { align-items: stretch; } .search-box, .select-group { flex: 1 1 100%; max-width: none; } .select-group { justify-content: stretch; } .btn-reset { flex: 1 1 160px; min-width: 0; } .health-grid { grid-template-columns: 1fr; } .health-meta { grid-template-columns: 1fr; } .health-card { min-height: unset; } }
 </style>
