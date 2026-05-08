@@ -9,16 +9,18 @@
       </div>
 
       <nav class="sidebar-nav">
-        <NuxtLink
-          v-for="item in menuItems"
-          :key="item.to"
-          :to="item.to"
-          class="nav-item"
-          active-class="active"
-        >
-          <span class="material-symbols-outlined nav-icon" aria-hidden="true">{{ item.icon }}</span>
-          <span>{{ item.label }}</span>
-        </NuxtLink>
+        <template v-for="item in menuItems" :key="item.to || 'sep'">
+          <hr v-if="item.separator" class="nav-separator" />
+          <NuxtLink
+            v-else
+            :to="item.to"
+            class="nav-item"
+            active-class="active"
+          >
+            <span class="material-symbols-outlined nav-icon" aria-hidden="true">{{ item.icon }}</span>
+            <span>{{ item.label }}</span>
+          </NuxtLink>
+        </template>
       </nav>
 
       <div class="sidebar-footer">
@@ -177,6 +179,12 @@ body {
 .sidebar-nav {
   flex: 1;
   padding: 20px 0;
+}
+
+.nav-separator {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 8px 16px;
 }
 
 .nav-item {
