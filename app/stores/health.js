@@ -255,7 +255,7 @@ export const useHealthStore = defineStore('health', {
           const numericTimestamp = Number(event.timestamp) || 0
 
           return {
-            id: event.id,
+            id: event.id || `${event.mac || ''}_${event.parameter || ''}_${numericTimestamp}`,
             timestamp: numericTimestamp,
             time: eventDate.toLocaleTimeString('en-US', {
               hour: '2-digit',

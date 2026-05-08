@@ -17,10 +17,19 @@
             <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
             <span>{{ isRefreshing ? 'Refreshing...' : 'Refresh' }}</span>
           </button>
-          <button v-if="canClearHistory" class="action-button action-button--danger" type="button" @click="healthStore.clearAllAlerts()">
-            <span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>
-            <span>Clear History</span>
-          </button>
+          <template v-if="canClearHistory">
+            <template v-if="!pendingClearHistory">
+              <button class="action-button action-button--danger" type="button" @click="pendingClearHistory = true">
+                <span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>
+                <span>Clear History</span>
+              </button>
+            </template>
+            <template v-else>
+              <span class="confirm-label">Clear all alerts?</span>
+              <button class="action-button action-button--ghost" type="button" @click="pendingClearHistory = false">Cancel</button>
+              <button class="action-button action-button--danger" type="button" @click="confirmClearHistory">Clear All</button>
+            </template>
+          </template>
         </div>
       </header>
 
@@ -55,7 +64,7 @@
             <span class="summary-label">Resolution Rate</span>
           </div>
           <strong class="summary-value">{{ resolutionRate }}%</strong>
-          <p class="summary-note">Average response time: {{ averageResponseLabel }}</p>
+          <p class="summary-note">Percentage of alerts marked as read.</p>
         </article>
       </section>
 
@@ -76,15 +85,15 @@
             class="severity-button"
             type="button"
             aria-label="State filter"
-            :aria-expanded="isStatusMenuOpen ? 'true' : 'false'"
-            @click="toggleStatusMenu"
+            :aria-expanded="activeFilterMenu === 'status' ? 'true' : 'false'"
+            @click="toggleFilterMenu('status')"
           >
             <span>Status</span>
             <span class="severity-button__value">{{ statusLabel }}</span>
             <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
           </button>
 
-          <div v-if="isStatusMenuOpen" class="severity-menu">
+          <div v-if="activeFilterMenu === 'status'" class="severity-menu">
             <button
               v-for="option in statusFilters"
               :key="option.value"
@@ -103,15 +112,15 @@
             class="severity-button"
             type="button"
             aria-label="Severity filter"
-            :aria-expanded="isSeverityMenuOpen ? 'true' : 'false'"
-            @click="toggleSeverityMenu"
+            :aria-expanded="activeFilterMenu === 'severity' ? 'true' : 'false'"
+            @click="toggleFilterMenu('severity')"
           >
             <span>Severity</span>
             <span class="severity-button__value">{{ severityLabel }}</span>
             <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
           </button>
 
-          <div v-if="isSeverityMenuOpen" class="severity-menu">
+          <div v-if="activeFilterMenu === 'severity'" class="severity-menu">
             <button
               v-for="option in severityFilters"
               :key="option.value"
@@ -130,15 +139,15 @@
             class="severity-button"
             type="button"
             aria-label="Device filter"
-            :aria-expanded="isDeviceMenuOpen ? 'true' : 'false'"
-            @click="toggleDeviceMenu"
+            :aria-expanded="activeFilterMenu === 'device' ? 'true' : 'false'"
+            @click="toggleFilterMenu('device')"
           >
             <span>Device</span>
             <span class="severity-button__value">{{ deviceLabel }}</span>
             <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
           </button>
 
-          <div v-if="isDeviceMenuOpen" class="severity-menu">
+          <div v-if="activeFilterMenu === 'device'" class="severity-menu">
             <button
               v-for="option in deviceFilters"
               :key="option.value"
@@ -157,15 +166,15 @@
             class="severity-button"
             type="button"
             aria-label="Side filter"
-            :aria-expanded="isSideMenuOpen ? 'true' : 'false'"
-            @click="toggleSideMenu"
+            :aria-expanded="activeFilterMenu === 'side' ? 'true' : 'false'"
+            @click="toggleFilterMenu('side')"
           >
             <span>Side</span>
             <span class="severity-button__value">{{ selectedSideLabel }}</span>
             <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
           </button>
 
-          <div v-if="isSideMenuOpen" class="severity-menu">
+          <div v-if="activeFilterMenu === 'side'" class="severity-menu">
             <button
               v-for="option in sideFilters"
               :key="option.value"
@@ -250,10 +259,21 @@
                         <span class="material-symbols-outlined" aria-hidden="true">content_copy</span>
                         <span>Copy MAC</span>
                       </button>
-                      <button class="context-menu-item context-menu-item--danger" type="button" @click.stop.prevent="deleteAlert(alert.id)">
-                        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-                        <span>Delete this alert</span>
-                      </button>
+                      <template v-if="pendingDeleteAlertId !== alert.id">
+                        <button class="context-menu-item context-menu-item--danger" type="button" @click.stop="pendingDeleteAlertId = alert.id">
+                          <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+                          <span>Delete this alert</span>
+                        </button>
+                      </template>
+                      <template v-else>
+                        <div class="context-menu-confirm">
+                          <span class="context-confirm-label">Delete this alert?</span>
+                          <div class="context-confirm-actions">
+                            <button class="context-menu-item" type="button" @click.stop="pendingDeleteAlertId = null">Cancel</button>
+                            <button class="context-menu-item context-menu-item--danger" type="button" @click.stop="confirmDeleteAlert(alert.id)">Delete</button>
+                          </div>
+                        </div>
+                      </template>
                     </div>
                   </div>
                 </td>
@@ -319,12 +339,11 @@ const activeMacFilter = ref('all')
 const activeSideFilter = ref('all')
 const currentPage = ref(1)
 const activeMenuId = ref('')
-const isStatusMenuOpen = ref(false)
-const isSeverityMenuOpen = ref(false)
-const isDeviceMenuOpen = ref(false)
-const isSideMenuOpen = ref(false)
+const activeFilterMenu = ref('')
 const isRefreshing = ref(false)
 const lastRefreshedAt = ref(null)
+const pendingClearHistory = ref(false)
+const pendingDeleteAlertId = ref(null)
 const pageSize = 10
 
 const statusFilters = [
@@ -353,7 +372,6 @@ const resolutionRate = computed(() => {
   if (!totalAlerts.value) return 0
   return Math.round(((totalAlerts.value - pendingAlerts.value) / totalAlerts.value) * 1000) / 10
 })
-const averageResponseLabel = computed(() => (pendingAlerts.value ? '1.4 min' : '0 min'))
 const statusLabel = computed(() => statusFilters.find(option => option.value === activeStatusFilter.value)?.label || 'All')
 const severityLabel = computed(() => severityFilters.find(option => option.value === activeSeverityFilter.value)?.label || 'All')
 const deviceFilters = computed(() => {
@@ -519,30 +537,32 @@ const resetFilters = () => {
   activeSideFilter.value = 'all'
   currentPage.value = 1
   activeMenuId.value = ''
-  isStatusMenuOpen.value = false
-  isSeverityMenuOpen.value = false
-  isDeviceMenuOpen.value = false
-  isSideMenuOpen.value = false
+  activeFilterMenu.value = ''
 }
 
 const setStatusFilter = (value) => {
   activeStatusFilter.value = value
-  isStatusMenuOpen.value = false
+  activeFilterMenu.value = ''
 }
 
 const setSeverityFilter = (value) => {
   activeSeverityFilter.value = value
-  isSeverityMenuOpen.value = false
+  activeFilterMenu.value = ''
 }
 
 const setDeviceFilter = (value) => {
   activeMacFilter.value = value
-  isDeviceMenuOpen.value = false
+  activeFilterMenu.value = ''
 }
 
 const setSideFilter = (value) => {
   activeSideFilter.value = value
-  isSideMenuOpen.value = false
+  activeFilterMenu.value = ''
+}
+
+const toggleFilterMenu = (name) => {
+  activeFilterMenu.value = activeFilterMenu.value === name ? '' : name
+  activeMenuId.value = ''
 }
 
 const goToPage = (page) => {
@@ -558,11 +578,9 @@ const nextPage = () => {
 }
 
 const toggleAlertMenu = (alertId) => {
+  if (!alertId) return
   activeMenuId.value = activeMenuId.value === alertId ? '' : alertId
-  isStatusMenuOpen.value = false
-  isSeverityMenuOpen.value = false
-  isDeviceMenuOpen.value = false
-  isSideMenuOpen.value = false
+  activeFilterMenu.value = ''
 }
 
 const closeAlertMenu = (event) => {
@@ -572,42 +590,7 @@ const closeAlertMenu = (event) => {
     || event?.target?.closest?.('.status-control')
   ) return
   activeMenuId.value = ''
-  isStatusMenuOpen.value = false
-  isSeverityMenuOpen.value = false
-  isDeviceMenuOpen.value = false
-  isSideMenuOpen.value = false
-}
-
-const toggleStatusMenu = () => {
-  activeMenuId.value = ''
-  isStatusMenuOpen.value = !isStatusMenuOpen.value
-  isSeverityMenuOpen.value = false
-  isDeviceMenuOpen.value = false
-  isSideMenuOpen.value = false
-}
-
-const toggleSeverityMenu = () => {
-  activeMenuId.value = ''
-  isStatusMenuOpen.value = false
-  isSeverityMenuOpen.value = !isSeverityMenuOpen.value
-  isDeviceMenuOpen.value = false
-  isSideMenuOpen.value = false
-}
-
-const toggleDeviceMenu = () => {
-  activeMenuId.value = ''
-  isStatusMenuOpen.value = false
-  isSeverityMenuOpen.value = false
-  isDeviceMenuOpen.value = !isDeviceMenuOpen.value
-  isSideMenuOpen.value = false
-}
-
-const toggleSideMenu = () => {
-  activeMenuId.value = ''
-  isStatusMenuOpen.value = false
-  isSeverityMenuOpen.value = false
-  isDeviceMenuOpen.value = false
-  isSideMenuOpen.value = !isSideMenuOpen.value
+  activeFilterMenu.value = ''
 }
 
 const copyToClipboard = async (value) => {
@@ -620,15 +603,43 @@ const copyToClipboard = async (value) => {
   }
 }
 
-const deleteAlert = async (alertId) => {
-  activeMenuId.value = ''
-  await healthStore.deleteAlert(alertId)
+const confirmClearHistory = async () => {
+  try {
+    await healthStore.clearAllAlerts()
+    healthStore.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Alert history cleared.' }
+  } catch {
+    healthStore.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not clear history.' }
+  } finally {
+    pendingClearHistory.value = false
+  }
+}
+
+const confirmDeleteAlert = async (alertId) => {
+  try {
+    await healthStore.deleteAlert(alertId)
+    healthStore.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Alert deleted.' }
+  } catch {
+    healthStore.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not delete alert.' }
+  } finally {
+    pendingDeleteAlertId.value = null
+    activeMenuId.value = ''
+  }
 }
 
 const toggleAlertStatus = async (alert) => {
   const nextStatus = alert.status === 'READ' ? 'PENDING' : 'READ'
-  await healthStore.setAlertStatus(alert.id, nextStatus)
-  activeMenuId.value = ''
+  try {
+    await healthStore.setAlertStatus(alert.id, nextStatus)
+    healthStore.lastToast = {
+      id: Date.now(),
+      sensor: 'SYSTEM',
+      message: nextStatus === 'READ' ? 'Alert marked as read.' : 'Alert marked as pending.'
+    }
+  } catch {
+    healthStore.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not update alert status.' }
+  } finally {
+    activeMenuId.value = ''
+  }
 }
 
 const refreshAlerts = async () => {
@@ -646,30 +657,19 @@ const refreshAlerts = async () => {
 const handleKeydown = (event) => {
   if (event.key === 'Escape') {
     activeMenuId.value = ''
-    isStatusMenuOpen.value = false
-    isSeverityMenuOpen.value = false
-    isDeviceMenuOpen.value = false
-    isSideMenuOpen.value = false
+    activeFilterMenu.value = ''
+    pendingDeleteAlertId.value = null
   }
 }
 
-watch([searchQuery, activeStatusFilter, activeSeverityFilter], () => {
-  currentPage.value = 1
-  activeMenuId.value = ''
-  isStatusMenuOpen.value = false
-  isSeverityMenuOpen.value = false
-  isDeviceMenuOpen.value = false
-  isSideMenuOpen.value = false
-})
-
-watch([activeMacFilter, activeSideFilter], () => {
-  currentPage.value = 1
-  activeMenuId.value = ''
-  isStatusMenuOpen.value = false
-  isSeverityMenuOpen.value = false
-  isDeviceMenuOpen.value = false
-  isSideMenuOpen.value = false
-})
+watch(
+  [searchQuery, activeStatusFilter, activeSeverityFilter, activeMacFilter, activeSideFilter],
+  () => {
+    currentPage.value = 1
+    activeMenuId.value = ''
+    activeFilterMenu.value = ''
+  }
+)
 
 onMounted(async () => {
   await Promise.all([
@@ -736,9 +736,6 @@ onBeforeUnmount(() => {
 .severity-menu-item { width: 100%; padding: 11px 12px; border: 0; border-radius: 12px; background: transparent; color: var(--text-main); font-size: 0.82rem; font-weight: 800; cursor: pointer; text-align: left; transition: background 0.2s ease, color 0.2s ease; }
 .severity-menu-item:hover { background: rgba(37, 89, 189, 0.08); color: #2559bd; }
 .severity-menu-item--active { background: rgba(37, 89, 189, 0.1); color: #2559bd; }
-.segment-button { padding: 11px 14px; border-radius: 14px; border: 1px solid transparent; background: rgba(248, 250, 252, 0.96); color: #475569; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; }
-.segment-button:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(15, 23, 42, 0.04); }
-.segment-button--active { background: #ffffff; color: #2559bd; border-color: rgba(37, 89, 189, 0.14); box-shadow: 0 10px 20px rgba(37, 89, 189, 0.08); }
 .result-chip { padding: 11px 14px; border-radius: 14px; background: var(--surface-panel-strong); color: var(--text-muted); font-size: 0.72rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; border: 1px solid var(--surface-border); }
 .table-card { overflow: hidden; border-radius: 24px; border: 1px solid var(--border-color); background: var(--surface-card); box-shadow: 0 18px 40px var(--surface-shadow); }
 .table-wrap { overflow-x: auto; }
@@ -796,6 +793,10 @@ onBeforeUnmount(() => {
 .context-menu-item:hover { background: rgba(37, 89, 189, 0.08); color: #2559bd; }
 .context-menu-item--danger:hover { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
 .context-menu-item .material-symbols-outlined { font-size: 1rem; }
+.context-menu-confirm { padding: 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.context-confirm-label { font-size: 0.78rem; font-weight: 800; color: #dc2626; text-align: center; }
+.context-confirm-actions { display: flex; gap: 6px; justify-content: center; }
+.confirm-label { font-size: 0.78rem; font-weight: 800; color: #dc2626; }
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; text-align: center; }
 .empty-icon { width: 80px; height: 80px; border-radius: 999px; display: grid; place-items: center; background: var(--surface-panel-strong); color: rgba(100, 116, 139, 0.85); margin-bottom: 18px; border: 1px solid var(--surface-border); }
 .empty-icon span { font-size: 2.4rem; }

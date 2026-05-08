@@ -39,6 +39,7 @@ export const useRulesStore = defineStore('rules', {
         await this.fetchRules()
       } catch (err) {
         console.error('Error addRule:', err)
+        throw err
       }
     },
     async updateRule(id, rule) {
@@ -59,6 +60,7 @@ export const useRulesStore = defineStore('rules', {
         await this.fetchRules()
       } catch (err) {
         console.error('Error updateRule:', err)
+        throw err
       }
     },
     async deleteRule(id) {
@@ -70,6 +72,7 @@ export const useRulesStore = defineStore('rules', {
         await this.fetchRules()
       } catch (err) {
         console.error('Error deleteRule:', err)
+        throw err
       }
     }
   }

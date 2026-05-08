@@ -93,12 +93,19 @@
 
           <footer class="rule-card__footer">
             <div class="rule-actions">
-              <button class="icon-button icon-button--edit" type="button" @click="openEditModal(rule)">
-                <span class="material-symbols-outlined" aria-hidden="true">edit</span>
-              </button>
-              <button class="icon-button icon-button--danger" type="button" @click="rulesStore.deleteRule(rule.id)">
-                <span class="material-symbols-outlined" aria-hidden="true">delete_outline</span>
-              </button>
+              <template v-if="pendingDeleteId !== rule.id">
+                <button class="icon-button icon-button--edit" type="button" @click="openEditModal(rule)">
+                  <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+                </button>
+                <button class="icon-button icon-button--danger" type="button" @click="requestDelete(rule.id)">
+                  <span class="material-symbols-outlined" aria-hidden="true">delete_outline</span>
+                </button>
+              </template>
+              <template v-else>
+                <span class="confirm-label">Delete this rule?</span>
+                <button class="icon-button icon-button--ghost" type="button" @click="cancelDelete()">Cancel</button>
+                <button class="icon-button icon-button--confirm-delete" type="button" @click="confirmDelete(rule.id)">Delete</button>
+              </template>
             </div>
           </footer>
         </article>
@@ -322,8 +329,8 @@
             <button class="action-button action-button--ghost" type="button" @click="closeModal">
               Cancel
             </button>
-            <button class="action-button action-button--primary" type="submit">
-              {{ isEditing ? 'Save changes' : 'Create rule' }}
+            <button class="action-button action-button--primary" type="submit" :disabled="isSaving">
+              {{ isSaving ? 'Saving...' : (isEditing ? 'Save changes' : 'Create rule') }}
             </button>
           </footer>
         </form>
@@ -336,6 +343,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRulesStore } from '~/stores/rules'
 import { useAuthStore } from '~/stores/auth'
+import { useHealthStore } from '~/stores/health'
 import { canAssignRules as canAssignRulesForUser } from '~/utils/accessContext'
 import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 
@@ -345,7 +353,8 @@ useHead({
 
 const rulesStore = useRulesStore()
 const auth = useAuthStore()
-const backendHeaders = buildBackendAuthHeaders(auth)
+const health = useHealthStore()
+const backendHeaders = computed(() => buildBackendAuthHeaders(auth))
 
 const STAFF_API_BASE = 'http://localhost:5000/staff-members'
 const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
@@ -356,6 +365,8 @@ const searchQuery = ref('')
 const assignmentFilter = ref('all')
 const isModalOpen = ref(false)
 const isEditing = ref(false)
+const isSaving = ref(false)
+const pendingDeleteId = ref(null)
 const currentRuleId = ref(null)
 const activeRuleDropdown = ref('')
 const currentRule = ref(createEmptyRule())
@@ -686,6 +697,25 @@ function closeModal() {
   activeRuleDropdown.value = ''
 }
 
+function requestDelete(ruleId) {
+  pendingDeleteId.value = ruleId
+}
+
+function cancelDelete() {
+  pendingDeleteId.value = null
+}
+
+async function confirmDelete(ruleId) {
+  try {
+    await rulesStore.deleteRule(ruleId)
+    health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Rule deleted.' }
+  } catch {
+    health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not delete rule. Try again.' }
+  } finally {
+    pendingDeleteId.value = null
+  }
+}
+
 function toggleRuleDropdown(field) {
   activeRuleDropdown.value = activeRuleDropdown.value === field ? '' : field
 }
@@ -697,7 +727,11 @@ function closeRuleDropdowns(event) {
 
 function handleKeydown(event) {
   if (event.key === 'Escape') {
-    activeRuleDropdown.value = ''
+    if (activeRuleDropdown.value) {
+      activeRuleDropdown.value = ''
+    } else if (isModalOpen.value) {
+      closeModal()
+    }
   }
 }
 
@@ -750,13 +784,24 @@ async function saveRule() {
     assignedToSide
   }
 
-  if (isEditing.value && currentRuleId.value) {
-    await rulesStore.updateRule(currentRuleId.value, payload)
-  } else {
-    await rulesStore.addRule(payload)
+  isSaving.value = true
+  try {
+    if (isEditing.value && currentRuleId.value) {
+      await rulesStore.updateRule(currentRuleId.value, payload)
+    } else {
+      await rulesStore.addRule(payload)
+    }
+    health.lastToast = {
+      id: Date.now(),
+      sensor: 'SYSTEM',
+      message: isEditing.value ? 'Rule updated successfully.' : 'Rule created successfully.'
+    }
+    closeModal()
+  } catch {
+    health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not save rule. Try again.' }
+  } finally {
+    isSaving.value = false
   }
-
-  closeModal()
 }
 </script>
 
@@ -840,6 +885,10 @@ async function saveRule() {
 .icon-button:hover { transform: translateY(-1px); }
 .icon-button--edit:hover { color: #2559bd; border-color: rgba(37, 89, 189, 0.24); box-shadow: 0 10px 18px rgba(37, 89, 189, 0.08); }
 .icon-button--danger:hover { color: #dc2626; border-color: rgba(239, 68, 68, 0.24); box-shadow: 0 10px 18px rgba(239, 68, 68, 0.08); }
+.icon-button--ghost { background: transparent; border-color: var(--surface-border); color: var(--text-muted); font-size: 0.78rem; font-weight: 800; width: auto; padding: 0 12px; }
+.icon-button--confirm-delete { width: auto; padding: 0 14px; background: #dc2626; border-color: #dc2626; color: #ffffff; font-size: 0.78rem; font-weight: 900; }
+.icon-button--confirm-delete:hover { background: #b91c1c; border-color: #b91c1c; box-shadow: 0 8px 18px rgba(220, 38, 38, 0.28); }
+.confirm-label { font-size: 0.78rem; font-weight: 800; color: #dc2626; margin-right: auto; }
 .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 72px 24px; text-align: center; margin-top: 4px; border-radius: 24px; border: 1px dashed var(--surface-border); background: var(--surface-card); }
 .empty-state__icon { width: 80px; height: 80px; border-radius: 999px; display: grid; place-items: center; background: var(--surface-panel-strong); color: rgba(148, 163, 184, 0.9); margin-bottom: 18px; border: 1px solid var(--surface-border); }
 .empty-state__icon .material-symbols-outlined { font-size: 2.4rem; }
