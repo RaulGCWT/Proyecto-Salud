@@ -1,16 +1,8 @@
 <template>
   <div class="users-page">
     <section class="users-shell">
-      <header class="page-header">
-        <div class="page-copy">
-          <p class="page-eyebrow">Enterprise management</p>
-          <h1 class="page-title">User Management</h1>
-          <p class="page-subtitle">
-            Manage staff, residents, family access, pending invitations and available beds from a single control panel.
-          </p>
-        </div>
-
-        <div class="page-actions">
+      <UiPageHeader eyebrow="Enterprise management" title="User Management" subtitle="Manage staff, residents, family access, pending invitations and available beds from a single control panel.">
+        <template #actions>
           <button v-if="canCreateRecords" class="action-button action-button--soft" type="button" @click="openFamilyModal()">
             <span class="material-symbols-outlined" aria-hidden="true">mail</span>
             <span>Invite Family</span>
@@ -23,8 +15,8 @@
             <span class="material-symbols-outlined" aria-hidden="true">add_moderator</span>
             <span>Create Staff</span>
           </button>
-        </div>
-      </header>
+        </template>
+      </UiPageHeader>
 
       <div v-if="toastMessage" class="toast" role="status" aria-live="polite">
         <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
@@ -32,13 +24,7 @@
       </div>
 
       <section class="summary-grid">
-        <article v-for="item in summaryCards" :key="item.label" class="summary-card">
-          <div class="summary-card__top">
-            <span class="summary-label">{{ item.label }}</span>
-          </div>
-          <strong class="summary-value">{{ item.value }}</strong>
-          <p class="summary-meta">{{ item.meta }}</p>
-        </article>
+        <UiSummaryCard v-for="item in summaryCards" :key="item.label" :label="item.label" :value="String(item.value)" :note="item.meta" />
       </section>
 
       <section class="toolbar-panel">
@@ -54,16 +40,7 @@
           </button>
         </div>
 
-        <label class="search-field">
-          <span class="material-symbols-outlined search-field__icon" aria-hidden="true">search</span>
-          <input
-            v-model="search"
-            class="search-input"
-            type="text"
-            placeholder="Search by user, resident, family or device..."
-            autocomplete="off"
-          />
-        </label>
+        <UiSearchInput v-model="search" placeholder="Search by user, resident, family or device..." />
       </section>
 
       <section class="content-grid">

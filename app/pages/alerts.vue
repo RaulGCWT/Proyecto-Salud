@@ -1,14 +1,8 @@
 <template>
   <div class="alerts-page">
     <section class="page-shell">
-      <header class="page-header">
-        <div>
-          <p class="page-eyebrow">Alert History</p>
-          <h1 class="page-title">Clinical Alert History</h1>
-          <p class="page-subtitle">Audit log of clinical events and system-generated diagnostic notifications.</p>
-        </div>
-
-        <div class="page-actions">
+      <UiPageHeader eyebrow="Alert History" title="Clinical Alert History" subtitle="Audit log of clinical events and system-generated diagnostic notifications.">
+        <template #actions>
           <div class="refresh-meta">
             <span class="refresh-meta__label">Last refreshed</span>
             <span class="refresh-meta__value">{{ lastRefreshedLabel }}</span>
@@ -30,163 +24,22 @@
               <button class="action-button action-button--danger" type="button" @click="confirmClearHistory">Clear All</button>
             </template>
           </template>
-        </div>
-      </header>
+        </template>
+      </UiPageHeader>
 
       <section class="summary-grid">
-        <article class="summary-card">
-          <div class="summary-top">
-            <span class="summary-icon summary-icon--blue" aria-hidden="true">
-              <span class="material-symbols-outlined">notification_important</span>
-            </span>
-            <span class="summary-label">Total Alerts</span>
-          </div>
-          <strong class="summary-value">{{ totalAlerts.toLocaleString() }}</strong>
-          <p class="summary-note">{{ pendingAlerts }} require review right now.</p>
-        </article>
-
-        <article class="summary-card">
-          <div class="summary-top">
-            <span class="summary-icon summary-icon--red" aria-hidden="true">
-              <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pending_actions</span>
-            </span>
-            <span class="summary-label">Pending Review</span>
-          </div>
-          <strong class="summary-value">{{ pendingAlerts.toLocaleString() }}</strong>
-          <p class="summary-note">Requires immediate attention.</p>
-        </article>
-
-        <article class="summary-card">
-          <div class="summary-top">
-            <span class="summary-icon summary-icon--teal" aria-hidden="true">
-              <span class="material-symbols-outlined">task_alt</span>
-            </span>
-            <span class="summary-label">Resolution Rate</span>
-          </div>
-          <strong class="summary-value">{{ resolutionRate }}%</strong>
-          <p class="summary-note">Percentage of alerts marked as read.</p>
-        </article>
+        <UiSummaryCard icon="notification_important" label="Total Alerts" :value="totalAlerts.toLocaleString()" :note="`${pendingAlerts} require review right now.`" tone="blue" />
+        <UiSummaryCard icon="pending_actions" label="Pending Review" :value="pendingAlerts.toLocaleString()" note="Requires immediate attention." tone="red" />
+        <UiSummaryCard icon="task_alt" label="Resolution Rate" :value="`${resolutionRate}%`" note="Percentage of alerts marked as read." tone="teal" />
       </section>
 
       <section class="filters-card">
-        <div class="search-wrap">
-          <span class="material-symbols-outlined search-icon" aria-hidden="true">search</span>
-          <input
-            v-model.trim="searchQuery"
-            class="search-input"
-            type="text"
-            placeholder="Filter by MAC, Message or Sensor..."
-            autocomplete="off"
-          />
-        </div>
+        <UiSearchInput v-model="searchQuery" placeholder="Filter by MAC, Message or Sensor..." />
 
-        <div class="status-control" @click.stop>
-          <button
-            class="severity-button"
-            type="button"
-            aria-label="State filter"
-            :aria-expanded="activeFilterMenu === 'status' ? 'true' : 'false'"
-            @click="toggleFilterMenu('status')"
-          >
-            <span>Status</span>
-            <span class="severity-button__value">{{ statusLabel }}</span>
-            <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
-          </button>
-
-          <div v-if="activeFilterMenu === 'status'" class="severity-menu">
-            <button
-              v-for="option in statusFilters"
-              :key="option.value"
-              class="severity-menu-item"
-              :class="{ 'severity-menu-item--active': activeStatusFilter === option.value }"
-              type="button"
-              @click="setStatusFilter(option.value)"
-            >
-              {{ option.label }}
-            </button>
-          </div>
-        </div>
-
-        <div class="severity-control" @click.stop>
-          <button
-            class="severity-button"
-            type="button"
-            aria-label="Severity filter"
-            :aria-expanded="activeFilterMenu === 'severity' ? 'true' : 'false'"
-            @click="toggleFilterMenu('severity')"
-          >
-            <span>Severity</span>
-            <span class="severity-button__value">{{ severityLabel }}</span>
-            <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
-          </button>
-
-          <div v-if="activeFilterMenu === 'severity'" class="severity-menu">
-            <button
-              v-for="option in severityFilters"
-              :key="option.value"
-              class="severity-menu-item"
-              :class="{ 'severity-menu-item--active': activeSeverityFilter === option.value }"
-              type="button"
-              @click="setSeverityFilter(option.value)"
-            >
-              {{ option.label }}
-            </button>
-          </div>
-        </div>
-
-        <div class="severity-control" @click.stop>
-          <button
-            class="severity-button"
-            type="button"
-            aria-label="Device filter"
-            :aria-expanded="activeFilterMenu === 'device' ? 'true' : 'false'"
-            @click="toggleFilterMenu('device')"
-          >
-            <span>Device</span>
-            <span class="severity-button__value">{{ deviceLabel }}</span>
-            <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
-          </button>
-
-          <div v-if="activeFilterMenu === 'device'" class="severity-menu">
-            <button
-              v-for="option in deviceFilters"
-              :key="option.value"
-              class="severity-menu-item"
-              :class="{ 'severity-menu-item--active': activeMacFilter === option.value }"
-              type="button"
-              @click="setDeviceFilter(option.value)"
-            >
-              {{ option.label }}
-            </button>
-          </div>
-        </div>
-
-        <div class="severity-control" @click.stop>
-          <button
-            class="severity-button"
-            type="button"
-            aria-label="Side filter"
-            :aria-expanded="activeFilterMenu === 'side' ? 'true' : 'false'"
-            @click="toggleFilterMenu('side')"
-          >
-            <span>Side</span>
-            <span class="severity-button__value">{{ selectedSideLabel }}</span>
-            <span class="material-symbols-outlined severity-button__icon" aria-hidden="true">expand_more</span>
-          </button>
-
-          <div v-if="activeFilterMenu === 'side'" class="severity-menu">
-            <button
-              v-for="option in sideFilters"
-              :key="option.value"
-              class="severity-menu-item"
-              :class="{ 'severity-menu-item--active': activeSideFilter === option.value }"
-              type="button"
-              @click="setSideFilter(option.value)"
-            >
-              {{ option.label }}
-            </button>
-          </div>
-        </div>
+        <UiFilterDropdown label="Status" :model-value="activeStatusFilter" :options="statusFilters" @update:model-value="setStatusFilter" />
+        <UiFilterDropdown label="Severity" :model-value="activeSeverityFilter" :options="severityFilters" @update:model-value="setSeverityFilter" />
+        <UiFilterDropdown label="Device" :model-value="activeMacFilter" :options="deviceFilters" @update:model-value="setDeviceFilter" />
+        <UiFilterDropdown label="Side" :model-value="activeSideFilter" :options="sideFilters" @update:model-value="setSideFilter" />
 
         <div class="result-chip">
           Filtered: {{ filteredAlerts.length }} results
@@ -282,17 +135,16 @@
           </table>
         </div>
 
-        <div v-if="!visibleAlerts.length" class="empty-state">
-          <div class="empty-icon">
-            <span class="material-symbols-outlined" aria-hidden="true">notifications_off</span>
-          </div>
-          <h2>No alerts found</h2>
-          <p v-if="searchQuery || activeStatusFilter !== 'all' || activeSeverityFilter !== 'all' || activeMacFilter !== 'all' || activeSideFilter !== 'all'">
-            Try adjusting your filters or search terms to find the clinical logs you're looking for.
-          </p>
-          <p v-else>No alerts recorded in the database.</p>
-          <button class="empty-action" type="button" @click="resetFilters">Clear all filters</button>
-        </div>
+        <UiEmptyState
+          v-if="!visibleAlerts.length"
+          icon="notifications_off"
+          title="No alerts found"
+          :message="searchQuery || activeStatusFilter !== 'all' || activeSeverityFilter !== 'all' || activeMacFilter !== 'all' || activeSideFilter !== 'all' ? 'Try adjusting your filters or search terms to find the clinical logs you\'re looking for.' : 'No alerts recorded in the database.'"
+        >
+          <template #action>
+            <button class="empty-action" type="button" @click="resetFilters">Clear all filters</button>
+          </template>
+        </UiEmptyState>
 
         <footer class="table-footer">
           <p class="footer-text">

@@ -59,66 +59,9 @@
       </div>
 
       <div class="select-group">
-        <div class="filter-dropdown" :class="{ 'filter-dropdown--open': activeFilterMenu === 'status' }">
-          <button class="filter-trigger" type="button" @click="toggleFilterMenu('status')">
-            <span>Status</span>
-            <strong>{{ filterLabels.status[filters.status] }}</strong>
-            <span class="filter-caret">▾</span>
-          </button>
-          <div v-if="activeFilterMenu === 'status'" class="filter-menu">
-            <button
-              v-for="option in filterOptions.status"
-              :key="option.value"
-              type="button"
-              class="filter-option"
-              :class="{ 'filter-option--active': filters.status === option.value }"
-              @click="selectFilterOption('status', option.value)"
-            >
-              {{ option.label }}
-            </button>
-          </div>
-        </div>
-
-        <div class="filter-dropdown" :class="{ 'filter-dropdown--open': activeFilterMenu === 'type' }">
-          <button class="filter-trigger" type="button" @click="toggleFilterMenu('type')">
-            <span>Type</span>
-            <strong>{{ filterLabels.type[filters.type] }}</strong>
-            <span class="filter-caret">▾</span>
-          </button>
-          <div v-if="activeFilterMenu === 'type'" class="filter-menu">
-            <button
-              v-for="option in filterOptions.type"
-              :key="option.value"
-              type="button"
-              class="filter-option"
-              :class="{ 'filter-option--active': filters.type === option.value }"
-              @click="selectFilterOption('type', option.value)"
-            >
-              {{ option.label }}
-            </button>
-          </div>
-        </div>
-
-        <div class="filter-dropdown" :class="{ 'filter-dropdown--open': activeFilterMenu === 'presence' }">
-          <button class="filter-trigger" type="button" @click="toggleFilterMenu('presence')">
-            <span>Presence</span>
-            <strong>{{ filterLabels.presence[filters.presence] }}</strong>
-            <span class="filter-caret">▾</span>
-          </button>
-          <div v-if="activeFilterMenu === 'presence'" class="filter-menu">
-            <button
-              v-for="option in filterOptions.presence"
-              :key="option.value"
-              type="button"
-              class="filter-option"
-              :class="{ 'filter-option--active': filters.presence === option.value }"
-              @click="selectFilterOption('presence', option.value)"
-            >
-              {{ option.label }}
-            </button>
-          </div>
-        </div>
-
+        <UiFilterDropdown label="Status" :model-value="filters.status" :options="filterOptions.status" @update:model-value="val => selectFilterOption('status', val)" />
+        <UiFilterDropdown label="Type" :model-value="filters.type" :options="filterOptions.type" @update:model-value="val => selectFilterOption('type', val)" />
+        <UiFilterDropdown label="Presence" :model-value="filters.presence" :options="filterOptions.presence" @update:model-value="val => selectFilterOption('presence', val)" />
         <button class="btn-reset" type="button" @click="resetFilters">Reset</button>
       </div>
     </section>
@@ -350,7 +293,7 @@ onBeforeUnmount(() => {
 .search-chip { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); padding: 5px 9px; border-radius: 999px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: #2559bd; background: rgba(37, 89, 189, 0.08); }
 .search-box input { width: 100%; padding: 11px 14px 11px 90px; border-radius: 14px; border: 1px solid rgba(148, 163, 184, 0.2); background: var(--bg-main); color: var(--text-main); outline: none; box-sizing: border-box; }
 .search-box input::placeholder { color: var(--text-muted); }
-.select-group { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; flex: 1 1 440px; justify-content: flex-end; }
+.select-group { display: flex; flex-wrap: nowrap; gap: 10px; align-items: center; flex: 1 1 auto; justify-content: flex-end; }
 .filter-dropdown { position: relative; min-width: 190px; }
 .filter-trigger { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 14px; border-radius: 16px; border: 1px solid rgba(148, 163, 184, 0.22); background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94)); color: var(--text-main); font-weight: 700; box-shadow: 0 8px 20px rgba(15, 23, 42, 0.03); cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease; }
 .filter-trigger:hover { border-color: rgba(37, 89, 189, 0.28); box-shadow: 0 12px 24px rgba(37, 89, 189, 0.08); transform: translateY(-1px); }

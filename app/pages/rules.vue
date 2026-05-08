@@ -1,47 +1,21 @@
  <template>
   <div class="rules-page">
     <section class="rules-shell">
-      <header class="page-header">
-        <div class="page-heading">
-          <p class="page-eyebrow">Rules Library</p>
-          <h1 class="page-title">Monitoring Rules</h1>
-          <p class="page-subtitle">
-            Define the thresholds that turn biometric measurements into clinical alerts.
-          </p>
-        </div>
-
-        <div class="page-actions">
+      <UiPageHeader eyebrow="Rules Library" title="Monitoring Rules" subtitle="Define the thresholds that turn biometric measurements into clinical alerts.">
+        <template #actions>
           <button class="action-button action-button--primary" type="button" @click="openCreateModal">
             <span class="material-symbols-outlined" aria-hidden="true">add</span>
             <span>Add Rule</span>
           </button>
-        </div>
-      </header>
+        </template>
+      </UiPageHeader>
 
       <section class="summary-grid">
-        <article v-for="card in summaryCards" :key="card.label" class="summary-card">
-          <div class="summary-card__top">
-            <div :class="['summary-icon', card.tone]">
-              <span class="material-symbols-outlined" aria-hidden="true">{{ card.icon }}</span>
-            </div>
-            <span class="summary-label">{{ card.label }}</span>
-          </div>
-          <strong class="summary-value">{{ card.value }}</strong>
-          <p class="summary-note">{{ card.note }}</p>
-        </article>
+        <UiSummaryCard v-for="card in summaryCards" :key="card.label" :icon="card.icon" :label="card.label" :value="card.value" :note="card.note" :tone="card.tone" />
       </section>
 
       <section class="toolbar">
-        <label class="search-field">
-          <span class="material-symbols-outlined search-field__icon" aria-hidden="true">search</span>
-          <input
-            v-model.trim="searchQuery"
-            class="search-input"
-            type="text"
-            placeholder="Search by name, variable or value..."
-            autocomplete="off"
-          />
-        </label>
+        <UiSearchInput v-model="searchQuery" placeholder="Search by name, variable or value..." />
 
         <div class="toolbar-filters" aria-label="Assignment filters">
           <button
@@ -112,22 +86,16 @@
 
       </section>
 
-      <section v-if="!visibleRules.length" class="empty-state">
-        <div class="empty-state__icon">
-          <span class="material-symbols-outlined" aria-hidden="true">rule</span>
-        </div>
-        <h2>No rules found</h2>
-        <p v-if="searchQuery">
-          Try changing the search term or create a new rule to start monitoring this scope.
-        </p>
-        <p v-else-if="assignmentFilter !== 'all'">
-          No rules match the {{ assignmentFilterLabel.toLowerCase() }} assignment filter. Try switching back to All.
-        </p>
-        <p v-else>No active rules are available in this scope yet.</p>
-        <button class="empty-state__action" type="button" @click="openCreateModal">
-          Create first rule
-        </button>
-      </section>
+      <UiEmptyState
+        v-if="!visibleRules.length"
+        icon="rule"
+        title="No rules found"
+        :message="searchQuery ? 'Try changing the search term or create a new rule.' : assignmentFilter !== 'all' ? `No rules match the ${assignmentFilterLabel.toLowerCase()} filter.` : 'No active rules are available in this scope yet.'"
+      >
+        <template #action>
+          <button class="empty-state__action" type="button" @click="openCreateModal">Create first rule</button>
+        </template>
+      </UiEmptyState>
     </section>
 
     <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
@@ -484,28 +452,28 @@ const summaryCards = computed(() => {
       value: rules.length.toLocaleString(),
       note: 'Thresholds currently loaded in this scope.',
       icon: 'rule',
-      tone: 'summary-icon--blue'
+      tone: 'blue'
     },
     {
       label: 'Heart rate',
       value: rules.filter(rule => normalizeVariable(rule.variable) === 'hr').length.toLocaleString(),
       note: 'Rules linked to cardiac monitoring.',
       icon: 'favorite',
-      tone: 'summary-icon--red'
+      tone: 'red'
     },
     {
       label: 'HRV',
       value: rules.filter(rule => normalizeVariable(rule.variable) === 'hrv').length.toLocaleString(),
       note: 'Rules tracking variability changes.',
       icon: 'monitor_heart',
-      tone: 'summary-icon--teal'
+      tone: 'teal'
     },
     {
       label: 'Respiratory',
       value: rules.filter(rule => normalizeVariable(rule.variable) === 'resp').length.toLocaleString(),
       note: 'Rules for respiratory rate thresholds.',
       icon: 'air',
-      tone: 'summary-icon--amber'
+      tone: 'amber'
     }
   ]
 })
