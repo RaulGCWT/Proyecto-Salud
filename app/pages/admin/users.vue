@@ -78,16 +78,38 @@
             </button>
           </div>
 
-          <div class="stack">
-            <div v-for="member in filteredStaff" :key="member.id" class="entry-row entry-row--staff">
-              <div class="entry-avatar">{{ member.name.charAt(0) }}</div>
-              <div class="entry-main">
-                <strong class="entry-name">{{ member.name }}</strong>
-                <span class="entry-meta block">{{ member.role }} - {{ member.area }}</span>
-                <span class="entry-meta"><strong class="label-strong">Contact:</strong> {{ member.email }}</span>
-              </div>
-              <button class="entry-link" type="button" @click="openStaffModal(member)">Manage</button>
-            </div>
+          <div class="table-wrapper">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Area</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!filteredStaff.length" class="admin-table__empty">
+                  <td colspan="4">No staff members yet.</td>
+                </tr>
+                <tr v-for="member in filteredStaff" :key="member.id">
+                  <td>
+                    <div class="cell-avatar">
+                      <div class="avatar-circle">{{ member.name.charAt(0) }}</div>
+                      <div class="cell-name">
+                        <strong>{{ member.name }}</strong>
+                        <span>{{ member.email }}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{{ member.role }}</td>
+                  <td>{{ member.area }}</td>
+                  <td>
+                    <button class="entry-link" type="button" @click="openStaffModal(member)">Manage</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </article>
 
@@ -102,26 +124,40 @@
             </button>
           </div>
 
-          <div class="stack">
-            <div v-for="resident in filteredResidents" :key="resident.id" class="entry-card">
-              <div class="entry-card__head">
-                <div>
-                  <strong class="entry-name">{{ resident.name }}</strong>
-                  <span class="entry-meta block"><strong class="label-strong">Status:</strong> {{ resident.status }}</span>
-                </div>
-                <code class="entry-chip"><strong class="label-strong">Bed:</strong> {{ resident.deviceId || 'Unassigned' }}</code>
-              </div>
-
-              <div class="entry-inline">
-                <span class="entry-meta"><strong class="label-strong">Family linked:</strong> {{ familyCountForResident(resident.name) }}</span>
-                <span class="entry-meta"><strong class="label-strong">Notes:</strong> {{ resident.notes || 'No notes' }}</span>
-              </div>
-
-              <div class="entry-actions">
-                <button class="entry-link" type="button" @click="openResidentModal(resident)">Edit</button>
-                <button v-if="canCreateRecords" class="entry-link" type="button" @click="openFamilyModalForResident(resident)">Invite Family</button>
-              </div>
-            </div>
+          <div class="table-wrapper">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Assigned Bed</th>
+                  <th>Family</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!filteredResidents.length" class="admin-table__empty">
+                  <td colspan="6">No residents yet.</td>
+                </tr>
+                <tr v-for="resident in filteredResidents" :key="resident.id">
+                  <td><strong>{{ resident.name }}</strong></td>
+                  <td>{{ resident.status || '—' }}</td>
+                  <td>
+                    <code v-if="resident.deviceId" class="entry-chip">{{ resident.deviceId }}</code>
+                    <span v-else class="entry-meta">Unassigned</span>
+                  </td>
+                  <td>{{ familyCountForResident(resident.name) }}</td>
+                  <td><span class="entry-meta">{{ resident.notes || '—' }}</span></td>
+                  <td>
+                    <div class="cell-actions">
+                      <button class="entry-link" type="button" @click="openResidentModal(resident)">Edit</button>
+                      <button v-if="canCreateRecords" class="entry-link" type="button" @click="openFamilyModalForResident(resident)">Invite Family</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </article>
 
@@ -136,34 +172,51 @@
             </button>
           </div>
 
-          <div class="stack">
-            <div v-for="relative in filteredFamilies" :key="relative.id" class="entry-card">
-              <div class="entry-card__head">
-                <div>
-                  <strong class="entry-name">{{ relative.name }}</strong>
-                  <span class="entry-meta block"><strong class="label-strong">Role:</strong> Family</span>
-                  <span class="entry-meta block"><strong class="label-strong">Contact:</strong> {{ relative.email }}</span>
-                </div>
-                <span :class="['pill', relative.state === 'Active' ? 'pill--success' : 'pill--warning']">{{ relative.state }}</span>
-              </div>
-
-              <div class="entry-inline">
-                <span class="entry-meta"><strong class="label-strong">Family of:</strong> {{ relative.patientName }}</span>
-                <span class="entry-meta"><strong class="label-strong">Information:</strong> {{ relative.relationship }}</span>
-              </div>
-
-              <div v-if="relative.deviceId" class="entry-inline">
-                <code class="entry-chip"><strong class="label-strong">Associated devices:</strong> {{ relative.deviceId }}</code>
-              </div>
-
-              <div class="entry-actions">
-                <span class="entry-note">Registered family user</span>
-                <button class="entry-link" type="button" @click="openFamilyUserModal(relative)">Edit</button>
-                <button class="entry-link" type="button" @click="toggleFamilyState(relative.id)">
-                  {{ relative.state === 'Active' ? 'Deactivate' : 'Activate' }}
-                </button>
-              </div>
-            </div>
+          <div class="table-wrapper">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Family of</th>
+                  <th>Relationship</th>
+                  <th>State</th>
+                  <th>Device</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!filteredFamilies.length" class="admin-table__empty">
+                  <td colspan="6">No family users yet.</td>
+                </tr>
+                <tr v-for="relative in filteredFamilies" :key="relative.id">
+                  <td>
+                    <div class="cell-name">
+                      <strong>{{ relative.name }}</strong>
+                      <span>{{ relative.email }}</span>
+                    </div>
+                  </td>
+                  <td>{{ relative.patientName || '—' }}</td>
+                  <td>{{ relative.relationship || '—' }}</td>
+                  <td>
+                    <span :class="['pill', relative.state === 'Active' ? 'pill--success' : 'pill--warning']">
+                      {{ relative.state }}
+                    </span>
+                  </td>
+                  <td>
+                    <code v-if="relative.deviceId" class="entry-chip">{{ relative.deviceId }}</code>
+                    <span v-else class="entry-meta">—</span>
+                  </td>
+                  <td>
+                    <div class="cell-actions">
+                      <button class="entry-link" type="button" @click="openFamilyUserModal(relative)">Edit</button>
+                      <button class="entry-link" type="button" @click="toggleFamilyState(relative.id)">
+                        {{ relative.state === 'Active' ? 'Deactivate' : 'Activate' }}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </article>
 
@@ -176,36 +229,38 @@
             <span class="section-count">{{ filteredInvitations.length }} visible</span>
           </div>
 
-          <div class="stack">
-            <div v-if="!filteredInvitations.length" class="entry-card empty-card">
-              <span class="entry-note">No invitations match the current filter.</span>
-            </div>
-
-            <div v-for="invite in filteredInvitations" :key="invite.id" class="entry-card">
-              <div class="entry-card__head">
-                <div>
-                  <strong class="entry-name">{{ invite.email }}</strong>
-                  <span class="entry-meta block"><strong class="label-strong">Resident:</strong> {{ invite.patientName }}</span>
-                  <span class="entry-meta block"><strong class="label-strong">Relationship:</strong> {{ invite.relationship || 'Family' }}</span>
-                </div>
-                <span :class="['pill', invite.stateClass]">{{ invite.stateLabel }}</span>
-              </div>
-
-              <div class="entry-inline">
-                <span class="entry-meta"><strong class="label-strong">Created:</strong> {{ formatDate(invite.createdAt) }}</span>
-                <span class="entry-meta"><strong class="label-strong">Expires:</strong> {{ formatDate(invite.expiresAt) }}</span>
-              </div>
-
-              <div v-if="invite.acceptUrl" class="entry-inline">
-                <code class="entry-chip entry-chip--link">{{ invite.acceptUrl }}</code>
-              </div>
-
-              <div class="entry-actions">
-                <button v-if="invite.acceptUrl" class="entry-link" type="button" @click="copyInviteLink(invite.acceptUrl)">Copy link</button>
-                <button v-if="invite.state === 'PENDING'" class="entry-link entry-link--danger" type="button" @click="updateInviteState(invite.id, 'CANCELLED')">Cancel</button>
-                <button v-if="invite.state === 'CANCELLED' || invite.state === 'EXPIRED'" class="entry-link" type="button" @click="updateInviteState(invite.id, 'PENDING')">Reopen</button>
-              </div>
-            </div>
+          <div class="table-wrapper">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Email</th>
+                  <th>Resident</th>
+                  <th>Relationship</th>
+                  <th>State</th>
+                  <th>Expires</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="!filteredInvitations.length" class="admin-table__empty">
+                  <td colspan="6">No invitations match the current filter.</td>
+                </tr>
+                <tr v-for="invite in filteredInvitations" :key="invite.id">
+                  <td><strong>{{ invite.email }}</strong></td>
+                  <td>{{ invite.patientName || '—' }}</td>
+                  <td>{{ invite.relationship || 'Family' }}</td>
+                  <td><span :class="['pill', invite.stateClass]">{{ invite.stateLabel }}</span></td>
+                  <td><span class="entry-meta">{{ formatDate(invite.expiresAt) }}</span></td>
+                  <td>
+                    <div class="cell-actions">
+                      <button v-if="invite.acceptUrl" class="entry-link" type="button" @click="copyInviteLink(invite.acceptUrl)">Copy link</button>
+                      <button v-if="invite.state === 'PENDING'" class="entry-link entry-link--danger" type="button" @click="updateInviteState(invite.id, 'CANCELLED')">Cancel</button>
+                      <button v-if="invite.state === 'CANCELLED' || invite.state === 'EXPIRED'" class="entry-link" type="button" @click="updateInviteState(invite.id, 'PENDING')">Reopen</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </article>
 
@@ -217,28 +272,33 @@
             </div>
           </div>
 
-          <div class="table-card">
-            <div class="table-head">
-              <span>Name</span>
-              <span>Device</span>
-              <span>Status</span>
-            </div>
-
-            <div v-if="resourcesLoading" class="table-row table-row--empty">
-              <span class="entry-note">Loading devices...</span>
-            </div>
-
-            <div v-else-if="!filteredDevices.length" class="table-row table-row--empty">
-              <span class="entry-note">No devices found in the database.</span>
-            </div>
-
-            <div v-else v-for="device in filteredDevices" :key="device.id" class="table-row">
-              <strong>{{ device.patientName }}</strong>
-              <code class="entry-chip">{{ device.deviceId }}</code>
-              <span :class="['pill', isAssignedDevice(device.deviceId) ? 'pill--warning' : 'pill--success']">
-                {{ isAssignedDevice(device.deviceId) ? 'Assigned' : 'Available' }}
-              </span>
-            </div>
+          <div class="table-wrapper">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Device</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-if="resourcesLoading" class="admin-table__empty">
+                  <td colspan="3">Loading devices...</td>
+                </tr>
+                <tr v-else-if="!filteredDevices.length" class="admin-table__empty">
+                  <td colspan="3">No devices found in the database.</td>
+                </tr>
+                <tr v-else v-for="device in filteredDevices" :key="device.id">
+                  <td><strong>{{ device.patientName }}</strong></td>
+                  <td><code class="entry-chip">{{ device.deviceId }}</code></td>
+                  <td>
+                    <span :class="['pill', isAssignedDevice(device.deviceId) ? 'pill--warning' : 'pill--success']">
+                      {{ isAssignedDevice(device.deviceId) ? 'Assigned' : 'Available' }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </article>
       </section>
@@ -655,7 +715,7 @@ onBeforeUnmount(() => {
 
 .content-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 16px;
 }
 
@@ -667,22 +727,6 @@ onBeforeUnmount(() => {
   box-shadow: 0 14px 34px var(--surface-shadow);
 }
 
-.section-card:nth-child(1),
-.section-card:nth-child(2),
-.section-card:nth-child(3),
-.section-card:nth-child(4) {
-  min-height: 0;
-}
-
-.section-card:nth-child(1),
-.section-card:nth-child(2) {
-  grid-column: span 1;
-}
-
-.section-card:nth-child(3),
-.section-card:nth-child(4) {
-  grid-column: span 1;
-}
 
 .section-head {
   display: flex;
@@ -917,13 +961,107 @@ onBeforeUnmount(() => {
   vertical-align: middle;
 }
 
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-table th {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #64748b;
+  background: rgba(248, 250, 252, 0.8);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  white-space: nowrap;
+}
+
+.admin-table th:first-child { border-top-left-radius: 16px; }
+.admin-table th:last-child { border-top-right-radius: 16px; text-align: center; }
+
+.admin-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  color: var(--text-main);
+  vertical-align: middle;
+}
+
+.admin-table td:last-child { text-align: center; }
+
+.admin-table tbody tr {
+  transition: background 0.2s ease;
+}
+
+.admin-table tbody tr:hover {
+  background: rgba(248, 250, 252, 0.75);
+}
+
+.admin-table__empty td {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.cell-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cell-name strong { font-size: 0.96rem; font-weight: 800; }
+.cell-name span { font-size: 0.8rem; color: var(--text-muted); }
+
+.cell-avatar {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #00327d, #0047ab);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.cell-actions {
+  display: inline-flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+:global(.dark-mode) .admin-table th {
+  background: rgba(15, 23, 42, 0.6);
+  color: #94a3b8;
+  border-bottom-color: rgba(51, 65, 85, 0.5);
+}
+
+:global(.dark-mode) .admin-table td {
+  border-bottom-color: rgba(51, 65, 85, 0.3);
+}
+
+:global(.dark-mode) .admin-table tbody tr:hover {
+  background: rgba(30, 41, 59, 0.4);
+}
+
 @media (max-width: 1100px) {
   .summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .content-grid {
-    grid-template-columns: 1fr;
   }
 }
 
