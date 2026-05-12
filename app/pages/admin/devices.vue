@@ -1,5 +1,6 @@
 <template>
   <div class="devices-page">
+    <UiPageHeader title="Devices" eyebrow="Administration" back-to="/admin" />
     <section class="summary-grid">
       <article class="summary-card summary-total">
         <div class="summary-card-top">
@@ -74,13 +75,10 @@
           <p class="panel-subtitle">{{ filteredBeds.length }} units matched</p>
         </div>
 
-        <button class="panel-action" type="button" :disabled="isRefreshing" @click="refreshInventory">
-          {{ isRefreshing ? 'Refreshing...' : 'Refresh' }}
-        </button>
       </div>
 
-      <div class="table-wrapper">
-        <table class="devices-table">
+      <div class="data-table-wrap">
+        <table class="data-table">
           <thead>
             <tr>
               <th>MAC / UUID</th>
@@ -116,56 +114,6 @@
       </div>
     </section>
 
-    <section class="health-strip">
-      <div class="panel-header health-header">
-        <div>
-          <p class="panel-eyebrow">Connection health</p>
-          <h3 class="panel-title">Heartbeat snapshot</h3>
-          <p class="panel-subtitle">Quick view of the most recent active devices in scope.</p>
-        </div>
-      </div>
-
-      <div class="health-grid">
-        <article v-for="card in healthCards" :key="card.mac" class="health-card" :class="{ 'health-card--online': card.isOnline }">
-          <div class="health-card-top">
-            <div>
-              <p class="health-mac">{{ card.mac }}</p>
-              <h4 class="health-name">{{ card.name }}</h4>
-            </div>
-            <span :class="['health-state', card.isOnline ? 'health-state--online' : 'health-state--offline']">{{ card.isOnline ? 'ON' : 'OFF' }}</span>
-          </div>
-
-          <div class="health-visual" aria-hidden="true">
-            <div v-if="card.isOnline" class="sparkline">
-              <span
-                v-for="(bar, index) in card.sparkline"
-                :key="`${card.mac}-${index}`"
-                class="spark-bar"
-                :style="{ height: `${bar}%` }"
-              />
-            </div>
-            <div v-else class="health-visual-empty">
-              <span class="health-visual-text">{{ card.lastSeenLabel }}</span>
-            </div>
-          </div>
-
-          <div class="health-meta">
-            <div>
-              <span class="health-meta-label">Connection age</span>
-              <strong>{{ card.connectionAge }}</strong>
-            </div>
-            <div>
-              <span class="health-meta-label">Session count</span>
-              <strong>{{ card.sessionCount }}</strong>
-            </div>
-            <div>
-              <span class="health-meta-label">Signal freshness</span>
-              <strong :class="['health-freshness', card.freshnessTone]">{{ card.signalFreshness }}</strong>
-            </div>
-          </div>
-        </article>
-      </div>
-    </section>
 
     <DeviceEditModal :is-open="isEditing" :is-saving="isSaving" :device="editingBed" :owner-options="ownerOptions" @close="closeModal" @save="saveChanges" />
   </div>
@@ -183,16 +131,13 @@ const {
   accessibleBeds,
   deviceStats,
   filteredBeds,
-  healthCards,
   ownerOptions,
   filters,
   lastInventorySync,
   canEditDevices,
   isEditing,
   isSaving,
-  isRefreshing,
   editingBed,
-  refreshInventory,
   checkConnections,
   editDevice,
   closeModal,
@@ -306,28 +251,6 @@ const selectFilterOption = (field, value) => {
 .edit-button:hover { border-color: rgba(37, 89, 189, 0.24); box-shadow: 0 12px 24px rgba(37, 89, 189, 0.08); color: #2559bd; transform: translateY(-1px); }
 .edit-button:focus { outline: none; box-shadow: 0 0 0 4px rgba(37, 89, 189, 0.12); }
 .edit-icon { font-size: 1rem; line-height: 1; }
-.health-strip { display: flex; flex-direction: column; gap: 18px; }
-.health-header { padding: 0; }
-.health-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-.health-card { display: flex; flex-direction: column; gap: 16px; min-height: 220px; padding: 18px; border-radius: 22px; border: 1px solid rgba(148, 163, 184, 0.16); background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 250, 252, 0.92)); box-shadow: 0 14px 30px rgba(15, 23, 42, 0.04); }
-.health-card--online { border-color: rgba(16, 185, 129, 0.22); }
-.health-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.health-mac { margin: 0 0 4px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b; }
-.health-name { margin: 0; font-size: 0.98rem; font-weight: 900; color: var(--text-main); }
-.health-state { padding: 7px 10px; border-radius: 999px; font-size: 0.68rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; }
-.health-state--online { color: #047857; background: rgba(16, 185, 129, 0.12); }
-.health-state--offline { color: #b91c1c; background: rgba(239, 68, 68, 0.12); }
-.health-visual { display: flex; align-items: center; justify-content: center; min-height: 72px; }
-.sparkline { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); align-items: end; gap: 5px; width: 100%; min-height: 58px; padding: 8px 0 0; }
-.spark-bar { display: block; width: 100%; border-radius: 999px; background: linear-gradient(180deg, #ff9b9b, #ef4444); box-shadow: 0 6px 16px rgba(239, 68, 68, 0.16); opacity: 0.88; }
-.health-visual-empty { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 58px; }
-.health-visual-text { font-size: 0.7rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8; text-align: center; }
-.health-meta { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: auto; }
-.health-meta div { display: flex; flex-direction: column; gap: 4px; padding-top: 8px; border-top: 1px solid rgba(148, 163, 184, 0.14); }
-.health-meta-label { font-size: 0.66rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; color: #64748b; }
-.health-meta strong { font-size: 0.82rem; font-weight: 800; color: var(--text-main); }
-.health-freshness { display: inline-flex; }
-.health-freshness { padding: 5px 10px; border-radius: 999px; width: fit-content; font-size: 0.72rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
 .search-chip, .btn-reset, .edit-button { font-family: inherit; }
 .search-chip { font-size: 0.66rem; letter-spacing: 0.16em; font-weight: 900; }
 .btn-reset { font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; }
@@ -337,6 +260,5 @@ const selectFilterOption = (field, value) => {
 .freshness-stale { color: #b45309; }
 .freshness-silent { color: #b91c1c; }
 @media (max-width: 900px) { .summary-grid { grid-template-columns: 1fr; } .panel-header { flex-direction: column; align-items: flex-start; } }
-@media (max-width: 900px) { .health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 768px) { .filters-panel { align-items: stretch; } .search-box, .select-group { flex: 1 1 100%; max-width: none; } .select-group { justify-content: stretch; } .btn-reset { flex: 1 1 160px; min-width: 0; } .health-grid { grid-template-columns: 1fr; } .health-meta { grid-template-columns: 1fr; } .health-card { min-height: unset; } }
+@media (max-width: 768px) { .filters-panel { align-items: stretch; } .search-box, .select-group { flex: 1 1 100%; max-width: none; } .select-group { justify-content: stretch; } .btn-reset { flex: 1 1 160px; min-width: 0; } }
 </style>

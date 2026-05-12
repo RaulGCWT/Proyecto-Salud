@@ -55,8 +55,8 @@
             </button>
           </div>
 
-          <div class="table-wrapper">
-            <table class="admin-table">
+          <div class="data-table-wrap">
+            <table class="data-table">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -66,7 +66,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="!filteredStaff.length" class="admin-table__empty">
+                <tr v-if="!filteredStaff.length" class="data-table__empty">
                   <td colspan="4">No staff members yet.</td>
                 </tr>
                 <tr v-for="member in filteredStaff" :key="member.id">
@@ -101,8 +101,8 @@
             </button>
           </div>
 
-          <div class="table-wrapper">
-            <table class="admin-table">
+          <div class="data-table-wrap">
+            <table class="data-table">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -114,7 +114,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="!filteredResidents.length" class="admin-table__empty">
+                <tr v-if="!filteredResidents.length" class="data-table__empty">
                   <td colspan="6">No residents yet.</td>
                 </tr>
                 <tr v-for="resident in filteredResidents" :key="resident.id">
@@ -149,8 +149,8 @@
             </button>
           </div>
 
-          <div class="table-wrapper">
-            <table class="admin-table">
+          <div class="data-table-wrap">
+            <table class="data-table">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -162,7 +162,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="!filteredFamilies.length" class="admin-table__empty">
+                <tr v-if="!filteredFamilies.length" class="data-table__empty">
                   <td colspan="6">No family users yet.</td>
                 </tr>
                 <tr v-for="relative in filteredFamilies" :key="relative.id">
@@ -206,8 +206,8 @@
             <span class="section-count">{{ filteredInvitations.length }} visible</span>
           </div>
 
-          <div class="table-wrapper">
-            <table class="admin-table">
+          <div class="data-table-wrap">
+            <table class="data-table">
               <thead>
                 <tr>
                   <th>Email</th>
@@ -219,7 +219,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="!filteredInvitations.length" class="admin-table__empty">
+                <tr v-if="!filteredInvitations.length" class="data-table__empty">
                   <td colspan="6">No invitations match the current filter.</td>
                 </tr>
                 <tr v-for="invite in filteredInvitations" :key="invite.id">
@@ -249,8 +249,8 @@
             </div>
           </div>
 
-          <div class="table-wrapper">
-            <table class="admin-table">
+          <div class="data-table-wrap">
+            <table class="data-table">
               <thead>
                 <tr>
                   <th>Name</th>
@@ -259,10 +259,10 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-if="resourcesLoading" class="admin-table__empty">
+                <tr v-if="resourcesLoading" class="data-table__empty">
                   <td colspan="3">Loading devices...</td>
                 </tr>
-                <tr v-else-if="!filteredDevices.length" class="admin-table__empty">
+                <tr v-else-if="!filteredDevices.length" class="data-table__empty">
                   <td colspan="3">No devices found in the database.</td>
                 </tr>
                 <tr v-else v-for="device in filteredDevices" :key="device.id">

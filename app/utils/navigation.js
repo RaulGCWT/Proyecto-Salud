@@ -5,8 +5,7 @@ export const APP_NAV_ITEMS = [
   { to: '/alerts', label: 'Alerts', icon: 'notifications_active', permission: PERMISSIONS.ALERTS_VIEW },
   { to: '/rules', label: 'Rules', icon: 'policy', permission: PERMISSIONS.RULES_VIEW },
   { separator: true, permission: PERMISSIONS.USER_ADMINISTRATION },
-  { to: '/admin/devices', label: 'Devices', icon: 'sensors', permission: PERMISSIONS.DEVICES_VIEW },
-  { to: '/admin/users', label: 'Admin', icon: 'admin_panel_settings', permission: PERMISSIONS.USER_ADMINISTRATION },
+  { to: '/admin', label: 'Admin', icon: 'admin_panel_settings', permission: PERMISSIONS.USER_ADMINISTRATION },
   { to: '/profile', label: 'Profile', icon: 'account_circle', permission: PERMISSIONS.PROFILE_VIEW }
 ]
 

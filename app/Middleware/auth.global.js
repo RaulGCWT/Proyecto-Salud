@@ -17,11 +17,6 @@ export default defineNuxtRouteMiddleware((to, from) => {
 
   // 3. CONTROL DE PERMISOS (Solo si ya estás logueado)
   if (auth.accessToken) {
-    // Redirect /admin base a la primera sección accesible
-    if (to.path === '/admin') {
-      return navigateTo('/admin/devices')
-    }
-
     // Buscamos si la ruta a la que va el usuario está en nuestra lista de navegación
     const menuItem = APP_NAV_ITEMS.find(item => item.to === to.path)
 
