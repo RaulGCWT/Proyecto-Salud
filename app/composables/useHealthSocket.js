@@ -11,12 +11,18 @@ export const useHealthSocket = () => {
   const auth = useAuthStore()
 
   const connect = () => {
-    if (socket) return socket
-
     const token = auth.idToken || auth.accessToken || ''
     if (!token) return null
 
-    socket = io('http://localhost:5000', {
+    if (socket?.connected) return socket
+
+    if (socket) {
+      socket.disconnect()
+      socket = null
+    }
+
+    const apiBase = useNuxtApp().$config.public.apiBase
+    socket = io(apiBase, {
       auth: {
         token
       }

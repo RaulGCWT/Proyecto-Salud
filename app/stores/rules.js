@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { useAuthStore } from './auth'
 import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 
-const RULES_API_BASE = 'http://localhost:5000/rules'
+const getRulesApiBase = () => `${useNuxtApp().$config.public.apiBase}/rules`
 
 const scopedHeaders = () => {
   return buildBackendAuthHeaders(useAuthStore())
@@ -15,7 +15,7 @@ export const useRulesStore = defineStore('rules', {
   actions: {
     async fetchRules() {
       try {
-        const data = await $fetch(RULES_API_BASE, { headers: scopedHeaders() })
+        const data = await $fetch(getRulesApiBase(), { headers: scopedHeaders() })
         this.rules = data || []
       } catch (err) {
         console.error('Error fetchRules:', err)
@@ -23,7 +23,7 @@ export const useRulesStore = defineStore('rules', {
     },
     async addRule(rule) {
       try {
-        await $fetch(RULES_API_BASE, {
+        await $fetch(getRulesApiBase(), {
           method: 'POST',
           headers: scopedHeaders(),
           body: {
@@ -44,7 +44,7 @@ export const useRulesStore = defineStore('rules', {
     },
     async updateRule(id, rule) {
       try {
-        await $fetch(`${RULES_API_BASE}/${id}`, {
+        await $fetch(`${getRulesApiBase()}/${id}`, {
           method: 'PUT',
           headers: scopedHeaders(),
           body: {
@@ -65,7 +65,7 @@ export const useRulesStore = defineStore('rules', {
     },
     async deleteRule(id) {
       try {
-        await $fetch(`${RULES_API_BASE}/${id}`, {
+        await $fetch(`${getRulesApiBase()}/${id}`, {
           method: 'DELETE',
           headers: scopedHeaders()
         })

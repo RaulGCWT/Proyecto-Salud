@@ -80,7 +80,8 @@ const submitting = ref(false)
 const errorMessage = ref('')
 const form = ref({ name: '', email: '', password: '' })
 
-const INVITES_API_BASE = 'http://localhost:5000/invites'
+const { public: { apiBase } } = useRuntimeConfig()
+const INVITES_API_BASE = `${apiBase}/invites`
 
 onMounted(async () => {
   if (!token) {

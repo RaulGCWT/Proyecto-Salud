@@ -5,10 +5,7 @@ import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 import { buildMetricBatch, mergeHistory, normalizeAlertStatus } from '~/utils/healthData'
 import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
 
-const EVENTS_API_BASE = 'http://localhost:5000/events'
-const TELEMETRY_HISTORY_API_BASE = 'http://localhost:5000/telemetry/history'
-const TELEMETRY_API_BASE = 'http://localhost:5000/telemetry/latest'
-const DEVICES_API_BASE = 'http://localhost:5000/devices'
+const getApiBase = () => useNuxtApp().$config.public.apiBase
 const MAX_TELEMETRY_RECORDS = 2000
 
 const normalizeTelemetryRecord = (record = {}, fallback = {}) => {
@@ -39,9 +36,9 @@ const mergeTelemetryRecords = (existingRecords = [], incomingRecords = []) => {
       normalizeScopeValue(record.deviceId),
       normalizeSideValue(record.side),
       Number(record.ts || 0),
-      Number(record.heartRate ?? 0),
-      Number(record.respiratoryRate ?? 0),
-      Number(record.hrv ?? 0),
+      Math.round(record.heartRate ?? 0),
+      Math.round(record.respiratoryRate ?? 0),
+      Math.round(record.hrv ?? 0),
       record.isOccupied ? '1' : '0'
     ].join('|')
 
@@ -245,7 +242,7 @@ export const useHealthStore = defineStore('health', {
 
     async fetchAlertHistory() {
       try {
-        const data = await $fetch(EVENTS_API_BASE, {
+        const data = await $fetch(`${getApiBase()}/events`, {
           headers: scopedHeaders()
         })
         const events = Array.isArray(data) ? data : []
@@ -285,7 +282,7 @@ export const useHealthStore = defineStore('health', {
         const scopeMac = normalizeScopeValue(mac || this.selectedMac || this.currentMac || this.deviceInventory[0]?.mac)
         if (!scopeMac) return
 
-        const data = await $fetch(TELEMETRY_HISTORY_API_BASE, {
+        const data = await $fetch(`${getApiBase()}/telemetry/history`, {
           params: { limit, mac: scopeMac },
           headers: scopedHeaders()
         })
@@ -319,7 +316,7 @@ export const useHealthStore = defineStore('health', {
         }
 
         const responses = await Promise.all(
-          inventoryMacs.map((mac) => $fetch(TELEMETRY_HISTORY_API_BASE, {
+          inventoryMacs.map((mac) => $fetch(`${getApiBase()}/telemetry/history`, {
             params: { limit, mac },
             headers: scopedHeaders()
           }).catch(() => []))
@@ -345,7 +342,7 @@ export const useHealthStore = defineStore('health', {
 
     async fetchDeviceInventory() {
       try {
-        const data = await $fetch(DEVICES_API_BASE, {
+        const data = await $fetch(`${getApiBase()}/devices`, {
           headers: scopedHeaders()
         })
 
@@ -358,7 +355,7 @@ export const useHealthStore = defineStore('health', {
 
     async fetchLatestTelemetry() {
       try {
-        const data = await $fetch(TELEMETRY_API_BASE, {
+        const data = await $fetch(`${getApiBase()}/telemetry/latest`, {
           headers: scopedHeaders()
         })
         if (!data || !data.lastReading) return
@@ -378,7 +375,7 @@ export const useHealthStore = defineStore('health', {
 
         if (target) target.status = normalized
 
-        const response = await $fetch(`${EVENTS_API_BASE}/${alertId}/status`, {
+        const response = await $fetch(`${getApiBase()}/events/${alertId}/status`, {
           method: 'PUT',
           headers: scopedHeaders(),
           body: { status: normalized }
@@ -409,7 +406,7 @@ export const useHealthStore = defineStore('health', {
           headers: scopedHeaders()
         }
 
-        await $fetch(`${EVENTS_API_BASE}/${alertId}`, requestOptions)
+        await $fetch(`${getApiBase()}/events/${alertId}`, requestOptions)
       } catch (err) {
         console.error('Error borrando alerta:', err)
         this.alertHistory = currentHistory
@@ -418,15 +415,15 @@ export const useHealthStore = defineStore('health', {
     },
 
     async clearAllAlerts() {
-      if (!confirm('Seguro que quieres borrar todas las alertas de la base de datos?')) return
       try {
-        await $fetch(`${EVENTS_API_BASE}/clear`, {
+        await $fetch(`${getApiBase()}/events/clear`, {
           method: 'DELETE',
           headers: scopedHeaders()
         })
         this.alertHistory = []
       } catch (err) {
         console.error('Error al vaciar historial:', err)
+        throw err
       }
     },
 

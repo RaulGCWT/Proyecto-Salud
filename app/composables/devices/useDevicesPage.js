@@ -6,14 +6,14 @@ import { PERMISSIONS } from '~/utils/permissions'
 import { filterDevicesByAccessContext } from '~/utils/accessContext'
 import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 
-const DEVICES_API_BASE = 'http://localhost:5000/devices'
-const SOCKET_URL = 'http://localhost:5000'
+import { CONNECTION_TIMEOUT_MS } from '~/utils/config'
+
 const INVENTORY_REFRESH_INTERVAL = 5000
-const CONNECTION_TIMEOUT_MS = 45000
 const DEFAULT_DEVICE_TYPE = 'Standard'
 const ALLOWED_DEVICE_TYPES = new Set(['Critical Care', 'Standard', 'Double Bed'])
 
 export function useDevicesPage() {
+  const { public: { apiBase } } = useRuntimeConfig()
   const auth = useAuthStore()
   const health = useHealthStore()
   const beds = ref([])
@@ -187,7 +187,7 @@ export function useDevicesPage() {
     if (isRefreshing.value) return
     isRefreshing.value = true
     try {
-      const response = await $fetch(DEVICES_API_BASE, { headers: devicesHeaders.value })
+      const response = await $fetch(`${apiBase}/devices`, { headers: devicesHeaders.value })
       const inventory = Array.isArray(response) ? response : []
       inventory.forEach(mergeDatabaseDevice)
       lastInventorySync.value = new Date().toLocaleString()
@@ -279,7 +279,7 @@ export function useDevicesPage() {
 
     isSaving.value = true
     try {
-      await $fetch(`${DEVICES_API_BASE}/${editingBed.value.mac}`, {
+      await $fetch(`${apiBase}/devices/${editingBed.value.mac}`, {
         method: 'PUT',
         headers: devicesHeaders.value,
         body: {
@@ -350,7 +350,7 @@ export function useDevicesPage() {
 
     const socketToken = auth.idToken || auth.accessToken || ''
     if (socketToken) {
-      socketClient.value = io(SOCKET_URL, {
+      socketClient.value = io(apiBase, {
         auth: {
           token: socketToken
         }

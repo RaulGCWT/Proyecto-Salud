@@ -320,14 +320,15 @@ useHead({
 })
 
 const rulesStore = useRulesStore()
+const { public: { apiBase } } = useRuntimeConfig()
 const auth = useAuthStore()
 const health = useHealthStore()
 const backendHeaders = computed(() => buildBackendAuthHeaders(auth))
 
-const STAFF_API_BASE = 'http://localhost:5000/staff-members'
-const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
-const DEVICES_API_BASE = 'http://localhost:5000/devices'
-const FAMILY_USERS_API_BASE = 'http://localhost:5000/family-users'
+const STAFF_API_BASE = `${apiBase}/staff-members`
+const RESIDENTS_API_BASE = `${apiBase}/residents`
+const DEVICES_API_BASE = `${apiBase}/devices`
+const FAMILY_USERS_API_BASE = `${apiBase}/family-users`
 
 const searchQuery = ref('')
 const assignmentFilter = ref('all')

@@ -5,11 +5,9 @@ import { useRulesStore } from '~/stores/rules'
 import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
 
-const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
-const DEVICE_STREAM_MODE_API_BASE = 'http://localhost:5000/devices'
+import { HEARTBEAT_TIMEOUT_SECONDS, TELEMETRY_TIMEOUT_SECONDS } from '~/utils/config'
+
 const REALTIME_DURATION_SECONDS = 30
-const HEARTBEAT_TIMEOUT_SECONDS = 45
-const TELEMETRY_TIMEOUT_SECONDS = 60
 
 function formatRelativeSeconds(seconds = 0) {
   const safeSeconds = Math.max(0, Math.floor(seconds))
@@ -25,6 +23,7 @@ function formatRelativeSeconds(seconds = 0) {
 
 
 export function useDeviceDashboard(route) {
+  const { public: { apiBase } } = useRuntimeConfig()
   const auth = useAuthStore()
   const health = useHealthStore()
   const rulesStore = useRulesStore()
@@ -33,7 +32,7 @@ export function useDeviceDashboard(route) {
   const realtimeSecondsLeft = ref(0)
   const realtimeTimerId = ref(null)
 
-  const { data: residentsData } = useFetch(RESIDENTS_API_BASE, {
+  const { data: residentsData } = useFetch(`${apiBase}/residents`, {
     server: false,
     headers: buildBackendAuthHeaders(auth),
     default: () => []
@@ -47,7 +46,7 @@ export function useDeviceDashboard(route) {
 
     try {
       health.setSelectedMac(routeMac)
-      await Promise.all([
+      await Promise.allSettled([
         rulesStore.fetchRules(),
         health.fetchDeviceInventory(),
         health.fetchAlertHistory()
@@ -86,7 +85,7 @@ export function useDeviceDashboard(route) {
     isRealtimePending.value = true
 
     try {
-      const response = await $fetch(`${DEVICE_STREAM_MODE_API_BASE}/${routeMac}/stream-mode`, {
+      const response = await $fetch(`${apiBase}/devices/${routeMac}/stream-mode`, {
         method: 'POST',
         headers: buildBackendAuthHeaders(auth),
         body: {

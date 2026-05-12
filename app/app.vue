@@ -14,7 +14,7 @@
 import { useHealthStore } from '~/stores/health'
 import { useHealthSocket } from '~/composables/useHealthSocket'
 const health = useHealthStore()
-const { connect: connectHealthSocket } = useHealthSocket()
+const { connect: connectHealthSocket, disconnect: disconnectHealthSocket } = useHealthSocket()
 const activeToast = ref(null)
 const telemetryRefreshInterval = ref(null)
 const route = useRoute()
@@ -26,16 +26,17 @@ onMounted(async () => {
   await health.fetchLatestTelemetry()
   await health.fetchTelemetryHistoryForInventory(200)
   connectHealthSocket()
+  // Solo refresca inventario cada 60s (telemetría llega por WebSocket en tiempo real)
   telemetryRefreshInterval.value = window.setInterval(() => {
     health.fetchDeviceInventory()
-    health.fetchLatestTelemetry()
-  }, 5000)
+  }, 60000)
 })
 
 onBeforeUnmount(() => {
   if (telemetryRefreshInterval.value) {
     window.clearInterval(telemetryRefreshInterval.value)
   }
+  disconnectHealthSocket()
 })
 
 // Vigilamos si llega una nueva alerta al Store

@@ -2,8 +2,14 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
-  ssr:false,
+  ssr: false,
   modules: [
-    '@pinia/nuxt','@pinia-plugin-persistedstate/nuxt' 
+    '@pinia/nuxt',
+    '@pinia-plugin-persistedstate/nuxt'
   ],
+  runtimeConfig: {
+    public: {
+      apiBase: 'http://localhost:5000'
+    }
+  }
 })

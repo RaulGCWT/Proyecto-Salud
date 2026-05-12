@@ -5,9 +5,7 @@ import { useAuthStore } from '~/stores/auth'
 import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 import { matchesDeviceRuleScope, normalizeScopeValue } from '~/utils/telemetryScope'
 
-const OFFLINE_TIMEOUT_SECONDS = 60
-const HEARTBEAT_TIMEOUT_SECONDS = 45
-const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
+import { HEARTBEAT_TIMEOUT_SECONDS, OFFLINE_TIMEOUT_SECONDS } from '~/utils/config'
 
 function buildTelemetrySeries(records = [], metricKey = 'heartRate', limit = 10) {
   return [...records]
@@ -100,12 +98,13 @@ function findExistingDeviceKey(deviceMap, aliases = new Set()) {
 }
 
 export function useDevicesOverview() {
+  const { public: { apiBase } } = useRuntimeConfig()
   const health = useHealthStore()
   const rulesStore = useRulesStore()
   const auth = useAuthStore()
   const searchQuery = ref('')
   const backendHeaders = computed(() => buildBackendAuthHeaders(auth))
-  const { data: residentsData } = useFetch(RESIDENTS_API_BASE, {
+  const { data: residentsData } = useFetch(`${apiBase}/residents`, {
     server: false,
     headers: backendHeaders.value,
     default: () => []

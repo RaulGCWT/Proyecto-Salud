@@ -1,4 +1,5 @@
 import { useAuthStore } from '~/stores/auth'
+import { useHealthStore } from '~/stores/health'
 import { PERMISSIONS } from '~/utils/permissions'
 import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 import {
@@ -18,11 +19,6 @@ import {
   sameId
 } from '~/utils/users/usersMappers'
 
-const STAFF_API_BASE = 'http://localhost:5000/staff-members'
-const RESIDENTS_API_BASE = 'http://localhost:5000/residents'
-const DEVICES_API_BASE = 'http://localhost:5000/devices'
-const FAMILY_USERS_API_BASE = 'http://localhost:5000/family-users'
-const INVITES_API_BASE = 'http://localhost:5000/invites'
 
 const tabs = [
   { id: 'all', label: 'All' },
@@ -45,8 +41,15 @@ function buildUpdateEndpoint(baseUrl, id) {
 }
 
 export function useUsersManagement() {
+  const { public: { apiBase } } = useRuntimeConfig()
   const auth = useAuthStore()
+  const health = useHealthStore()
   const backendHeaders = computed(() => buildBackendAuthHeaders(auth))
+  const STAFF_API_BASE = `${apiBase}/staff-members`
+  const RESIDENTS_API_BASE = `${apiBase}/residents`
+  const DEVICES_API_BASE = `${apiBase}/devices`
+  const FAMILY_USERS_API_BASE = `${apiBase}/family-users`
+  const INVITES_API_BASE = `${apiBase}/invites`
   const search = ref('')
   const activeTab = ref('all')
   const modal = ref({ type: '' })
@@ -245,7 +248,7 @@ export function useUsersManagement() {
 
   const saveStaffMember = async () => {
     if (!canCreateRecords.value && !staffForm.value.id) {
-      alert('You do not have permission to create staff users.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'You do not have permission to create staff users.' }
       return
     }
 
@@ -267,13 +270,13 @@ export function useUsersManagement() {
       closeModal()
     } catch (error) {
       console.error('Error saving staff member:', error)
-      alert('No se pudo guardar el staff.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not save staff member.' }
     }
   }
 
   const saveResidentRecord = async () => {
     if (!canCreateRecords.value && !residentForm.value.id) {
-      alert('You do not have permission to create residents.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'You do not have permission to create residents.' }
       return
     }
 
@@ -291,7 +294,7 @@ export function useUsersManagement() {
         body: payload
       })
 
-      await Promise.all([
+      await Promise.allSettled([
         refreshResidents(),
         refreshFamilyUsers(),
         refreshInvites()
@@ -299,13 +302,13 @@ export function useUsersManagement() {
       closeModal()
     } catch (error) {
       console.error('Error saving resident:', error)
-      alert('No se pudo guardar el residente.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not save resident.' }
     }
   }
 
   const saveFamilyInvite = async () => {
     if (!canCreateRecords.value) {
-      alert('You do not have permission to create invitations.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'You do not have permission to create invitations.' }
       return
     }
 
@@ -313,7 +316,7 @@ export function useUsersManagement() {
 
     const resident = findResidentById(familyForm.value.residentId)
     if (!resident) {
-      alert('Selecciona un residente valido antes de crear la invitacion.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Select a valid resident before creating the invitation.' }
       return
     }
 
@@ -330,15 +333,15 @@ export function useUsersManagement() {
 
       if (invitation?.acceptUrl && navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(invitation.acceptUrl)
-        alert(`Invitation created. Link copied to clipboard:\n${invitation.acceptUrl}`)
+        health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Invitation created and link copied to clipboard.' }
       } else {
-        alert(`Invitation created:\n${invitation?.acceptUrl || 'Link unavailable'}`)
+        health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Invitation created.' }
       }
 
       closeModal()
     } catch (error) {
       console.error('Error creating invitation:', error)
-      alert('No se pudo crear la invitacion.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not create invitation.' }
     }
   }
 
@@ -359,7 +362,7 @@ export function useUsersManagement() {
       closeModal()
     } catch (error) {
       console.error('Error saving family user:', error)
-      alert('Could not update the family user.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not update the family user.' }
     }
   }
 
@@ -393,7 +396,7 @@ export function useUsersManagement() {
       await refreshFamilyUsers()
     } catch (error) {
       console.error('Error updating family user state:', error)
-      alert('Could not update the family user status.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not update the family user status.' }
     }
   }
 
@@ -407,14 +410,14 @@ export function useUsersManagement() {
     try {
       if (navigator?.clipboard?.writeText) {
         await navigator.clipboard.writeText(acceptUrl)
-        alert('Invitation link copied.')
+        health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Invitation link copied.' }
         return
       }
     } catch (error) {
       console.error('Could not copy invite link:', error)
     }
 
-    alert(acceptUrl)
+    health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not copy link automatically.' }
   }
 
   const updateInviteState = async (inviteId, state) => {
@@ -428,7 +431,7 @@ export function useUsersManagement() {
       await refreshInvites()
     } catch (error) {
       console.error('Error updating invitation state:', error)
-      alert('Could not update invitation state.')
+      health.lastToast = { id: Date.now(), sensor: 'SYSTEM', message: 'Could not update invitation state.' }
     }
   }
 
