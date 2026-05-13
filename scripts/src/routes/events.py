@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from src.auth import get_scoped_owner_id, require_user_context
+from src.database import scan_all
 from src.database import table_events
 
 events_bp = Blueprint('events', __name__)
@@ -24,8 +25,7 @@ def get_events():
         return auth_error
 
     try:
-        response = table_events.scan()
-        items = response.get('Items', [])
+        items = scan_all(table_events)
         scoped_owner_id = get_scoped_owner_id(user_context)
 
         if scoped_owner_id:
@@ -95,7 +95,7 @@ def clear_all_events():
 
     try:
         scoped_owner_id = get_scoped_owner_id(user_context)
-        items = table_events.scan().get('Items', [])
+        items = scan_all(table_events)
 
         if scoped_owner_id:
             items = [item for item in items if str(item.get('ownerId') or '') == scoped_owner_id]

@@ -2,6 +2,7 @@ import time
 import uuid
 from decimal import Decimal
 
+from src.database import scan_all
 from src.database import table_devices, table_events, table_rules
 
 
@@ -88,7 +89,7 @@ def rule_matches_device_scope(rule, device_context):
 
 def check_rules_and_save(data):
     try:
-        rules = table_rules.scan().get("Items", [])
+        rules = scan_all(table_rules)
         print(f"[DEBUG] Rules loaded: {len(rules)}")
         now = time.time()
         device_context = load_device_context(data)

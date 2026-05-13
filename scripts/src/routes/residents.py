@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from src.auth import require_user_context
+from src.database import scan_all
 from src.database import table_devices, table_residents
 from src.services.common import upsert_item
 
@@ -86,8 +87,7 @@ def handle_residents():
     if auth_error:
         return auth_error
 
-    response = table_residents.scan()
-    return jsonify(response.get('Items', [])), 200
+    return jsonify(scan_all(table_residents)), 200
 
 
 @residents_bp.route('/residents/<resident_id>', methods=['PUT'])

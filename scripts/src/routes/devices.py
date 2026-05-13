@@ -3,6 +3,7 @@ import time
 from flask import Blueprint, jsonify, request
 
 from src.auth import require_user_context
+from src.database import scan_all
 from src.database import table_devices
 from src.mqtt_handler import build_device_command_topic, publish_device_command
 
@@ -77,8 +78,7 @@ def handle_devices():
     if auth_error:
         return auth_error
 
-    response = table_devices.scan()
-    items = response.get('Items', [])
+    items = scan_all(table_devices)
     if not items:
         return jsonify([]), 200
 

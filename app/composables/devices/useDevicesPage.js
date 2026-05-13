@@ -8,7 +8,7 @@ import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 
 import { CONNECTION_TIMEOUT_MS } from '~/utils/config'
 
-const INVENTORY_REFRESH_INTERVAL = 5000
+const INVENTORY_REFRESH_INTERVAL = 60000
 const DEFAULT_DEVICE_TYPE = 'Standard'
 const ALLOWED_DEVICE_TYPES = new Set(['Critical Care', 'Standard', 'Double Bed'])
 

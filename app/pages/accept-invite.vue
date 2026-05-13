@@ -115,8 +115,7 @@ const completeRegistration = async () => {
       }
     })
 
-    alert('Registro completado correctamente.')
-    router.push('/login')
+    router.push('/login?registered=1')
   } catch (error) {
     errorMessage.value = 'No se pudo completar el registro o la invitacion ya fue usada.'
   } finally {

@@ -17,6 +17,12 @@ export default defineNuxtRouteMiddleware((to, from) => {
 
   // 3. CONTROL DE PERMISOS (Solo si ya estás logueado)
   if (auth.accessToken) {
+    // Detectar token expirado y redirigir con mensaje
+    if (to.path !== '/login' && auth.isTokenExpired()) {
+      auth.logout()
+      return navigateTo('/login?expired=1')
+    }
+
     // Buscamos si la ruta a la que va el usuario está en nuestra lista de navegación
     const menuItem = APP_NAV_ITEMS.find(item => item.to === to.path)
 

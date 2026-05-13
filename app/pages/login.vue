@@ -18,6 +18,16 @@
             </div>
           </div>
 
+          <div v-if="registeredSuccess" class="success-banner" role="status">
+            <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+            <span>Registration completed. You can now log in.</span>
+          </div>
+
+          <div v-if="sessionExpired" class="warning-banner" role="alert">
+            <span class="material-symbols-outlined" aria-hidden="true">timer_off</span>
+            <span>Your session has expired. Please log in again.</span>
+          </div>
+
           <div v-if="errorMessage" class="error-banner" role="alert">
             <span class="material-symbols-outlined" aria-hidden="true">error</span>
             <span>{{ errorMessage }}</span>
@@ -106,6 +116,7 @@ useHead({
   title: 'Login | Clinical Sentinel'
 })
 
+const route = useRoute()
 const auth = useAuthStore()
 const email = ref('')
 const password = ref('')
@@ -114,6 +125,9 @@ const errorMessage = ref('')
 const keepLoggedIn = ref(true)
 const showPassword = ref(false)
 const isDarkMode = ref(false)
+
+const registeredSuccess = computed(() => route.query.registered === '1')
+const sessionExpired = computed(() => route.query.expired === '1')
 
 const loginErrorMessage = computed(() => {
   return 'Invalid credentials. Please try again.'
@@ -274,13 +288,32 @@ watch(keepLoggedIn, (value) => {
   line-height: 1.6;
 }
 
-.error-banner {
+.success-banner, .warning-banner, .error-banner {
   display: inline-flex;
   align-items: center;
   gap: 10px;
   margin-top: 22px;
   padding: 12px 14px;
   border-radius: 16px;
+  font-size: 0.86rem;
+  font-weight: 700;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.success-banner {
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.08);
+  color: #047857;
+}
+
+.warning-banner {
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.08);
+  color: #b45309;
+}
+
+.error-banner {
   border: 1px solid rgba(239, 68, 68, 0.18);
   background: rgba(239, 68, 68, 0.08);
   color: #b91c1c;

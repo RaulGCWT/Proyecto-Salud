@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from src.auth import require_user_context
+from src.database import scan_all
 from src.database import table_family_users
 
 family_users_bp = Blueprint('family_users', __name__)
@@ -12,8 +13,7 @@ def get_family_users():
     if auth_error:
         return auth_error
 
-    response = table_family_users.scan()
-    return jsonify(response.get('Items', [])), 200
+    return jsonify(scan_all(table_family_users)), 200
 
 
 @family_users_bp.route('/family-users/<family_user_id>', methods=['PUT'])

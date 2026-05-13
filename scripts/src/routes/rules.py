@@ -8,6 +8,7 @@ from src.auth import (
     get_scoped_owner_id,
     require_user_context,
 )
+from src.database import scan_all
 from src.database import table_rules
 
 rules_bp = Blueprint('rules', __name__)
@@ -51,8 +52,7 @@ def handle_rules():
     if auth_error:
         return auth_error
 
-    response = table_rules.scan()
-    items = response.get('Items', [])
+    items = scan_all(table_rules)
     scoped_owner_id = get_scoped_owner_id(user_context)
 
     if scoped_owner_id:

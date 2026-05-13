@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from src.auth import require_user_context
+from src.database import scan_all
 from src.database import table_staff_members
 from src.services.common import upsert_item
 
@@ -64,8 +65,7 @@ def handle_staff_members():
     if auth_error:
         return auth_error
 
-    response = table_staff_members.scan()
-    return jsonify(response.get('Items', [])), 200
+    return jsonify(scan_all(table_staff_members)), 200
 
 
 @staff_bp.route('/staff-members/<staff_id>', methods=['PUT'])

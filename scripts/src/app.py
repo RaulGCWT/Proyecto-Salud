@@ -84,6 +84,16 @@ def handle_socket_connect(auth=None):
         return False
 
 
+@app.route('/health', methods=['GET'])
+def health_check():
+    try:
+        from src.database import table_devices
+        table_devices.scan(Limit=1)
+        return jsonify({'status': 'ok', 'database': 'connected'}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'database': str(e)}), 503
+
+
 @app.route('/telemetry/latest', methods=['GET'])
 def get_latest_telemetry_route():
     user_context, auth_error = require_user_context('dashboard:view')

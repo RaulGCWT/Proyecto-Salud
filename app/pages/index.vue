@@ -1,16 +1,10 @@
 <template>
   <div class="overview-page">
-    <section class="overview-topbar">
-      <div class="overview-topbar__copy">
-        <div class="overview-topbar__heading">
-          <p class="overview-topbar__eyebrow">Ward Overview</p>
-          <h1>Clinical Device Overview</h1>
-          <p class="overview-topbar__subtitle">
-            Monitor the full device floor, review active statuses and open the detailed dashboard for each bed.
-          </p>
-        </div>
-      </div>
-    </section>
+    <UiPageHeader
+      eyebrow="Ward Overview"
+      title="Clinical Device Overview"
+      subtitle="Monitor the full device floor, review active statuses and open the detailed dashboard for each bed."
+    />
 
     <section class="overview-stats">
       <article v-for="item in overviewStats" :key="item.key" class="overview-stat" :class="item.tone">
@@ -25,17 +19,9 @@
       </article>
     </section>
 
-    <section class="overview-search-row">
-      <label class="overview-search">
-        <span class="material-symbols-outlined" aria-hidden="true">search</span>
-        <input
-          v-model.trim="searchQuery"
-          type="text"
-          placeholder="Search beds or patients..."
-          autocomplete="off"
-        />
-      </label>
-    </section>
+    <div class="filters-bar">
+      <UiSearchInput v-model="searchQuery" placeholder="Search beds or patients..." />
+    </div>
 
     <section class="overview-grid-shell">
       <div class="overview-grid-shell__header">

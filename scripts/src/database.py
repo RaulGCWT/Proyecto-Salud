@@ -136,6 +136,19 @@ table_staff_members = _resolved_tables["staff_members"]
 table_telemetry = _resolved_tables["telemetry"]
 
 
+def scan_all(table, **kwargs):
+    items = []
+    response = table.scan(**kwargs)
+    items.extend(response.get('Items', []))
+    while 'LastEvaluatedKey' in response:
+        response = table.scan(
+            ExclusiveStartKey=response['LastEvaluatedKey'],
+            **kwargs
+        )
+        items.extend(response.get('Items', []))
+    return items
+
+
 def _create_table_if_missing(table_name):
     # We only auto-create tables in local mode, so a missing table should be fixed here.
     try:

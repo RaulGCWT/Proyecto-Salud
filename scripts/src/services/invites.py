@@ -1,9 +1,11 @@
+import os
 import secrets
 import uuid
 from datetime import datetime, timezone, timedelta
 
 from werkzeug.security import generate_password_hash
 
+from src.database import scan_all
 from src.database import table_invites, table_family_users
 from src.services.common import utc_now_iso
 
@@ -60,7 +62,8 @@ def append_invite_history(invitation, status, changed_at=None):
 
 
 def build_accept_url(token):
-    return f"http://localhost:3000/accept-invite?token={token}"
+    base = os.getenv('FRONTEND_BASE_URL', 'http://localhost:3000').rstrip('/')
+    return f"{base}/accept-invite?token={token}"
 
 
 def sync_invitation_status(invitation, persist=True):
@@ -89,7 +92,7 @@ def serialize_invitation(invitation, persist=True):
 
 
 def get_invitation_by_token(token, persist=True):
-    items = table_invites.scan().get('Items', [])
+    items = scan_all(table_invites)
     invitation = next((item for item in items if item.get('token') == token), None)
     return serialize_invitation(invitation, persist=persist) if invitation else None
 
@@ -101,8 +104,7 @@ def get_invitation_by_id(invite_id, persist=True):
 
 
 def list_invitations():
-    response = table_invites.scan()
-    return [serialize_invitation(item) for item in response.get('Items', [])]
+    return [serialize_invitation(item) for item in scan_all(table_invites)]
 
 
 def create_invitation(payload):
