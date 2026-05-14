@@ -3,7 +3,7 @@ from flask import Blueprint, jsonify, request
 from src.auth import require_user_context
 from src.database import scan_all
 from src.database import table_devices, table_residents
-from src.services.common import upsert_item
+from src.services.common import upsert_item, utc_now_iso
 
 residents_bp = Blueprint('residents', __name__)
 
@@ -32,6 +32,19 @@ def _sync_resident_device_assignment(previous_device_id='', next_device_id='', r
         if next_device:
             next_device['residentId'] = resident_id
             table_devices.put_item(Item=next_device)
+
+
+def _append_assignment_history(resident, previous_device_id):
+    if not previous_device_id:
+        return
+    history = list(resident.get('assignmentHistory') or [])
+    prev_device = table_devices.get_item(Key={'id': previous_device_id}).get('Item') or {}
+    history.append({
+        'deviceId': previous_device_id,
+        'deviceName': str(prev_device.get('name') or previous_device_id),
+        'unassignedAt': utc_now_iso()
+    })
+    resident['assignmentHistory'] = history
 
 
 def _build_resident_item(existing=None, payload=None, resident_id='', owner_id=''):
@@ -119,6 +132,10 @@ def update_resident(resident_id):
     if not resident:
         return jsonify({"error": "Resident name is required"}), 400
 
+    next_device_id = _normalize_text(resident.get('deviceId'))
+    if previous_device_id and previous_device_id != next_device_id:
+        _append_assignment_history(resident, previous_device_id)
+
     table_residents.put_item(Item=resident)
-    _sync_resident_device_assignment(previous_device_id, resident.get('deviceId'), current_id)
+    _sync_resident_device_assignment(previous_device_id, next_device_id, current_id)
     return jsonify(resident), 200

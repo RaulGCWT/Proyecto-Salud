@@ -94,9 +94,9 @@ const badgeLabel = computed(() => {
   gap: 18px;
   padding: 22px;
   border-radius: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.94));
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.05);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  box-shadow: 0 18px 40px var(--surface-shadow);
   transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
@@ -158,8 +158,8 @@ const badgeLabel = computed(() => {
 .metric-box {
   padding: 14px;
   border-radius: 18px;
-  background: rgba(248, 250, 252, 0.92);
-  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: var(--surface-panel-strong);
+  border: 1px solid var(--surface-border);
 }
 
 .metric-box__label {

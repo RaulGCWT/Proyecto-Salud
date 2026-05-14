@@ -96,7 +96,9 @@
               <td>
                 <div class="device-name">
                   <strong>{{ bed.name }}</strong>
-                  <span class="device-subtitle">Assigned owner: {{ bed.ownerId || 'Unassigned' }}</span>
+                  <span class="device-subtitle">
+                    {{ getResidentName(bed.residentId) || (bed.ownerId ? `Owner: ${bed.ownerId}` : 'Unassigned') }}
+                  </span>
                 </div>
               </td>
               <td><span :class="['type-badge', getTypeTone(bed.type)]">{{ bed.type }}</span></td>
@@ -144,7 +146,8 @@ const {
   saveChanges,
   resetFilters,
   getTypeTone,
-  getPresenceTone
+  getPresenceTone,
+  getResidentName
 } = useDevicesPage()
 
 const filterOptions = {

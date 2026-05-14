@@ -1,15 +1,11 @@
 <template>
   <div class="profile-page">
     <section class="profile-shell">
-      <header class="page-header">
-        <div class="page-heading">
-          <p class="page-eyebrow">Authenticated session</p>
-          <h1 class="page-title">My Profile</h1>
-          <p class="page-subtitle">
-            Profile information is read directly from the current authenticated session and its access context.
-          </p>
-        </div>
-      </header>
+      <UiPageHeader
+        eyebrow="Authenticated session"
+        title="My Profile"
+        subtitle="Profile information is read directly from the current authenticated session and its access context."
+      />
 
       <section class="profile-card">
         <div class="profile-grid">
@@ -140,15 +136,6 @@ const handleLogout = () => {
   padding-bottom: 12px;
 }
 
-.page-header {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
-}
-
-.page-eyebrow,
 .section-eyebrow {
   margin: 0 0 8px;
   text-transform: uppercase;
@@ -156,22 +143,6 @@ const handleLogout = () => {
   font-size: 0.68rem;
   font-weight: 900;
   color: #2559bd;
-}
-
-.page-title {
-  margin: 0;
-  font-size: clamp(2rem, 3vw, 2.8rem);
-  font-weight: 900;
-  letter-spacing: -0.05em;
-  color: var(--text-main);
-}
-
-.page-subtitle {
-  margin: 8px 0 0;
-  font-size: 0.95rem;
-  line-height: 1.6;
-  color: var(--text-muted);
-  max-width: 720px;
 }
 
 .profile-card {

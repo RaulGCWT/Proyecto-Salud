@@ -39,6 +39,18 @@ export function useDevicesPage() {
   const inventoryIntervalId = ref(null)
   const connectionIntervalId = ref(null)
 
+  const { data: residentsRaw } = useFetch(`${apiBase}/residents`, {
+    server: false,
+    headers: buildBackendAuthHeaders(auth),
+    default: () => []
+  })
+
+  const getResidentName = (residentId) => {
+    if (!residentId) return null
+    const all = Array.isArray(residentsRaw.value) ? residentsRaw.value : []
+    return all.find(r => r.id === residentId || r.residentId === residentId)?.name || null
+  }
+
   const accessContext = computed(() => auth.getAccessContext())
   const canEditDevices = computed(() => auth.permissions.includes(PERMISSIONS.DEVICES_EDIT))
   const accessibleBeds = computed(() => filterDevicesByAccessContext(beds.value, accessContext.value))
@@ -399,6 +411,7 @@ export function useDevicesPage() {
     resetFilters,
     getTypeTone,
     getPresenceTone,
-    ownerOptions
+    ownerOptions,
+    getResidentName
   }
 }

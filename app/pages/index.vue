@@ -184,9 +184,9 @@ onMounted(async () => {
 .overview-stat {
   padding: 24px;
   border-radius: 26px;
-  border: 1px solid rgba(195, 198, 213, 0.24);
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 4px 20px rgba(25, 28, 30, 0.04), 0 12px 40px rgba(25, 28, 30, 0.08);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-card);
+  box-shadow: 0 4px 20px var(--surface-shadow), 0 12px 40px var(--surface-shadow);
 }
 
 .overview-stat__top {
@@ -229,36 +229,25 @@ onMounted(async () => {
 }
 
 .overview-stat--global .overview-stat__icon {
-  background: rgba(0, 50, 125, 0.08);
-  color: #00327d;
+  background: rgba(37, 89, 189, 0.12);
+  color: #2559bd;
 }
 
 .overview-stat--stable .overview-stat__icon {
-  background: rgba(144, 239, 239, 0.35);
-  color: #006a6a;
+  background: rgba(16, 185, 129, 0.15);
+  color: #047857;
 }
 
 .overview-stat--attention .overview-stat__icon {
-  background: rgba(255, 218, 214, 0.6);
-  color: #93000d;
+  background: rgba(245, 158, 11, 0.15);
+  color: #b45309;
 }
 
 .overview-stat--urgent .overview-stat__icon {
-  background: rgba(255, 218, 214, 0.8);
-  color: #ba1a1a;
+  background: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
 }
 
-.overview-stat--stable .overview-stat__value {
-  color: #006a6a;
-}
-
-.overview-stat--attention .overview-stat__value {
-  color: #93000d;
-}
-
-.overview-stat--urgent .overview-stat__value {
-  color: #ba1a1a;
-}
 
 .overview-grid-shell {
   display: flex;
@@ -298,8 +287,8 @@ onMounted(async () => {
   min-height: 320px;
   padding: 24px;
   border-radius: 28px;
-  border: 1px dashed rgba(195, 198, 213, 0.5);
-  background: rgba(255, 255, 255, 0.88);
+  border: 1px dashed var(--surface-border);
+  background: var(--surface-card);
   text-align: center;
 }
 
@@ -334,14 +323,6 @@ onMounted(async () => {
   color: #94a3b8 !important;
 }
 
-:global(.dark-mode) .overview-search input,
-:global(.dark-mode) .overview-stat,
-:global(.dark-mode) .overview-empty {
-  background: linear-gradient(180deg, rgba(2, 6, 23, 0.98), rgba(15, 23, 42, 0.95)) !important;
-  border-color: var(--surface-border) !important;
-  color: #f8fafc !important;
-}
-
 :global(.dark-mode) .overview-stat__label,
 :global(.dark-mode) .overview-stat__note,
 :global(.dark-mode) .overview-grid-shell__eyebrow,
@@ -349,6 +330,7 @@ onMounted(async () => {
 :global(.dark-mode) .overview-search span {
   color: #94a3b8 !important;
 }
+
 
 @media (max-width: 1200px) {
   .overview-stats,

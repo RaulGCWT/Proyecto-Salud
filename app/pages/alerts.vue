@@ -7,9 +7,10 @@
             <span class="refresh-meta__label">Last refreshed</span>
             <span class="refresh-meta__value">{{ lastRefreshedLabel }}</span>
           </div>
-          <button class="action-button action-button--ghost" type="button" :disabled="isRefreshing" @click="refreshAlerts">
-            <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
-            <span>{{ isRefreshing ? 'Refreshing...' : 'Refresh' }}</span>
+
+          <button class="action-button action-button--ghost" type="button" :disabled="!filteredAlerts.length" @click="exportCSV">
+            <span class="material-symbols-outlined" aria-hidden="true">download</span>
+            <span>Export CSV</span>
           </button>
           <template v-if="canClearHistory">
             <template v-if="!pendingClearHistory">
@@ -484,6 +485,30 @@ const toggleAlertStatus = async (alert) => {
   } finally {
     activeMenuId.value = ''
   }
+}
+
+const exportCSV = () => {
+  const headers = ['Timestamp', 'Date', 'Device', 'MAC', 'Sensor', 'Side', 'Message', 'Status', 'Severity']
+  const rows = filteredAlerts.value.map(a => [
+    a.time,
+    a.dateLabel,
+    getAlertDeviceName(a),
+    a.mac,
+    a.sensor,
+    formatSideLabel(a.side),
+    `"${String(a.message || '').replace(/"/g, '""')}"`,
+    a.status,
+    a.level
+  ])
+
+  const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `alerts_${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
 }
 
 const refreshAlerts = async () => {

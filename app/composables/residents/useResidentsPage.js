@@ -6,7 +6,7 @@ import { buildBackendAuthHeaders } from '~/utils/backendAuth'
 const STATUS_OPTIONS = ['Active', 'Monitoring', 'Pending Setup']
 
 function createEmptyForm() {
-  return { id: '', name: '', status: 'Active', deviceId: '', notes: '' }
+  return { id: '', name: '', status: 'Active', deviceId: '', notes: '', assignmentHistory: [] }
 }
 
 export function useResidentsPage() {
@@ -40,7 +40,8 @@ export function useResidentsPage() {
       status: String(r.status || 'Active').trim(),
       deviceId: String(r.deviceId || '').trim(),
       notes: String(r.notes || '').trim(),
-      ownerId: String(r.ownerId || '').trim()
+      ownerId: String(r.ownerId || '').trim(),
+      assignmentHistory: Array.isArray(r.assignmentHistory) ? r.assignmentHistory : []
     }))
   })
 
@@ -82,8 +83,20 @@ export function useResidentsPage() {
   }
 
   const openEditModal = (resident) => {
-    form.value = { ...createEmptyForm(), ...resident }
+    form.value = {
+      ...createEmptyForm(),
+      ...resident,
+      assignmentHistory: Array.isArray(resident.assignmentHistory) ? resident.assignmentHistory : []
+    }
     modal.value = { open: true, mode: 'edit' }
+  }
+
+  const formatHistoryDate = (value) => {
+    if (!value) return '—'
+    const d = new Date(value)
+    return Number.isNaN(d.getTime()) ? value : d.toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric'
+    })
   }
 
   const closeModal = () => {
@@ -142,6 +155,7 @@ export function useResidentsPage() {
     openCreateModal,
     openEditModal,
     closeModal,
-    saveResident
+    saveResident,
+    formatHistoryDate
   }
 }

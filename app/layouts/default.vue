@@ -73,7 +73,19 @@ const toggleDark = () => {
 
 onMounted(() => {
   const savedTheme = localStorage.getItem('theme')
-  isDark.value = savedTheme === 'dark'
+  if (savedTheme) {
+    isDark.value = savedTheme === 'dark'
+  } else {
+    // Sin preferencia guardada → usar la del sistema
+    isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
+
+  // Actualizar si el usuario cambia la preferencia del sistema
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    if (!localStorage.getItem('theme')) {
+      isDark.value = e.matches
+    }
+  })
 })
 </script>
 

@@ -46,12 +46,13 @@
                 <th>Status</th>
                 <th>Assigned Bed</th>
                 <th>Notes</th>
+                <th>History</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="!filteredResidents.length" class="data-table__empty">
-                <td colspan="5">No residents found.</td>
+                <td colspan="6">No residents found.</td>
               </tr>
               <tr v-for="resident in filteredResidents" :key="resident.id">
                 <td><strong>{{ resident.name }}</strong></td>
@@ -64,6 +65,17 @@
                 </td>
                 <td><span class="note-text">{{ resident.notes || '—' }}</span></td>
                 <td>
+                  <button
+                    v-if="resident.assignmentHistory?.length"
+                    class="entry-link"
+                    type="button"
+                    @click="openHistoryModal(resident)"
+                  >
+                    View ({{ resident.assignmentHistory.length }})
+                  </button>
+                  <span v-else class="note-text">—</span>
+                </td>
+                <td>
                   <button class="entry-link" type="button" @click="openEditModal(resident)">Edit</button>
                 </td>
               </tr>
@@ -74,7 +86,29 @@
 
     </section>
 
-    <div v-if="modal.open" class="modal-overlay" @click.self="closeModal">
+    <div v-if="historyModal.open" class="modal-overlay" @click.self="historyModal.open = false">
+      <div class="modal-card">
+        <header class="modal-card__header">
+          <div>
+            <p class="modal-eyebrow">Resident</p>
+            <h3 class="modal-title">{{ historyModal.name }} — Assignment History</h3>
+          </div>
+          <button class="modal-close" type="button" @click="historyModal.open = false">
+            <span class="material-symbols-outlined" aria-hidden="true">close</span>
+          </button>
+        </header>
+        <div class="modal-form">
+          <div class="history-list">
+            <div v-for="entry in historyModal.history" :key="entry.unassignedAt" class="history-entry">
+              <code class="entry-chip">{{ entry.deviceName || entry.deviceId }}</code>
+              <span class="history-date">Until {{ formatHistoryDate(entry.unassignedAt) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="modal.open" class="modal-overlay" @click.self="handleCloseModal">
       <div class="modal-card">
         <header class="modal-card__header">
           <div>
@@ -111,8 +145,9 @@
             <input v-model.trim="form.notes" class="form-input" type="text" placeholder="Optional notes" maxlength="200" autocomplete="off" />
           </div>
 
+
           <footer class="modal-actions">
-            <button class="action-button action-button--ghost" type="button" @click="closeModal">Cancel</button>
+            <button class="action-button action-button--ghost" type="button" @click="handleCloseModal">Cancel</button>
             <button class="action-button action-button--primary" type="button" :disabled="isSaving" @click="saveResident">
               {{ isSaving ? 'Saving...' : (modal.mode === 'edit' ? 'Save changes' : 'Create') }}
             </button>
@@ -124,6 +159,7 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import { useResidentsPage } from '~/composables/residents/useResidentsPage'
 
 useHead({ title: 'Clinical Sentinel | Residents' })
@@ -140,8 +176,23 @@ const {
   openCreateModal,
   openEditModal,
   closeModal,
-  saveResident
+  saveResident,
+  formatHistoryDate
 } = useResidentsPage()
+
+const historyModal = ref({ open: false, name: '', history: [] })
+
+const openHistoryModal = (resident) => {
+  historyModal.value = {
+    open: true,
+    name: resident.name,
+    history: resident.assignmentHistory || []
+  }
+}
+
+const handleCloseModal = () => {
+  closeModal()
+}
 
 const statusTone = (status) => {
   if (status === 'Active') return 'pill--success'
@@ -345,10 +396,11 @@ const statusTone = (status) => {
   font-size: 1rem;
 }
 
-:global(.dark-mode) 
-:global(.dark-mode) 
-:global(.dark-mode) 
 @media (max-width: 900px) {
   .summary-grid { grid-template-columns: 1fr; }
 }
+
+.history-list { display: flex; flex-direction: column; gap: 8px; }
+.history-entry { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--surface-panel-strong); border: 1px solid var(--surface-border); }
+.history-date { font-size: 0.78rem; color: var(--text-muted); font-weight: 700; }
 </style>
