@@ -62,7 +62,7 @@
       </div>
 
       <aside class="detail-grid__side">
-        <section class="side-panel">
+        <section v-if="!isFamilyView" class="side-panel">
           <p class="side-panel__eyebrow">Device Context</p>
           <h2 class="side-panel__title">Live device snapshot</h2>
 
@@ -103,11 +103,16 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import DashboardCard from '~/components/DashboardCard.vue'
 import HealthChart from '~/components/HealthChart.vue'
 import { useDeviceDashboard } from '~/composables/health/useDeviceDashboard'
+import { useAuthStore } from '~/stores/auth'
 
 const route = useRoute()
+const auth = useAuthStore()
+const RESTRICTED_ROLES = new Set(['family', 'resident'])
+const isFamilyView = computed(() => RESTRICTED_ROLES.has(auth.user?.role || ''))
 
 const {
   health,

@@ -1,9 +1,9 @@
 <template>
   <div class="overview-page">
     <UiPageHeader
-      eyebrow="Ward Overview"
-      title="Clinical Device Overview"
-      subtitle="Monitor the full device floor, review active statuses and open the detailed dashboard for each bed."
+      :eyebrow="isFamilyView ? 'Family Portal' : 'Ward Overview'"
+      :title="isFamilyView ? 'My Family' : 'Clinical Device Overview'"
+      :subtitle="isFamilyView ? 'Monitor the health of your loved ones in real time.' : 'Monitor the full device floor, review active statuses and open the detailed dashboard for each bed.'"
     />
 
     <section class="overview-stats">
@@ -50,8 +50,13 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import OverviewDeviceCard from '~/components/overview/OverviewDeviceCard.vue'
+import { useAuthStore } from '~/stores/auth'
+
+const auth = useAuthStore()
+const RESTRICTED_ROLES = new Set(['family', 'resident'])
+const isFamilyView = computed(() => RESTRICTED_ROLES.has(auth.user?.role || ''))
 import { useDevicesOverview } from '~/composables/health/useDevicesOverview'
 import { useHealthStore } from '~/stores/health'
 import { useRulesStore } from '~/stores/rules'
