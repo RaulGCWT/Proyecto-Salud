@@ -22,32 +22,35 @@
           <strong>{{ invitation.state }}</strong>
         </div>
 
-        <p v-if="invitation.state === 'PENDING'" class="invite-copy">Complete your registration to activate family access.</p>
+        <template v-if="invitation.state === 'PENDING'">
+          <template v-if="invitation.userAlreadyRegistered">
+            <p class="invite-copy">You already have an account. Click below to link it to this resident.</p>
+            <div v-if="errorMessage" class="error-alert">{{ errorMessage }}</div>
+            <button class="btn-submit" type="button" :disabled="submitting" @click="completeRegistration">
+              {{ submitting ? 'Linking...' : 'Confirm access' }}
+            </button>
+          </template>
 
-        <form v-if="invitation.state === 'PENDING'" class="register-form" @submit.prevent="completeRegistration">
-          <div class="form-group">
-            <label>Name</label>
-            <input v-model="form.name" type="text" required />
-          </div>
-
-          <div class="form-group">
-            <label>Email</label>
-            <input v-model="form.email" type="email" disabled />
-          </div>
-
-          <div class="form-group">
-            <label>Password</label>
-            <input v-model="form.password" type="password" minlength="6" required />
-          </div>
-
-          <div v-if="errorMessage" class="error-alert">
-            {{ errorMessage }}
-          </div>
-
-          <button class="btn-submit" type="submit" :disabled="submitting">
-            {{ submitting ? 'Creating account...' : 'Accept Invitation' }}
-          </button>
-        </form>
+          <form v-else class="register-form" @submit.prevent="completeRegistration">
+            <p class="invite-copy">Complete your registration to activate family access.</p>
+            <div class="form-group">
+              <label>Name</label>
+              <input v-model="form.name" type="text" required />
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input v-model="form.email" type="email" disabled />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input v-model="form.password" type="password" minlength="6" required />
+            </div>
+            <div v-if="errorMessage" class="error-alert">{{ errorMessage }}</div>
+            <button class="btn-submit" type="submit" :disabled="submitting">
+              {{ submitting ? 'Creating account...' : 'Accept Invitation' }}
+            </button>
+          </form>
+        </template>
 
         <div v-else-if="invitation.state === 'ACCEPTED'" class="success-box">This invitation has already been used.</div>
         <div v-else-if="invitation.state === 'EXPIRED'" class="error-alert">This invitation has expired. Please request a new one.</div>

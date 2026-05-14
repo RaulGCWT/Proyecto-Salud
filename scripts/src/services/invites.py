@@ -107,6 +107,28 @@ def list_invitations():
     return [serialize_invitation(item) for item in scan_all(table_invites)]
 
 
+def find_family_user_by_email(email):
+    email_normalized = str(email or '').strip().lower()
+    items = scan_all(table_family_users)
+    return next((u for u in items if str(u.get('email') or '').strip().lower() == email_normalized), None)
+
+
+def link_existing_user_to_invitation(user, invitation):
+    user['deviceId'] = invitation.get('deviceId') or user.get('deviceId', '')
+    user['residentId'] = invitation.get('residentId') or user.get('residentId', '')
+    user['patientName'] = invitation.get('patientName') or user.get('patientName', '')
+    user['relationship'] = invitation.get('relationship') or user.get('relationship', '')
+    table_family_users.put_item(Item=user)
+
+    accepted_at = utc_now_iso()
+    invitation['state'] = INVITE_ACCEPTED
+    invitation['acceptedAt'] = accepted_at
+    append_invite_history(invitation, INVITE_ACCEPTED, accepted_at)
+    table_invites.put_item(Item=invitation)
+
+    return user
+
+
 def create_invitation(payload):
     invite = dict(payload or {})
     invite_id = str(uuid.uuid4())

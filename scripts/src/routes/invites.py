@@ -10,6 +10,8 @@ from src.services.invites import (
     get_invitation_by_token,
     list_invitations,
     register_family_user_from_invitation,
+    find_family_user_by_email,
+    link_existing_user_to_invitation,
 )
 
 invites_bp = Blueprint('invites', __name__)
@@ -65,6 +67,9 @@ def verify_invite():
     if not invitation:
         return jsonify({"error": "Invitation not found"}), 404
 
+    existing_user = find_family_user_by_email(invitation.get('email', ''))
+    invitation['userAlreadyRegistered'] = bool(existing_user)
+
     return jsonify(invitation), 200
 
 
@@ -92,8 +97,8 @@ def register_from_invite():
     password = payload.get('password')
     name = payload.get('name')
 
-    if not token or not password or not name:
-        return jsonify({"error": "Token, name and password are required"}), 400
+    if not token:
+        return jsonify({"error": "Token is required"}), 400
 
     invitation = get_invitation_by_token(token)
     if not invitation:
@@ -102,6 +107,23 @@ def register_from_invite():
     access_error = get_invitation_access_error(invitation)
     if access_error:
         return jsonify({"error": access_error["error"]}), access_error["status_code"]
+
+    existing_user = find_family_user_by_email(invitation.get('email', ''))
+
+    if existing_user:
+        user = link_existing_user_to_invitation(existing_user, invitation)
+        return jsonify({
+            "status": "linked",
+            "user": {
+                "id": user['id'],
+                "email": user['email'],
+                "name": user['name'],
+                "role": user['role']
+            }
+        }), 200
+
+    if not password or not name:
+        return jsonify({"error": "Name and password are required for new users"}), 400
 
     user = register_family_user_from_invitation(invitation, name, password)
     return jsonify({
