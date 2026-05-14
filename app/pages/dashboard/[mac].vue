@@ -43,7 +43,7 @@
       </div>
     </section>
 
-    <section class="detail-metrics" :class="{ 'detail-metrics--loading': isLoading }">
+    <section class="detail-metrics" :class="{ 'detail-metrics--loading': isLoading, 'detail-metrics--pulse': isPulsing }">
       <DashboardCard
         v-for="card in dashboardCards"
         :key="card.key"
@@ -113,6 +113,13 @@ const route = useRoute()
 const auth = useAuthStore()
 const RESTRICTED_ROLES = new Set(['family', 'resident'])
 const isFamilyView = computed(() => RESTRICTED_ROLES.has(auth.user?.role || ''))
+
+const isPulsing = ref(false)
+watch(() => health.heartRate, () => {
+  if (isLoading.value) return
+  isPulsing.value = true
+  setTimeout(() => { isPulsing.value = false }, 600)
+})
 
 const {
   health,
@@ -379,13 +386,18 @@ useHead({
 }
 
 @keyframes skeleton-shimmer {
-  0% {
-    background-position: 200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 
-  100% {
-    background-position: -200% 0;
-  }
+@keyframes metrics-pulse {
+  0%   { opacity: 1; transform: scale(1); }
+  40%  { opacity: 0.7; transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.detail-metrics--pulse {
+  animation: metrics-pulse 0.5s ease-out;
 }
 
 :global(.dark-mode) .detail-hero,

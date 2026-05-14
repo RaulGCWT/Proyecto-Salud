@@ -31,6 +31,44 @@
           <p class="quicklink-description">{{ link.description }}</p>
         </NuxtLink>
       </div>
+    <section v-if="isFirstUse" class="onboarding">
+      <div class="onboarding__icon">
+        <span class="material-symbols-outlined" aria-hidden="true">rocket_launch</span>
+      </div>
+      <h2 class="onboarding__title">Welcome to Welltech Admin</h2>
+      <p class="onboarding__subtitle">Get started by following these steps to set up the system.</p>
+      <div class="onboarding__steps">
+        <NuxtLink to="/admin/devices" class="onboarding__step">
+          <span class="step-number">1</span>
+          <div>
+            <strong>Add your devices</strong>
+            <p>Register the smart beds and assign their MQTT topics.</p>
+          </div>
+        </NuxtLink>
+        <NuxtLink to="/admin/residents" class="onboarding__step">
+          <span class="step-number">2</span>
+          <div>
+            <strong>Create residents</strong>
+            <p>Add residents and assign them to their beds.</p>
+          </div>
+        </NuxtLink>
+        <NuxtLink to="/admin/staff" class="onboarding__step">
+          <span class="step-number">3</span>
+          <div>
+            <strong>Add staff members</strong>
+            <p>Register the clinical team who will monitor the system.</p>
+          </div>
+        </NuxtLink>
+        <NuxtLink to="/admin/invitations" class="onboarding__step">
+          <span class="step-number">4</span>
+          <div>
+            <strong>Invite families</strong>
+            <p>Send invitations so families can follow their loved ones.</p>
+          </div>
+        </NuxtLink>
+      </div>
+    </section>
+
     </section>
   </div>
 </template>
@@ -49,6 +87,10 @@ const summaryCards = computed(() => {
   const map = Object.fromEntries((rawCards.value || []).map(c => [c.label, c]))
   return STATS_ORDER.map(label => map[label]).filter(Boolean)
 })
+
+const isFirstUse = computed(() =>
+  (rawCards.value || []).every(c => !c.value || c.value === 0)
+)
 
 const quickLinks = [
   { icon: 'manage_accounts',  title: 'Staff',       description: 'Manage your staff team.',               to: '/admin/staff',       color: '#6d28d9' },
@@ -183,6 +225,81 @@ const quickLinks = [
   display: inline-block;
   line-height: 1;
   vertical-align: middle;
+}
+
+.onboarding {
+  padding: 40px;
+  border-radius: 24px;
+  border: 1px dashed var(--surface-border);
+  background: var(--surface-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.onboarding__icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 999px;
+  background: rgba(37, 89, 189, 0.1);
+  color: #2559bd;
+  display: grid;
+  place-items: center;
+}
+
+.onboarding__icon .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-weight: normal;
+  font-size: 2rem;
+  display: inline-block;
+  line-height: 1;
+}
+
+.onboarding__title { margin: 0; font-size: 1.4rem; font-weight: 900; color: var(--text-main); }
+.onboarding__subtitle { margin: 0; color: var(--text-muted); max-width: 480px; line-height: 1.6; }
+
+.onboarding__steps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+  max-width: 680px;
+  margin-top: 8px;
+}
+
+.onboarding__step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-panel-strong);
+  text-decoration: none;
+  color: var(--text-main);
+  text-align: left;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.onboarding__step:hover { border-color: rgba(37, 89, 189, 0.3); transform: translateY(-2px); }
+.onboarding__step strong { display: block; font-weight: 900; margin-bottom: 4px; }
+.onboarding__step p { margin: 0; font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; }
+
+.step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(37, 89, 189, 0.1);
+  color: #2559bd;
+  font-size: 0.78rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 @media (max-width: 1100px) {

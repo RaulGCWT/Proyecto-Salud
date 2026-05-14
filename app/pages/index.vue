@@ -21,6 +21,14 @@
 
     <div class="filters-bar">
       <UiSearchInput v-model="searchQuery" placeholder="Search beds or patients..." />
+      <button
+        :class="['alert-filter-btn', { 'alert-filter-btn--active': onlyWithAlerts }]"
+        type="button"
+        @click="onlyWithAlerts = !onlyWithAlerts"
+      >
+        <span class="material-symbols-outlined" aria-hidden="true">notifications_active</span>
+        {{ onlyWithAlerts ? 'All devices' : 'With alerts only' }}
+      </button>
     </div>
 
     <section class="overview-grid-shell">
@@ -65,9 +73,16 @@ const health = useHealthStore()
 const rulesStore = useRulesStore()
 const {
   searchQuery,
-  visibleDeviceCards,
+  visibleDeviceCards: allVisibleCards,
   overviewStats
 } = useDevicesOverview()
+
+const onlyWithAlerts = ref(false)
+const visibleDeviceCards = computed(() =>
+  onlyWithAlerts.value
+    ? allVisibleCards.value.filter(c => c.openAlerts?.length > 0 || c.latestAlertMessage)
+    : allVisibleCards.value
+)
 
 function openDeviceDetail(card) {
   const targetMac = String(card?.mac || '').trim()
@@ -331,6 +346,40 @@ onMounted(async () => {
   color: #94a3b8 !important;
 }
 
+
+.alert-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--surface-border);
+  background: var(--surface-panel-strong);
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.alert-filter-btn .material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1rem;
+  text-transform: none;
+  display: inline-block;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.alert-filter-btn--active {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.3);
+}
 
 @media (max-width: 1200px) {
   .overview-stats,

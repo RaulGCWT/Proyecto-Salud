@@ -60,6 +60,7 @@ services:
       - FLASK_DEBUG=0
       - ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001
       - FRONTEND_BASE_URL=${FRONTEND_BASE_URL:-http://localhost:3000}
+      - AUTH_AUDIENCE=${AUTH_AUDIENCE:-}
       - USE_AWS_DYNAMODB=${USE_AWS_DYNAMODB:-false}
       - USE_AWS_ALERTS_TABLE=${USE_AWS_ALERTS_TABLE:-false}
       - AWS_REGION=${AWS_REGION:-eu-west-1}

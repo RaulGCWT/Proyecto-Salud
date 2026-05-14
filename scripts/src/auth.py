@@ -266,7 +266,7 @@ def decode_verified_token(token):
             raise AuthError('JWKS endpoint is not available')
 
         signing_key = _get_jwk_client(jwks_url).get_signing_key_from_jwt(token)
-        decode_options = {'verify_aud': False}
+        decode_options = {'verify_aud': bool(AUTH_AUDIENCE)}
         decode_kwargs = {
             'key': signing_key.key,
             'algorithms': [jwt.get_unverified_header(token).get('alg', 'RS256')],
