@@ -38,7 +38,8 @@ export const useHealthSocket = () => {
       health.ingestTelemetryPayload(normalized)
 
       if (!selectedMac || selectedMac === incomingMac) {
-        health.checkRules(normalized.readings || [])
+        const ownerId = auth.user?.email || auth.user?.tenantKey || ''
+        health.checkRules(normalized.readings || [], ownerId)
       }
     })
 

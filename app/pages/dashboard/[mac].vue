@@ -103,7 +103,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import DashboardCard from '~/components/DashboardCard.vue'
 import HealthChart from '~/components/HealthChart.vue'
 import { useDeviceDashboard } from '~/composables/health/useDeviceDashboard'
@@ -113,13 +113,6 @@ const route = useRoute()
 const auth = useAuthStore()
 const RESTRICTED_ROLES = new Set(['family', 'resident'])
 const isFamilyView = computed(() => RESTRICTED_ROLES.has(auth.user?.role || ''))
-
-const isPulsing = ref(false)
-watch(() => health.heartRate, () => {
-  if (isLoading.value) return
-  isPulsing.value = true
-  setTimeout(() => { isPulsing.value = false }, 600)
-})
 
 const {
   health,
@@ -135,6 +128,13 @@ const {
   realtimeButtonLabel,
   startRealtimeMode
 } = useDeviceDashboard(route)
+
+const isPulsing = ref(false)
+watch(() => health.heartRate, () => {
+  if (isLoading.value) return
+  isPulsing.value = true
+  setTimeout(() => { isPulsing.value = false }, 600)
+})
 
 useHead({
   title: 'Clinical Sentinel | Device Detail'

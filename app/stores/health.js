@@ -427,7 +427,7 @@ export const useHealthStore = defineStore('health', {
       }
     },
 
-    checkRules(readings = []) {
+    checkRules(readings = [], ownerId = '') {
       const rulesStore = useRulesStore()
       const selectedDevice = findSelectedDeviceRecord(this) || {}
       const inputReadings = Array.isArray(readings) && readings.length
@@ -461,7 +461,7 @@ export const useHealthStore = defineStore('health', {
 
           if (isTriggered && value > 0) {
             const newAlert = {
-              id: Date.now(),
+              id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
               timestamp: Math.floor(Date.now() / 1000),
               time: new Date().toLocaleTimeString(),
               sensor: (parameter || 'SENSOR').toUpperCase(),
@@ -471,7 +471,7 @@ export const useHealthStore = defineStore('health', {
               message: `${rule.name}: ${value} detected`,
               level: 'Critical',
               status: 'PENDING',
-              ownerId: ''
+              ownerId: ownerId
             }
             this.alertHistory.unshift(newAlert)
             this.lastToast = newAlert

@@ -61,13 +61,13 @@
 import { computed, onMounted } from 'vue'
 import OverviewDeviceCard from '~/components/overview/OverviewDeviceCard.vue'
 import { useAuthStore } from '~/stores/auth'
+import { useDevicesOverview } from '~/composables/health/useDevicesOverview'
+import { useHealthStore } from '~/stores/health'
+import { useRulesStore } from '~/stores/rules'
 
 const auth = useAuthStore()
 const RESTRICTED_ROLES = new Set(['family', 'resident'])
 const isFamilyView = computed(() => RESTRICTED_ROLES.has(auth.user?.role || ''))
-import { useDevicesOverview } from '~/composables/health/useDevicesOverview'
-import { useHealthStore } from '~/stores/health'
-import { useRulesStore } from '~/stores/rules'
 
 const health = useHealthStore()
 const rulesStore = useRulesStore()
